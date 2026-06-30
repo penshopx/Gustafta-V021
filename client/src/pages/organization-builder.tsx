@@ -15,7 +15,7 @@ import {
 import {
   Users, Sparkles, ArrowRight, ArrowLeft, Loader2, Lock, Check, AlertTriangle,
   Plus, Trash2, Crown, Rocket, RotateCcw, Info, Network, ClipboardList, Wand2,
-  Download, Upload,
+  Download, Upload, Copy,
 } from "lucide-react";
 import {
   createEmptyOrganizationBlueprint,
@@ -125,15 +125,21 @@ const hasMeaningfulDraft = (d: Partial<OrgDraft>): boolean =>
 /* Normalisasi draft dari sumber tak tepercaya (localStorage / file impor). */
 const sanitizeDraft = (raw: any): OrgDraft => {
   const roles: OrgMemberRole[] = ["orchestrator", "specialist", "support"];
+  const seenIds = new Set<string>();
   const members: MemberDraft[] = (Array.isArray(raw?.members) ? raw.members : [])
     .filter((m: any) => m && typeof m === "object")
-    .map((m: any, i: number) => ({
-      localId: typeof m.localId === "string" && m.localId.trim() ? m.localId : `m${i + 1}`,
-      role: roles.includes(m.role) ? m.role : "specialist",
-      title: typeof m.title === "string" ? m.title : "",
-      responsibility: typeof m.responsibility === "string" ? m.responsibility : "",
-      systemPrompt: typeof m.systemPrompt === "string" ? m.systemPrompt : "",
-    }));
+    .map((m: any, i: number) => {
+      let localId = typeof m.localId === "string" && m.localId.trim() ? m.localId : `m${i + 1}`;
+      while (seenIds.has(localId)) localId = `${localId}-${i + 1}`;
+      seenIds.add(localId);
+      return {
+        localId,
+        role: roles.includes(m.role) ? m.role : "specialist",
+        title: typeof m.title === "string" ? m.title : "",
+        responsibility: typeof m.responsibility === "string" ? m.responsibility : "",
+        systemPrompt: typeof m.systemPrompt === "string" ? m.systemPrompt : "",
+      };
+    });
   return {
     orgName: typeof raw?.orgName === "string" ? raw.orgName : "",
     mission: typeof raw?.mission === "string" ? raw.mission : "",
@@ -268,6 +274,24 @@ export default function OrganizationBuilderPage() {
   };
   const removeMember = (localId: string) =>
     setMembers((ms) => ms.filter((m) => m.localId !== localId));
+  const duplicateMember = (localId: string) =>
+    setMembers((ms) => {
+      const idx = ms.findIndex((m) => m.localId === localId);
+      if (idx === -1) return ms;
+      const src = ms[idx];
+      const maxN = ms.reduce((mx, m) => {
+        const n = parseInt(m.localId.replace(/\D/g, ""), 10);
+        return Number.isFinite(n) ? Math.max(mx, n) : mx;
+      }, 0);
+      const clone: MemberDraft = {
+        localId: `m${maxN + 1}`,
+        role: src.role === "orchestrator" ? "specialist" : src.role,
+        title: src.title.trim() ? `${src.title} (salinan)` : "",
+        responsibility: src.responsibility,
+        systemPrompt: src.systemPrompt,
+      };
+      return [...ms.slice(0, idx + 1), clone, ...ms.slice(idx + 1)];
+    });
   const patchMember = (localId: string, patch: Partial<MemberDraft>) =>
     setMembers((ms) => ms.map((m) => (m.localId === localId ? { ...m, ...patch } : m)));
 
@@ -687,11 +711,16 @@ export default function OrganizationBuilderPage() {
                     <span className="text-sm font-bold text-gray-900 dark:text-white">Anggota {idx + 1}</span>
                     <Badge variant="outline" className="text-[10px]">{ROLE_LABEL[m.role]}</Badge>
                   </div>
-                  {members.length > 1 && (
-                    <button onClick={() => removeMember(m.localId)} className="text-gray-400 hover:text-red-500 transition-colors" data-testid={`btn-remove-${m.localId}`}>
-                      <Trash2 className="h-4 w-4" />
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => duplicateMember(m.localId)} className="text-gray-400 hover:text-violet-500 transition-colors" title="Duplikat anggota ini" data-testid={`btn-duplicate-${m.localId}`}>
+                      <Copy className="h-4 w-4" />
                     </button>
-                  )}
+                    {members.length > 1 && (
+                      <button onClick={() => removeMember(m.localId)} className="text-gray-400 hover:text-red-500 transition-colors" title="Hapus anggota ini" data-testid={`btn-remove-${m.localId}`}>
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="grid sm:grid-cols-2 gap-3">
