@@ -37,6 +37,7 @@ import { GoogleGenAI } from "@google/genai";
 import { subscriptionPlans, type SubscriptionPlanKey, createPaymentLink, parseWebhookPayload, buildChatbotDescription, parseChatbotAgentId, verifyMayarSignature } from "./lib/mayar";
 import { isAuthenticated, invalidateUserActiveCache } from "./replit_integrations/auth";
 import { registerBlueprintEngineRoutes } from "./blueprint-engine-routes";
+import { registerOrganizationEngineRoutes } from "./organization-engine-routes";
 import { textToSpeech } from "./replit_integrations/audio/client";
 import {
   processAttachmentsAndUrls,
@@ -489,6 +490,9 @@ export async function registerRoutes(
 ): Promise<Server> {
   // Blueprint Engine (Tahap 1–9) → API. Aditif; tidak menyentuh UI/Builder.
   registerBlueprintEngineRoutes(app);
+
+  // Organization Engine (Tahap 18–20) → API. Aditif; merancang & mewujudkan tim agen.
+  registerOrganizationEngineRoutes(app);
 
   // MIME type lookup for proper Content-Type headers
   const mimeTypes: Record<string, string> = {

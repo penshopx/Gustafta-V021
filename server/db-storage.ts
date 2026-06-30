@@ -69,6 +69,7 @@ import type {
 } from "@shared/schema";
 import { applyDefaultPolicies } from "./lib/agent-policies";
 import type { IStorage, CollaboratorView } from "./storage";
+import type { ConfigStorage } from "./services/blueprint-engine/configuration-engine";
 import type { AgentCollaborator, CollaboratorRole, PendingAgentInvite, AppliedInviteGrant, Notification, InsertNotification } from "@shared/schema";
 import type {
   Agent,
@@ -145,6 +146,14 @@ const pool = new Pool({
 });
 
 const db = drizzle(pool);
+
+/**
+ * Executor = koneksi DB normal (`db`) ATAU transaksi (`tx`) yang dilewatkan
+ * `db.transaction(...)`. Metode tulis di bawah menerima parameter `exec` opsional
+ * (default `db`) supaya bisa dijalankan di dalam SATU transaksi atomik (mis. Tahap
+ * 21 — pembuatan organisasi/tim). Param trailing opsional → pemanggil lama aman.
+ */
+type Executor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 // ─── Simple TTL In-Memory Cache ───────────────────────────────────────────────
 class TtlCache<T> {
@@ -941,17 +950,17 @@ export class DatabaseStorage implements IStorage {
     return mapped;
   }
 
-  async createAgent(insertAgent: InsertAgent): Promise<Agent> {
+  async createAgent(insertAgent: InsertAgent, exec: Executor = db): Promise<Agent> {
     
     // Auto-generate access token if not provided
     const accessToken = insertAgent.accessToken || `gus_${randomUUID().replace(/-/g, "")}`;
 
     // Auto-fill 7 field Kebijakan Agen berdasarkan series chatbot.
     // Lookup series via toolboxId → (seriesId | bigIdeaId.seriesId).
-    const seriesName = await this.lookupSeriesNameForAgent(insertAgent);
+    const seriesName = await this.lookupSeriesNameForAgent(insertAgent, exec);
     const filled = applyDefaultPolicies(insertAgent, seriesName);
 
-    const result = await db.insert(agents).values({
+    const result = await exec.insert(agents).values({
       name: insertAgent.name,
       description: insertAgent.description || "",
       avatar: insertAgent.avatar || "",
@@ -1013,9 +1022,12 @@ export class DatabaseStorage implements IStorage {
       slug: (insertAgent as any).slug || null,
     }).returning();
     const mapped = this.mapAgentRow(result[0]);
-    // Populate cache & invalidate list cache
-    agentCache.set(String(mapped.id), mapped);
-    agentListCache.clear();
+    // Hindari menyetel cache dengan baris yang BELUM commit (di dalam transaksi).
+    // runInTransaction membersihkan cache setelah commit sukses.
+    if (exec === db) {
+      agentCache.set(String(mapped.id), mapped);
+      agentListCache.clear();
+    }
     return mapped;
   }
 
@@ -1026,18 +1038,18 @@ export class DatabaseStorage implements IStorage {
    *   2. bigIdeaId → bigIdeas.seriesId (untuk orchestrator)
    * Mengembalikan null jika tidak bisa di-resolve (helper akan fallback ke kategori default).
    */
-  private async lookupSeriesNameForAgent(insertAgent: InsertAgent): Promise<string | null> {
+  private async lookupSeriesNameForAgent(insertAgent: InsertAgent, exec: Executor = db): Promise<string | null> {
     try {
       let seriesId: number | null = null;
 
       const toolboxIdRaw = insertAgent.toolboxId ? parseInt(insertAgent.toolboxId) : null;
       if (toolboxIdRaw && !Number.isNaN(toolboxIdRaw)) {
-        const tb = await db.select().from(toolboxes).where(eq(toolboxes.id, toolboxIdRaw)).limit(1);
+        const tb = await exec.select().from(toolboxes).where(eq(toolboxes.id, toolboxIdRaw)).limit(1);
         if (tb.length > 0) {
           if (tb[0].seriesId) {
             seriesId = tb[0].seriesId;
           } else if (tb[0].bigIdeaId) {
-            const bi = await db.select().from(bigIdeas).where(eq(bigIdeas.id, tb[0].bigIdeaId)).limit(1);
+            const bi = await exec.select().from(bigIdeas).where(eq(bigIdeas.id, tb[0].bigIdeaId)).limit(1);
             if (bi.length > 0 && bi[0].seriesId) seriesId = bi[0].seriesId;
           }
         }
@@ -1046,13 +1058,13 @@ export class DatabaseStorage implements IStorage {
       if (!seriesId) {
         const bigIdeaIdRaw = insertAgent.bigIdeaId ? parseInt(insertAgent.bigIdeaId) : null;
         if (bigIdeaIdRaw && !Number.isNaN(bigIdeaIdRaw)) {
-          const bi = await db.select().from(bigIdeas).where(eq(bigIdeas.id, bigIdeaIdRaw)).limit(1);
+          const bi = await exec.select().from(bigIdeas).where(eq(bigIdeas.id, bigIdeaIdRaw)).limit(1);
           if (bi.length > 0 && bi[0].seriesId) seriesId = bi[0].seriesId;
         }
       }
 
       if (!seriesId) return null;
-      const s = await db.select().from(series).where(eq(series.id, seriesId)).limit(1);
+      const s = await exec.select().from(series).where(eq(series.id, seriesId)).limit(1);
       return s.length > 0 ? s[0].name : null;
     } catch (err) {
       console.error("[agent-policies] series lookup failed, falling back to default category:", err);
@@ -1060,7 +1072,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async updateAgent(id: string, data: Partial<InsertAgent>): Promise<Agent | undefined> {
+  async updateAgent(id: string, data: Partial<InsertAgent>, exec: Executor = db): Promise<Agent | undefined> {
     const updateData: Record<string, unknown> = {};
     Object.entries(data).forEach(([key, value]) => {
       if (value !== undefined) {
@@ -1072,17 +1084,20 @@ export class DatabaseStorage implements IStorage {
       }
     });
     
-    const result = await db.update(agents)
+    const result = await exec.update(agents)
       .set(updateData)
       .where(eq(agents.id, parseInt(id)))
       .returning();
     if (result.length === 0) return undefined;
-    // Invalidate stale cache entries
-    agentCache.delete(id);
-    agentCache.delete("__active__");
-    agentListCache.clear();
     const mapped = this.mapAgentRow(result[0]);
-    agentCache.set(id, mapped);
+    // Di dalam transaksi: jangan sentuh cache (data belum commit) — runInTransaction
+    // membersihkannya setelah commit sukses.
+    if (exec === db) {
+      agentCache.delete(id);
+      agentCache.delete("__active__");
+      agentListCache.clear();
+      agentCache.set(id, mapped);
+    }
     return mapped;
   }
 
@@ -1148,6 +1163,35 @@ export class DatabaseStorage implements IStorage {
     agentListCache.clear();
     kbCache.delete(String(clone.id));
     return this.mapAgentRow(clone);
+  }
+
+  /**
+   * Jalankan `fn` dalam SATU transaksi DB atomik (Tahap 21 — materialisasi
+   * organisasi/tim). `fn` menerima `ConfigStorage` ber-scope transaksi: setiap
+   * create/update di dalamnya memakai koneksi transaksi `tx`. Bila `fn` melempar,
+   * SELURUH penulisan di-rollback (tidak ada tim parsial).
+   *
+   * Cache in-memory TIDAK disentuh selama transaksi (data belum commit); setelah
+   * commit sukses, cache agen dibersihkan agar pembacaan berikutnya segar.
+   */
+  async runInTransaction<T>(fn: (txStorage: ConfigStorage) => Promise<T>): Promise<T> {
+    const result = await db.transaction(async (tx) => {
+      const txStorage: ConfigStorage = {
+        // Baca by-slug: tidak dipakai jalur organisasi, delegasi apa adanya.
+        getAgentBySlug: (slug) => this.getAgentBySlug(slug),
+        createAgent: (a) => this.createAgent(a, tx),
+        updateAgent: (id, d) => this.updateAgent(id, d, tx),
+        createKnowledgeBase: (kb) => this.createKnowledgeBase(kb, tx),
+        createMiniApp: (m) => this.createMiniApp(m, tx),
+        createIntegration: (i) => this.createIntegration(i, tx),
+        createProjectBrainTemplate: (t) => this.createProjectBrainTemplate(t, tx),
+      };
+      return fn(txStorage);
+    });
+    // Commit sukses → segarkan cache (baris baru sudah permanen di DB).
+    agentCache.delete("__active__");
+    agentListCache.clear();
+    return result;
   }
 
   async setActiveAgent(id: string): Promise<Agent | undefined> {
@@ -1611,8 +1655,8 @@ export class DatabaseStorage implements IStorage {
     return mapped;
   }
 
-  async createKnowledgeBase(kb: InsertKnowledgeBase): Promise<KnowledgeBase> {
-    const result = await db.insert(knowledgeBases).values({
+  async createKnowledgeBase(kb: InsertKnowledgeBase, exec: Executor = db): Promise<KnowledgeBase> {
+    const result = await exec.insert(knowledgeBases).values({
       agentId: parseInt(kb.agentId),
       name: kb.name,
       type: kb.type,
@@ -1637,8 +1681,8 @@ export class DatabaseStorage implements IStorage {
       sharedScope: kb.sharedScope ?? null,
     }).returning();
     const mapped = this.mapKBRow(result[0]);
-    // Invalidate KB cache for this agent
-    kbCache.delete(String(mapped.agentId));
+    // Invalidate KB cache for this agent (lewati saat di dalam transaksi).
+    if (exec === db) kbCache.delete(String(mapped.agentId));
     return mapped;
   }
 
@@ -1972,8 +2016,8 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
-  async createIntegration(integration: InsertIntegration): Promise<Integration> {
-    const result = await db.insert(integrations).values({
+  async createIntegration(integration: InsertIntegration, exec: Executor = db): Promise<Integration> {
+    const result = await exec.insert(integrations).values({
       agentId: parseInt(integration.agentId),
       type: integration.type,
       name: integration.name,
@@ -2349,8 +2393,8 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async createProjectBrainTemplate(template: InsertProjectBrainTemplate): Promise<ProjectBrainTemplate> {
-    const result = await db.insert(projectBrainTemplates).values({
+  async createProjectBrainTemplate(template: InsertProjectBrainTemplate, exec: Executor = db): Promise<ProjectBrainTemplate> {
+    const result = await exec.insert(projectBrainTemplates).values({
       agentId: parseInt(template.agentId),
       name: template.name,
       description: template.description || "",
@@ -2597,8 +2641,8 @@ export class DatabaseStorage implements IStorage {
     return this.mapMiniAppRow(result[0]);
   }
 
-  async createMiniApp(miniApp: InsertMiniApp): Promise<MiniApp> {
-    const result = await db.insert(miniApps).values({
+  async createMiniApp(miniApp: InsertMiniApp, exec: Executor = db): Promise<MiniApp> {
+    const result = await exec.insert(miniApps).values({
       agentId: parseInt(miniApp.agentId),
       name: miniApp.name,
       description: miniApp.description || "",
@@ -2612,7 +2656,7 @@ export class DatabaseStorage implements IStorage {
     if (!row.publicSlug) {
       const slug = this.generateMiniAppSlug(row.name, row.id);
       try {
-        await db.update(miniApps).set({ publicSlug: slug }).where(eq(miniApps.id, row.id));
+        await exec.update(miniApps).set({ publicSlug: slug }).where(eq(miniApps.id, row.id));
         return { ...this.mapMiniAppRow(row), publicSlug: slug };
       } catch (err) {
         console.warn(`[MiniApp] Failed to assign publicSlug to new mini app ${row.id}:`, err);
