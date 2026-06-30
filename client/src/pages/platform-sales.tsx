@@ -14,6 +14,10 @@ import {
   Package, CheckCircle2, Layers, Cpu
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PRICING } from "@/data/pricing";
+
+/* Lisensi sekali bayar (sumbu Produk): gratis bila ambil Starter Kit, atau lisensi penuh tanpa Starter Kit */
+const LICENSE_ONETIME = `Starter Kit ${PRICING.starterKit.price} → lisensi Rp 0`;
 
 /* ─── FEATURES ─────────────────────────────────────────────── */
 const FEATURES = [
@@ -89,8 +93,8 @@ const PACKAGES = [
     color: "text-blue-500",
     colorBg: "bg-blue-500/10",
     colorBorder: "border-blue-500/30",
-    setupFee: "Bulan pertama Rp 445.000",
-    monthlyFee: "Rp 199.000",
+    licenseFee: LICENSE_ONETIME,
+    monthlyFee: PRICING.subscription.starter.label,
     popular: false,
     features: [
       { text: "1 Seri / Domain Konten", included: true },
@@ -116,8 +120,8 @@ const PACKAGES = [
     color: "text-primary",
     colorBg: "bg-primary/10",
     colorBorder: "border-primary/50",
-    setupFee: "Bulan pertama Rp 744.000",
-    monthlyFee: "Rp 499.000",
+    licenseFee: LICENSE_ONETIME,
+    monthlyFee: PRICING.subscription.profesional.label,
     popular: true,
     features: [
       { text: "3 Seri / Domain Konten", included: true },
@@ -143,8 +147,8 @@ const PACKAGES = [
     color: "text-violet-500",
     colorBg: "bg-violet-500/10",
     colorBorder: "border-violet-500/30",
-    setupFee: "Bulan pertama Rp 1.244.000",
-    monthlyFee: "Rp 999.000",
+    licenseFee: LICENSE_ONETIME,
+    monthlyFee: PRICING.subscription.bisnis.label,
     popular: false,
     features: [
       { text: "10 Seri / Domain Konten", included: true },
@@ -170,7 +174,7 @@ const PACKAGES = [
     color: "text-amber-500",
     colorBg: "bg-amber-500/10",
     colorBorder: "border-amber-500/30",
-    setupFee: "Negosiasi",
+    licenseFee: "Negosiasi",
     monthlyFee: "Custom",
     popular: false,
     features: [
@@ -229,12 +233,12 @@ const FAQS = [
     a: "Tidak sama sekali. Gustafta Apps dirancang sepenuhnya no-code. Semua konfigurasi chatbot, pembuatan modul, upload podcast, penerbitan e-course, hingga pembuatan dokumen dilakukan melalui antarmuka visual yang intuitif.",
   },
   {
-    q: "Apa perbedaan Biaya Setup dan Biaya Bulanan?",
-    a: "Biaya Setup adalah investasi awal yang dibayarkan satu kali untuk proses instalasi, konfigurasi platform, setup chatbot AI, pembuatan modul awal, dan pelatihan penggunaan. Biaya Bulanan adalah biaya langganan rutin untuk penggunaan platform, hosting, API AI, dan akses support.",
+    q: "Apa perbedaan Lisensi dan Biaya Bulanan?",
+    a: `Lisensi adalah biaya sekali bayar untuk hak pakai platform — gratis bila Anda mengambil Starter Kit (${PRICING.starterKit.price}), atau ${PRICING.license.price} bila tanpa Starter Kit. Biaya Bulanan adalah biaya langganan rutin untuk penggunaan platform, hosting, API AI, dan akses support. Berlangganan platform tidak memungut biaya setup terpisah.`,
   },
   {
-    q: "Berapa lama proses setup hingga platform aktif?",
-    a: "Paket Starter: 5–7 hari kerja. Paket Profesional: 7–14 hari kerja. Paket Bisnis: 14–21 hari kerja. Enterprise: disesuaikan scope proyek. Proses mencakup konsultasi, konfigurasi teknis, pengisian konten awal, testing, dan serah terima.",
+    q: "Berapa lama proses hingga platform aktif?",
+    a: "Aktivasi langganan langsung begitu pembayaran terkonfirmasi — Anda bisa mulai memakai platform di hari yang sama. Bila Anda mengambil Layanan Jasa (tim rakit) terpisah, jadwal pengerjaannya menyesuaikan scope dan dijelaskan saat konsultasi.",
   },
   {
     q: "Bisakah saya menjual kursus atau konten dari platform ini?",
@@ -246,7 +250,7 @@ const FAQS = [
   },
   {
     q: "Bagaimana sistem pembayaran?",
-    a: "Biaya setup dibayar di awal via transfer bank atau QRIS sebelum proses setup dimulai. Biaya bulanan dikonfirmasi setiap awal bulan via WhatsApp (transfer bank, QRIS). Invoice resmi tersedia untuk kebutuhan korporat.",
+    a: "Lisensi (sekali bayar) dibayar di awal via transfer bank atau QRIS saat aktivasi. Biaya bulanan dikonfirmasi setiap awal bulan via WhatsApp (transfer bank, QRIS). Invoice resmi tersedia untuk kebutuhan korporat.",
   },
 ];
 
@@ -640,7 +644,7 @@ export default function PlatformSalesPage() {
             <div className="hidden md:block absolute top-8 left-12 right-12 h-0.5 bg-border" />
             {[
               { step: "01", icon: Phone, title: "Konsultasi Gratis", desc: "Diskusi kebutuhan & tentukan paket paling sesuai" },
-              { step: "02", icon: CheckCircle2, title: "Aktivasi & Mulai", desc: "Konfirmasi paket, invoice dikirim, setup langsung dimulai" },
+              { step: "02", icon: CheckCircle2, title: "Aktivasi & Mulai", desc: "Konfirmasi paket, invoice dikirim, akun langsung diaktifkan" },
               { step: "03", icon: Cpu, title: "Bangun Platform", desc: "Tim kami konfigurasi & isi konten awal bersama Anda" },
               { step: "04", icon: Target, title: "Uji & Sempurnakan", desc: "Uji coba bersama, revisi hingga sempurna" },
               { step: "05", icon: Rocket, title: "Aktif & Hasilkan", desc: "Platform live — mulai layani pengguna & hasilkan pendapatan" },
@@ -665,7 +669,7 @@ export default function PlatformSalesPage() {
             <Badge variant="secondary" className="mb-3">Paket Berlangganan</Badge>
             <h2 className="text-3xl md:text-4xl font-bold mb-4">Paket Bisnis AI — Transparan, Tanpa Biaya Tersembunyi</h2>
             <p className="text-muted-foreground max-w-2xl mx-auto mb-4">
-              Setiap Paket Bisnis AI terdiri dari dua komponen: <strong>Setup & Instalasi</strong> (satu kali — berbeda per paket) dan <strong>Biaya Berlangganan Bulanan</strong> (akses platform). Keduanya terpisah dan jelas.
+              Setiap paket terdiri dari dua komponen: <strong>Lisensi</strong> (sekali bayar — gratis bila ambil Starter Kit {PRICING.starterKit.price}, atau lisensi {PRICING.license.price} tanpa Starter Kit) dan <strong>Biaya Berlangganan Bulanan</strong> (akses platform). Tidak ada biaya setup tersembunyi.
             </p>
             <div className="inline-flex items-center gap-3 px-4 py-2 rounded-xl bg-muted/60 border text-sm text-muted-foreground mb-6">
               <span>💡 Catatan: <strong>Paket Series Modul</strong> juga memiliki Setup & Instalasi tersendiri — lihat detail di halaman <a href="/packs" className="text-primary underline underline-offset-2">Paket Series Modul</a></span>
@@ -715,10 +719,13 @@ export default function PlatformSalesPage() {
                     <p className="text-xs text-muted-foreground">{pkg.tagline}</p>
                   </div>
 
-                  {/* Setup */}
+                  {/* Lisensi (sekali bayar) */}
                   <div className="rounded-lg bg-muted/60 p-3">
-                    <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Biaya Setup (sekali)</div>
-                    <div className={cn("text-lg font-bold", pkg.color)}>{pkg.setupFee}</div>
+                    <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Lisensi (sekali bayar)</div>
+                    <div className={cn("text-sm font-bold", pkg.color)}>{pkg.licenseFee}</div>
+                    {pkg.id !== "enterprise" && (
+                      <div className="text-[10px] text-muted-foreground mt-1">Tanpa Starter Kit: lisensi {PRICING.license.price} (sekali)</div>
+                    )}
                   </div>
 
                   {/* Monthly */}
@@ -749,7 +756,7 @@ export default function PlatformSalesPage() {
                   <a
                     href={pkg.id === "enterprise"
                       ? waLink("Halo, saya tertarik paket Enterprise Gustafta Apps. Bisa konsultasi?")
-                      : waLink(`Halo, saya tertarik paket ${pkg.name} Gustafta Apps (Setup ${pkg.setupFee}, Bulanan ${pkg.monthlyFee}). Bagaimana cara mulainya?`)}
+                      : waLink(`Halo, saya tertarik paket ${pkg.name} Gustafta Apps (Lisensi: ${pkg.licenseFee}, Bulanan ${pkg.monthlyFee}). Bagaimana cara mulainya?`)}
                     target="_blank" rel="noopener noreferrer"
                   >
                     <Button
@@ -853,7 +860,7 @@ export default function PlatformSalesPage() {
             </div>
 
             <div className="flex flex-wrap justify-center gap-4 pt-2">
-              {["Konsultasi Gratis", "Setup Profesional", "Support Aktif", "No-Code", "Langsung Bisa Menghasilkan"].map((badge) => (
+              {["Konsultasi Gratis", "Onboarding Dibimbing", "Support Aktif", "No-Code", "Langsung Bisa Menghasilkan"].map((badge) => (
                 <div key={badge} className="flex items-center gap-1.5 text-sm text-muted-foreground">
                   <CheckCircle2 className="h-4 w-4 text-green-500" />
                   {badge}
