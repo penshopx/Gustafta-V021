@@ -2,8 +2,8 @@
  * Gustafta — Sumber Data Tunggal untuk Harga & Produk
  *
  * Semua angka harga, tier layanan jasa, dan kredit pesan didefinisikan DI SINI.
- * Halaman /produk, /packs, /store, /store-featured WAJIB mengambil dari file ini
- * agar harga & penamaan selalu konsisten di seluruh aplikasi.
+ * Halaman /produk, /packs, /store, /store-featured, /pricing, /checkout WAJIB
+ * mengambil dari file ini agar harga & penamaan selalu konsisten di seluruh aplikasi.
  *
  * Aturan kanonik (jangan dilanggar):
  * - Setiap pengguna WAJIB punya lisensi (hak pakai). Yang berbeda hanya cara mendapatnya.
@@ -55,12 +55,31 @@ export const HOSTING_SUMMARY = `${HOSTING.monthly} · ${HOSTING.quarterly} · ${
 /** Rentang singkat hosting untuk kartu tier */
 export const HOSTING_RANGE = "Rp 199rb–1.999rb/periode";
 
+/** Periode berlangganan hosting (durasi) — sumber tunggal untuk /pricing & /checkout */
+export interface HostingPeriod {
+  key: string;
+  name: string;
+  price: string;
+  priceNum: number;
+  period: string;
+  duration: string;
+  savings?: string;
+}
+
+export const HOSTING_PERIODS: HostingPeriod[] = [
+  { key: "monthly_1",  name: "1 Bulan",  price: "Rp 199.000",   priceNum: 199000,  period: "/bulan",   duration: "1 Bulan" },
+  { key: "monthly_3",  name: "3 Bulan",  price: "Rp 299.000",   priceNum: 299000,  period: "/3 bulan", duration: "3 Bulan",  savings: "Hemat Rp 298.000" },
+  { key: "monthly_6",  name: "6 Bulan",  price: "Rp 999.000",   priceNum: 999000,  period: "/6 bulan", duration: "6 Bulan",  savings: "Hemat Rp 195.000" },
+  { key: "monthly_12", name: "12 Bulan", price: "Rp 1.999.000", priceNum: 1999000, period: "/tahun",   duration: "12 Bulan", savings: "Hemat Rp 389.000" },
+];
+
 // ─── Tier Layanan Jasa (dirakit tim Gustafta) ────────────────────────────────────
 // CANONICAL: 4 tier. Dipakai di /packs (dan halaman manapun yang menampilkan harga jasa).
 export interface ServiceTier {
   tier: string;
   jasaKey: string;
   price: string;
+  amount: number;
   scope: string;
   desc: string;
   tag: string;
@@ -73,6 +92,7 @@ export const SERVICE_TIERS: ServiceTier[] = [
     tier: "Tier 1",
     jasaKey: "tier1",
     price: "Rp 1.499.000",
+    amount: 1499000,
     scope: "Chatbot Dasar",
     desc: "Chatbot ringan — FAQ, info produk, layanan dasar",
     tag: "Mulai",
@@ -83,6 +103,7 @@ export const SERVICE_TIERS: ServiceTier[] = [
     tier: "Tier 2",
     jasaKey: "tier2",
     price: "Rp 2.499.000",
+    amount: 2499000,
     scope: "Chatbot Menengah",
     desc: "Chatbot menengah — multi-fungsi, lead gen, sales assist",
     tag: "Populer",
@@ -93,6 +114,7 @@ export const SERVICE_TIERS: ServiceTier[] = [
     tier: "Tier 3",
     jasaKey: "tier3",
     price: "Rp 4.900.000",
+    amount: 4900000,
     scope: "Chatbot Kompleks",
     desc: "Chatbot kompleks — orkestrasi, knowledge base luas",
     tag: "Bisnis",
@@ -103,6 +125,7 @@ export const SERVICE_TIERS: ServiceTier[] = [
     tier: "Tier 4",
     jasaKey: "tier4",
     price: "Rp 7.490.000",
+    amount: 7490000,
     scope: "Chatbot Enterprise",
     desc: "Chatbot enterprise — multi-domain, agentic penuh",
     tag: "Enterprise",

@@ -12,6 +12,7 @@ import {
   Sparkles, Crown, Zap, Bot, Wrench, ChevronRight, Lock, User, Phone,
   CreditCard, ExternalLink,
 } from "lucide-react";
+import { HOSTING_PERIODS, SERVICE_TIERS } from "@/data/pricing";
 
 const WA_NUMBER = "6282299417818";
 
@@ -26,8 +27,8 @@ const SUBSCRIPTION_PLANS: Record<string, {
   features: string[];
 }> = {
   monthly_1: {
-    key: "monthly_1", name: "Paket 1 Bulan", price: "Rp 199.000", priceNum: 199000,
-    period: "/bulan", duration: "1 Bulan", icon: Sparkles,
+    key: HOSTING_PERIODS[0].key, name: "Paket 1 Bulan", price: HOSTING_PERIODS[0].price, priceNum: HOSTING_PERIODS[0].priceNum,
+    period: HOSTING_PERIODS[0].period, duration: HOSTING_PERIODS[0].duration, icon: Sparkles,
     features: [
       "1 Chatbot aktif", "5.000 pesan/bulan", "Knowledge Base: 20 dokumen",
       "Web Widget (No Branding)", "WhatsApp & Telegram", "Agentic AI + Mini Apps (45 Tipe)",
@@ -35,8 +36,8 @@ const SUBSCRIPTION_PLANS: Record<string, {
     ],
   },
   monthly_3: {
-    key: "monthly_3", name: "Paket 3 Bulan", price: "Rp 299.000", priceNum: 299000,
-    period: "/3 bulan", duration: "3 Bulan", savings: "Hemat Rp 298.000",
+    key: HOSTING_PERIODS[1].key, name: "Paket 3 Bulan", price: HOSTING_PERIODS[1].price, priceNum: HOSTING_PERIODS[1].priceNum,
+    period: HOSTING_PERIODS[1].period, duration: HOSTING_PERIODS[1].duration, savings: HOSTING_PERIODS[1].savings,
     icon: Sparkles, popular: true,
     features: [
       "1 Chatbot aktif", "5.000 pesan/bulan", "Knowledge Base: 20 dokumen",
@@ -45,8 +46,8 @@ const SUBSCRIPTION_PLANS: Record<string, {
     ],
   },
   monthly_6: {
-    key: "monthly_6", name: "Paket 6 Bulan", price: "Rp 999.000", priceNum: 999000,
-    period: "/6 bulan", duration: "6 Bulan", savings: "Hemat Rp 195.000",
+    key: HOSTING_PERIODS[2].key, name: "Paket 6 Bulan", price: HOSTING_PERIODS[2].price, priceNum: HOSTING_PERIODS[2].priceNum,
+    period: HOSTING_PERIODS[2].period, duration: HOSTING_PERIODS[2].duration, savings: HOSTING_PERIODS[2].savings,
     icon: Crown,
     features: [
       "1 Chatbot aktif", "5.000 pesan/bulan", "Knowledge Base: 30 dokumen",
@@ -57,8 +58,8 @@ const SUBSCRIPTION_PLANS: Record<string, {
     ],
   },
   monthly_12: {
-    key: "monthly_12", name: "Paket 12 Bulan", price: "Rp 1.999.000", priceNum: 1999000,
-    period: "/tahun", duration: "12 Bulan", savings: "Hemat Rp 389.000",
+    key: HOSTING_PERIODS[3].key, name: "Paket 12 Bulan", price: HOSTING_PERIODS[3].price, priceNum: HOSTING_PERIODS[3].priceNum,
+    period: HOSTING_PERIODS[3].period, duration: HOSTING_PERIODS[3].duration, savings: HOSTING_PERIODS[3].savings,
     icon: Crown,
     features: [
       "1 Chatbot aktif", "5.000 pesan/bulan", "Knowledge Base: 50 dokumen",
@@ -79,8 +80,8 @@ const JASA_PLANS: Record<string, {
   description: string; features: string[]; scalevSlug: string;
 }> = {
   tier1: {
-    key: "tier1", name: "Jasa Chatbot — Tier 1", price: "Rp 1.499.000", priceNum: 1499000,
-    scope: "Chatbot Dasar", tag: "Mulai", scalevSlug: "gustafta-jasa-tier1",
+    key: SERVICE_TIERS[0].jasaKey, name: "Jasa Chatbot — Tier 1", price: SERVICE_TIERS[0].price, priceNum: SERVICE_TIERS[0].amount,
+    scope: SERVICE_TIERS[0].scope, tag: SERVICE_TIERS[0].tag, scalevSlug: "gustafta-jasa-tier1",
     description: "Chatbot ringan untuk FAQ, info produk, dan layanan dasar.",
     features: [
       "Konfigurasi dasar chatbot", "Setup knowledge base FAQ",
@@ -89,8 +90,8 @@ const JASA_PLANS: Record<string, {
     ],
   },
   tier2: {
-    key: "tier2", name: "Jasa Chatbot — Tier 2", price: "Rp 2.499.000", priceNum: 2499000,
-    scope: "Chatbot Menengah", tag: "Populer", popular: true, scalevSlug: "gustafta-jasa-tier2",
+    key: SERVICE_TIERS[1].jasaKey, name: "Jasa Chatbot — Tier 2", price: SERVICE_TIERS[1].price, priceNum: SERVICE_TIERS[1].amount,
+    scope: SERVICE_TIERS[1].scope, tag: SERVICE_TIERS[1].tag, popular: true, scalevSlug: "gustafta-jasa-tier2",
     description: "Chatbot multi-fungsi untuk lead gen, sales assist, dan layanan pelanggan.",
     features: [
       "Konfigurasi lengkap chatbot", "Setup knowledge base komprehensif",
@@ -100,8 +101,8 @@ const JASA_PLANS: Record<string, {
     ],
   },
   tier3: {
-    key: "tier3", name: "Jasa Chatbot — Tier 3", price: "Rp 4.900.000", priceNum: 4900000,
-    scope: "Chatbot Kompleks", tag: "Bisnis", scalevSlug: "gustafta-jasa-tier3",
+    key: SERVICE_TIERS[2].jasaKey, name: "Jasa Chatbot — Tier 3", price: SERVICE_TIERS[2].price, priceNum: SERVICE_TIERS[2].amount,
+    scope: SERVICE_TIERS[2].scope, tag: SERVICE_TIERS[2].tag, scalevSlug: "gustafta-jasa-tier3",
     description: "Chatbot kompleks dengan orkestrasi multi-agen dan knowledge base luas.",
     features: [
       "Konfigurasi advanced chatbot", "Knowledge base skala besar (30+ dok)",
@@ -112,8 +113,8 @@ const JASA_PLANS: Record<string, {
     ],
   },
   tier4: {
-    key: "tier4", name: "Jasa Chatbot — Tier 4", price: "Rp 7.490.000", priceNum: 7490000,
-    scope: "Chatbot Enterprise", tag: "Enterprise", scalevSlug: "gustafta-jasa-tier4",
+    key: SERVICE_TIERS[3].jasaKey, name: "Jasa Chatbot — Tier 4", price: SERVICE_TIERS[3].price, priceNum: SERVICE_TIERS[3].amount,
+    scope: SERVICE_TIERS[3].scope, tag: SERVICE_TIERS[3].tag, scalevSlug: "gustafta-jasa-tier4",
     description: "Chatbot enterprise multi-domain, agentic penuh, custom branding.",
     features: [
       "Full enterprise configuration", "Knowledge base unlimited",

@@ -13,6 +13,7 @@ import {
   Stethoscope, GraduationCap, Briefcase, ShoppingBag, Hammer, Scale,
   Hotel, Factory, ChevronRight, Lightbulb, Wrench
 } from "lucide-react";
+import { HOSTING, HOSTING_PERIODS, HOSTING_RANGE, SERVICE_TIERS } from "@/data/pricing";
 
 interface PricingTier {
   name: string;
@@ -31,12 +32,12 @@ interface PricingTier {
 
 const subscriptionTiers: PricingTier[] = [
   {
-    name: "1 Bulan",
-    planKey: "monthly_1",
+    name: HOSTING_PERIODS[0].name,
+    planKey: HOSTING_PERIODS[0].key,
     description: "Berlangganan bulanan untuk 1 chatbot",
-    price: "Rp 199.000",
-    priceNote: "/bulan",
-    duration: "1 Bulan",
+    price: HOSTING_PERIODS[0].price,
+    priceNote: HOSTING_PERIODS[0].period,
+    duration: HOSTING_PERIODS[0].duration,
     icon: Sparkles,
     features: [
       { text: "1 Chatbot", included: true },
@@ -53,13 +54,13 @@ const subscriptionTiers: PricingTier[] = [
     ctaVariant: "default",
   },
   {
-    name: "3 Bulan",
-    planKey: "monthly_3",
+    name: HOSTING_PERIODS[1].name,
+    planKey: HOSTING_PERIODS[1].key,
     description: "Hemat lebih besar dengan berlangganan triwulan",
-    price: "Rp 299.000",
-    priceNote: "/3 bulan",
-    duration: "3 Bulan",
-    savings: "Hemat Rp 298.000",
+    price: HOSTING_PERIODS[1].price,
+    priceNote: HOSTING_PERIODS[1].period,
+    duration: HOSTING_PERIODS[1].duration,
+    savings: HOSTING_PERIODS[1].savings,
     icon: Sparkles,
     popular: true,
     features: [
@@ -77,13 +78,13 @@ const subscriptionTiers: PricingTier[] = [
     ctaVariant: "default",
   },
   {
-    name: "6 Bulan",
-    planKey: "monthly_6",
+    name: HOSTING_PERIODS[2].name,
+    planKey: HOSTING_PERIODS[2].key,
     description: "Hemat 17% dengan berlangganan 6 bulan",
-    price: "Rp 999.000",
-    priceNote: "/6 bulan",
-    duration: "6 Bulan",
-    savings: "Hemat Rp 195.000",
+    price: HOSTING_PERIODS[2].price,
+    priceNote: HOSTING_PERIODS[2].period,
+    duration: HOSTING_PERIODS[2].duration,
+    savings: HOSTING_PERIODS[2].savings,
     icon: Crown,
     features: [
       { text: "1 Chatbot", included: true },
@@ -101,13 +102,13 @@ const subscriptionTiers: PricingTier[] = [
     ctaVariant: "default",
   },
   {
-    name: "12 Bulan",
-    planKey: "monthly_12",
+    name: HOSTING_PERIODS[3].name,
+    planKey: HOSTING_PERIODS[3].key,
     description: "Hemat 17% dengan berlangganan tahunan",
-    price: "Rp 1.999.000",
-    priceNote: "/tahun",
-    duration: "12 Bulan",
-    savings: "Hemat Rp 389.000",
+    price: HOSTING_PERIODS[3].price,
+    priceNote: HOSTING_PERIODS[3].period,
+    duration: HOSTING_PERIODS[3].duration,
+    savings: HOSTING_PERIODS[3].savings,
     icon: Crown,
     features: [
       { text: "1 Chatbot", included: true },
@@ -126,40 +127,14 @@ const subscriptionTiers: PricingTier[] = [
   },
 ];
 
-const chatbotPackages = [
-  {
-    name: "Tier 1",
-    description: "Chatbot ringan — FAQ, info produk, layanan dasar",
-    price: "Rp 1.499.000",
-    scope: "Chatbot Dasar",
-    tag: "Mulai",
-    tagColor: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
-  },
-  {
-    name: "Tier 2",
-    description: "Chatbot menengah — multi-fungsi, lead gen, sales assist",
-    price: "Rp 2.499.000",
-    scope: "Chatbot Menengah",
-    tag: "Populer",
-    tagColor: "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300",
-  },
-  {
-    name: "Tier 3",
-    description: "Chatbot kompleks — orkestrasi, knowledge base luas",
-    price: "Rp 4.900.000",
-    scope: "Chatbot Kompleks",
-    tag: "Bisnis",
-    tagColor: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300",
-  },
-  {
-    name: "Tier 4",
-    description: "Chatbot enterprise — multi-domain, agentic penuh",
-    price: "Rp 7.490.000",
-    scope: "Chatbot Enterprise",
-    tag: "Enterprise",
-    tagColor: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
-  },
-];
+const chatbotPackages = SERVICE_TIERS.map((t) => ({
+  name: t.tier,
+  description: t.desc,
+  price: t.price,
+  scope: t.scope,
+  tag: t.tag,
+  tagColor: t.tagClass,
+}));
 
 type ComplexityLevel = "Standar" | "Menengah" | "Kompleks" | "Enterprise";
 
@@ -478,7 +453,7 @@ function PricingCard({ tier, onSelect }: PricingCardProps) {
   );
 }
 
-const JASA_KEYS = ["tier1", "tier2", "tier3", "tier4"];
+const JASA_KEYS = SERVICE_TIERS.map((t) => t.jasaKey);
 
 export default function Pricing() {
   const [, navigate] = useLocation();
@@ -665,7 +640,7 @@ export default function Pricing() {
                   <Sparkles className="h-4 w-4 text-blue-500" />
                   <span className="font-bold text-blue-600 dark:text-blue-400">Paket Starter</span>
                 </div>
-                <p className="text-xs text-muted-foreground">Rp 199.000/bln · 1 Chatbot · 1.000 pesan/bln</p>
+                <p className="text-xs text-muted-foreground">{HOSTING.monthly} · 1 Chatbot · 1.000 pesan/bln</p>
                 <p className="text-xs text-muted-foreground">Kuota total: <span className="font-semibold text-blue-600 dark:text-blue-400">10 agen AI</span> (dibagi ke semua chatbot)</p>
                 <p className="text-xs mt-2 text-blue-700 dark:text-blue-300 font-medium">Cocok untuk: individu, freelancer, UMKM</p>
               </div>
@@ -699,7 +674,7 @@ export default function Pricing() {
                   <Zap className="h-4 w-4 text-indigo-500" />
                   <span className="font-bold text-indigo-600 dark:text-indigo-400">Paket Profesional</span>
                 </div>
-                <p className="text-xs text-muted-foreground">Rp 299.000/3bln · 1 Chatbot · 5.000 pesan/bln</p>
+                <p className="text-xs text-muted-foreground">{HOSTING.quarterly} · 1 Chatbot · 5.000 pesan/bln</p>
                 <p className="text-xs text-muted-foreground">Kuota total: <span className="font-semibold text-indigo-600 dark:text-indigo-400">50 agen AI</span> (dibagi ke semua chatbot)</p>
                 <p className="text-xs mt-2 text-indigo-700 dark:text-indigo-300 font-medium">Cocok untuk: startup, konsultan, sekolah swasta</p>
               </div>
@@ -737,7 +712,7 @@ export default function Pricing() {
                   </div>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-500 text-white">POPULER</span>
                 </div>
-                <p className="text-xs text-muted-foreground">Rp 999.000/6bln · 1 Chatbot · 20.000 pesan/bln</p>
+                <p className="text-xs text-muted-foreground">{HOSTING.semiannual} · 1 Chatbot · 20.000 pesan/bln</p>
                 <p className="text-xs text-muted-foreground">Kuota total: <span className="font-semibold text-violet-600 dark:text-violet-400">200 agen AI</span> (dibagi ke semua chatbot)</p>
                 <p className="text-xs mt-2 text-violet-700 dark:text-violet-300 font-medium">Cocok untuk: perusahaan, LSP, law firm, RS</p>
               </div>
@@ -847,7 +822,7 @@ export default function Pricing() {
                 <div className="text-2xl font-bold text-primary">{pkg.price}</div>
                 <div className="text-xs text-muted-foreground font-medium">{pkg.scope}</div>
                 <div className="text-xs text-muted-foreground">{pkg.description}</div>
-                <div className="text-[10px] text-muted-foreground border-t pt-2">+ Hosting Rp 199rb–1.999rb/periode</div>
+                <div className="text-[10px] text-muted-foreground border-t pt-2">+ Hosting {HOSTING_RANGE}</div>
                 <Button
                   size="sm"
                   className="w-full mt-1 gap-1.5"
