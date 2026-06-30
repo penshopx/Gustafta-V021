@@ -229,66 +229,78 @@ async function resolveSubAgents(
   return resolved;
 }
 
-async function applyChildren(
+export async function applyChildren(
   agentId: string,
   children: ReturnType<typeof mapBlueprintToBuilder>["children"],
   storage: ConfigStorage,
   created: ConfigurationResult["created"],
   warnings: string[],
+  /**
+   * Mode ketat: bila true, kegagalan validasi/insert entitas anak DILEMPAR
+   * (bukan jadi warning). Dipakai jalur ORGANISASI (Tahap 20) yang berjalan di
+   * dalam transaksi — agar satu anak gagal me-rollback seluruh tim (atomik).
+   * Default false menjaga perilaku best-effort single-agent (Tahap 4).
+   */
+  strict = false,
 ): Promise<void> {
+  const fail = (msg: string) => {
+    if (strict) throw new Error(msg);
+    warnings.push(msg);
+  };
+
   for (const kb of children.knowledgeBases) {
     const parsed = insertKnowledgeBaseSchema.safeParse({ ...kb, agentId });
     if (!parsed.success) {
-      warnings.push(`[knowledgeBase] "${kb.name ?? "?"}" invalid: ${formatZod(parsed.error)}`);
+      fail(`[knowledgeBase] "${kb.name ?? "?"}" invalid: ${formatZod(parsed.error)}`);
       continue;
     }
     try {
       await storage.createKnowledgeBase(parsed.data);
       created.knowledgeBases++;
     } catch (e) {
-      warnings.push(`[knowledgeBase] "${kb.name ?? "?"}" gagal: ${errMsg(e)}`);
+      fail(`[knowledgeBase] "${kb.name ?? "?"}" gagal: ${errMsg(e)}`);
     }
   }
 
   for (const app of children.miniApps) {
     const parsed = insertMiniAppSchema.safeParse({ ...app, agentId });
     if (!parsed.success) {
-      warnings.push(`[miniApp] "${app.name ?? "?"}" invalid: ${formatZod(parsed.error)}`);
+      fail(`[miniApp] "${app.name ?? "?"}" invalid: ${formatZod(parsed.error)}`);
       continue;
     }
     try {
       await storage.createMiniApp(parsed.data);
       created.miniApps++;
     } catch (e) {
-      warnings.push(`[miniApp] "${app.name ?? "?"}" gagal: ${errMsg(e)}`);
+      fail(`[miniApp] "${app.name ?? "?"}" gagal: ${errMsg(e)}`);
     }
   }
 
   for (const integ of children.integrations) {
     const parsed = insertIntegrationSchema.safeParse({ ...integ, agentId });
     if (!parsed.success) {
-      warnings.push(`[integration] "${integ.name ?? "?"}" invalid: ${formatZod(parsed.error)}`);
+      fail(`[integration] "${integ.name ?? "?"}" invalid: ${formatZod(parsed.error)}`);
       continue;
     }
     try {
       await storage.createIntegration(parsed.data);
       created.integrations++;
     } catch (e) {
-      warnings.push(`[integration] "${integ.name ?? "?"}" gagal: ${errMsg(e)}`);
+      fail(`[integration] "${integ.name ?? "?"}" gagal: ${errMsg(e)}`);
     }
   }
 
   for (const tpl of children.projectBrainTemplates) {
     const parsed = insertProjectBrainTemplateSchema.safeParse({ ...tpl, agentId });
     if (!parsed.success) {
-      warnings.push(`[projectBrainTemplate] "${tpl.name ?? "?"}" invalid: ${formatZod(parsed.error)}`);
+      fail(`[projectBrainTemplate] "${tpl.name ?? "?"}" invalid: ${formatZod(parsed.error)}`);
       continue;
     }
     try {
       await storage.createProjectBrainTemplate(parsed.data);
       created.projectBrainTemplates++;
     } catch (e) {
-      warnings.push(`[projectBrainTemplate] "${tpl.name ?? "?"}" gagal: ${errMsg(e)}`);
+      fail(`[projectBrainTemplate] "${tpl.name ?? "?"}" gagal: ${errMsg(e)}`);
     }
   }
 
