@@ -739,7 +739,7 @@ export default function PacksPage() {
             <div className="h-px flex-1 bg-border" />
           </div>
           <p className="text-center text-sm text-muted-foreground mb-8">
-            Harga setup modul dibayar sekali. Berlaku untuk semua modul Paket Series — kami yang konfigurasi, Anda langsung pakai. Hosting dibayar terpisah via Paket Berlangganan.
+            Harga setup modul dibayar sekali. Berlaku untuk semua modul Paket Series — kami yang konfigurasi, Anda langsung pakai. <strong>Sudah termasuk lisensi + Starter Kit (panduan)</strong>, tanpa biaya tambahan. Hosting dibayar terpisah via Paket Berlangganan.
           </p>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-4">
             {SERVICE_TIERS.map((t) => (
@@ -751,6 +751,10 @@ export default function PacksPage() {
                 <div className="text-2xl font-bold text-primary">{t.price}</div>
                 <div className="text-xs text-muted-foreground font-medium">{t.scope}</div>
                 <div className="text-xs text-muted-foreground">{t.desc}</div>
+                <div className="flex items-center gap-1.5 text-[10px] text-green-700 dark:text-green-400">
+                  <Check className="h-3 w-3 flex-shrink-0" />
+                  Termasuk lisensi + Starter Kit (panduan)
+                </div>
                 <div className="text-[10px] text-muted-foreground border-t pt-2">+ Hosting {HOSTING_RANGE}</div>
                 <Button
                   size="sm"
