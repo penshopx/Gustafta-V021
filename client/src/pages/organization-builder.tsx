@@ -15,6 +15,7 @@ import {
 import {
   Users, Sparkles, ArrowRight, ArrowLeft, Loader2, Lock, Check, AlertTriangle,
   Plus, Trash2, Crown, Rocket, RotateCcw, Info, Network, ClipboardList, Wand2,
+  Download, Upload,
 } from "lucide-react";
 import {
   createEmptyOrganizationBlueprint,
@@ -121,6 +122,26 @@ const hasMeaningfulDraft = (d: Partial<OrgDraft>): boolean =>
     (Array.isArray(d.members) && (d.members.length > 1 ||
       d.members.some((m) => m.title?.trim() || m.responsibility?.trim() || m.systemPrompt?.trim()))));
 
+/* Normalisasi draft dari sumber tak tepercaya (localStorage / file impor). */
+const sanitizeDraft = (raw: any): OrgDraft => {
+  const roles: OrgMemberRole[] = ["orchestrator", "specialist", "support"];
+  const members: MemberDraft[] = (Array.isArray(raw?.members) ? raw.members : [])
+    .filter((m: any) => m && typeof m === "object")
+    .map((m: any, i: number) => ({
+      localId: typeof m.localId === "string" && m.localId.trim() ? m.localId : `m${i + 1}`,
+      role: roles.includes(m.role) ? m.role : "specialist",
+      title: typeof m.title === "string" ? m.title : "",
+      responsibility: typeof m.responsibility === "string" ? m.responsibility : "",
+      systemPrompt: typeof m.systemPrompt === "string" ? m.systemPrompt : "",
+    }));
+  return {
+    orgName: typeof raw?.orgName === "string" ? raw.orgName : "",
+    mission: typeof raw?.mission === "string" ? raw.mission : "",
+    members: members.length ? members : [{ localId: "m1", role: "orchestrator", title: "", responsibility: "", systemPrompt: "" }],
+    maxSpecialists: Number.isFinite(raw?.maxSpecialists) ? Math.min(5, Math.max(1, raw.maxSpecialists)) : 3,
+  };
+};
+
 /* ── Component ─────────────────────────────────────────────────────────────── */
 export default function OrganizationBuilderPage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
@@ -170,25 +191,18 @@ export default function OrganizationBuilderPage() {
     } catch { /* storage penuh / diblokir — abaikan */ }
   }, [orgName, mission, members, maxSpecialists, created]);
 
+  /* Terapkan draft tersanitasi ke state wizard. */
+  const applyDraft = (raw: any) => {
+    const d = sanitizeDraft(raw);
+    setOrgName(d.orgName);
+    setMission(d.mission);
+    setMembers(d.members);
+    setMaxSpecialists(d.maxSpecialists);
+  };
+
   const restoreDraft = () => {
-    const d = restorable;
-    if (!d) return;
-    const roles: OrgMemberRole[] = ["orchestrator", "specialist", "support"];
-    const safeMembers = (Array.isArray(d.members) ? d.members : [])
-      .filter((m) => m && typeof m === "object")
-      .map((m, i) => ({
-        localId: typeof m.localId === "string" && m.localId.trim() ? m.localId : `m${i + 1}`,
-        role: roles.includes(m.role) ? m.role : "specialist",
-        title: typeof m.title === "string" ? m.title : "",
-        responsibility: typeof m.responsibility === "string" ? m.responsibility : "",
-        systemPrompt: typeof m.systemPrompt === "string" ? m.systemPrompt : "",
-      } as MemberDraft));
-    setOrgName(typeof d.orgName === "string" ? d.orgName : "");
-    setMission(typeof d.mission === "string" ? d.mission : "");
-    setMembers(safeMembers.length
-      ? safeMembers
-      : [{ localId: "m1", role: "orchestrator", title: "", responsibility: "", systemPrompt: "" }]);
-    setMaxSpecialists(Number.isFinite(d.maxSpecialists) ? Math.min(5, Math.max(1, d.maxSpecialists)) : 3);
+    if (!restorable) return;
+    applyDraft(restorable);
     holdRef.current = false;
     setRestorable(null);
     toast({ title: "Rancangan dipulihkan", description: "Lanjutkan dari tempat Anda berhenti." });
@@ -198,6 +212,48 @@ export default function OrganizationBuilderPage() {
     holdRef.current = false;
     setRestorable(null);
     try { localStorage.removeItem(DRAFT_KEY); } catch { /* abaikan */ }
+  };
+
+  /* ── Ekspor / impor rancangan sebagai file JSON ── */
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const exportDraft = () => {
+    try {
+      const d: OrgDraft = { orgName, mission, members, maxSpecialists };
+      const blob = new Blob([JSON.stringify(d, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const slug = (orgName.trim() || "rancangan-tim").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "rancangan-tim";
+      a.href = url;
+      a.download = `${slug}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast({ title: "Rancangan diunduh", description: "File JSON tersimpan. Anda bisa memuatnya lagi kapan saja." });
+    } catch (e: any) {
+      toast({ title: "Gagal mengunduh", description: e?.message || "Coba lagi.", variant: "destructive" });
+    }
+  };
+
+  const importDraft = async (file: File) => {
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      if (!parsed || typeof parsed !== "object" || !hasMeaningfulDraft(parsed)) {
+        toast({ title: "File tidak dikenali", description: "Pastikan ini file rancangan tim yang valid.", variant: "destructive" });
+        return;
+      }
+      holdRef.current = false;
+      setRestorable(null);
+      applyDraft(parsed);
+      setStep("intro");
+      setAnalysis(null); setPreview(null); setCreated(null); setCreateError(null);
+      setComposedDomain(null); setReadiness(null);
+      toast({ title: "Rancangan dimuat", description: "Tinjau & lanjutkan menyusun tim Anda." });
+    } catch {
+      toast({ title: "Gagal memuat file", description: "File rusak atau bukan JSON yang valid.", variant: "destructive" });
+    }
   };
 
   /* ── Member helpers ── */
@@ -482,6 +538,43 @@ export default function OrganizationBuilderPage() {
                 Mulai baru
               </Button>
             </div>
+          </div>
+        )}
+
+        {/* ── Ekspor / impor rancangan ── */}
+        {(step === "intro" || step === "members") && (
+          <div className="flex flex-wrap items-center gap-2" data-testid="toolbar-draft-io">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/json,.json"
+              className="hidden"
+              data-testid="input-import-file"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) importDraft(f);
+                e.target.value = "";
+              }}
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={exportDraft}
+              disabled={!hasMeaningfulDraft({ orgName, mission, members, maxSpecialists })}
+              className="gap-1.5"
+              data-testid="btn-export-draft"
+            >
+              <Download className="h-3.5 w-3.5" /> Unduh rancangan
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => fileInputRef.current?.click()}
+              className="gap-1.5"
+              data-testid="btn-import-draft"
+            >
+              <Upload className="h-3.5 w-3.5" /> Muat dari file
+            </Button>
           </div>
         )}
 
