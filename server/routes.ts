@@ -49,6 +49,7 @@ import { processKnowledgeBaseForRAG, searchKnowledgeBase } from "./lib/rag-servi
 import { buildFinalSystemPrompt, buildAgenticPrinciplesBlock } from "./lib/build-final-system-prompt";
 import { decideAgentMutation, decideAgentReadAccess, type AgentAuthzResult } from "./lib/agent-authz";
 import { makeAgentAccessGuards } from "./lib/agent-access-guards";
+import { sendAgentShareNotification } from "./lib/email";
 import { getDefaultPoliciesForSeries, type AgentPolicySet } from "./lib/agent-policies";
 import { importDocumentToProposal, mergeProposalIntoAgent, type ApplyMode } from "./lib/document-importer";
 import { buildEbookMarkdown, buildEbookHtml, stripMarkdownToPlainText, buildEbookTables } from "./lib/ebook-generator";
@@ -1508,6 +1509,25 @@ export async function registerRoutes(
         role: parsed.data.role,
         invitedBy: inviterId,
       });
+
+      // Notify the invited user by email. Fire-and-forget: a send failure must
+      // never break the share itself (gracefully degrades if BREVO_API_KEY absent).
+      try {
+        const recipientName = [targetUser.firstName, targetUser.lastName].filter(Boolean).join(" ").trim();
+        const inviterUser = (req.user as any)?.claims || (req.user as any) || {};
+        const inviterName = [inviterUser.first_name || inviterUser.firstName, inviterUser.last_name || inviterUser.lastName]
+          .filter(Boolean).join(" ").trim() || inviterUser.email || null;
+        void sendAgentShareNotification({
+          to: targetUser.email,
+          recipientName: recipientName || null,
+          agentName: (agent as any).name || "Agen AI",
+          role: parsed.data.role,
+          inviterName,
+        }).catch((err) => console.error("[collaborators] share notification error:", err));
+      } catch (notifyErr) {
+        console.error("[collaborators] failed to dispatch share notification:", notifyErr);
+      }
+
       res.status(201).json(created);
     } catch (error) {
       console.error("add collaborator error:", error);
