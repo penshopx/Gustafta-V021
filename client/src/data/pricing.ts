@@ -6,8 +6,10 @@
  * agar harga & penamaan selalu konsisten di seluruh aplikasi.
  *
  * Aturan kanonik (jangan dilanggar):
+ * - Setiap pengguna WAJIB punya lisensi (hak pakai). Yang berbeda hanya cara mendapatnya.
  * - Produk chatbot = LISENSI saja (tanpa biaya setup wajib).
- * - Layanan jasa (dirakit tim) = ada biaya SETUP sekali bayar.
+ * - Layanan jasa (dirakit tim) = ada biaya SETUP sekali bayar; setup SUDAH TERMASUK lisensi (tidak ditagih terpisah).
+ * - Starter Kit otomatis dibundel GRATIS di jalur Jasa (pintu masuk + panduan agar user bisa merakit sendiri kelak); tanpa tagihan tambahan.
  * - Tidak ada paket "Gratis" permanen — gratis hanya bonus trial 7 hari.
  */
 
