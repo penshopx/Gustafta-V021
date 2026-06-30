@@ -32,6 +32,7 @@ Trilogi Gustafta = framework berpikir di baliknya: **Dialog → Kolaborasi → K
 | **11** | **UI Wizard** — halaman wizard frontend yang memakai API Tahap 10 (auth-gated, additif) | Ya (page baru; flow lama tak diubah) | ✅ SELESAI — `client/src/pages/blueprint-builder.tsx` (route `/blueprint-builder`): intro → dialog → analisis → configure (preview `dryRun` lalu create) |
 | **12** | **Discoverability** — pintu masuk ke wizard dari Dashboard & landing `/blueprint`, tanpa mengubah CTA dialog lama | Ya (link additif) | ✅ SELESAI — kartu "Rancang Agen" di Aksi Cepat Dashboard + CTA sekunder di hero & CTA final `/blueprint` |
 | **13** | **Builder Handoff** — "Builder terisi otomatis": agen hasil wizard dimiliki user & dibuka langsung di Builder | Ya (fix ownership create + tombol handoff) | ✅ SELESAI — `/configure` mode create men-stamp `ownerUserId` (agen muncul di dashboard pemilik & bisa di-update); tombol "Buka di Builder" aktifkan agen → `/dashboard` |
+| **14** | **Security Hardening** — tutup celah otorisasi pada aktivasi agen (lanjutan temuan Tahap 13) | Ya (guard authz; perilaku normal tak diubah) | ✅ SELESAI — `POST /api/agents/:id/activate` kini cek eksistensi + kepemilikan (`403` bila bukan pemilik/admin) **sebelum** memutasi state aktif global; admin tetap bisa aktivasi apa pun |
 
 ## Tahap 10 — catatan penyambungan API
 - **Stateless:** tak ada tabel DB untuk Blueprint in-progress; klien mengirim seluruh Blueprint JSON tiap request. Validasi via `blueprintSchema`.
