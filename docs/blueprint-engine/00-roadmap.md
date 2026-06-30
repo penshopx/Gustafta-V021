@@ -29,13 +29,15 @@ Trilogi Gustafta = framework berpikir di baliknya: **Dialog → Kolaborasi → K
 | 8 | **Gap Analysis Engine** — cari field kosong/inkonsisten + rekomendasi | Ya (engine baru, pure, belum disambung) | ✅ SELESAI — `server/services/blueprint-engine/gap-analysis-engine.ts` + `08-gap-analysis-engine.md` |
 | 9 | **Critic / Simulation / Evolution Engine** — kritik mutu, simulasi customer, belajar dari history | Ya (3 engine baru, pure, belum disambung) | ✅ SELESAI — `critic-engine.ts` + `simulation-engine.ts` + `evolution-engine.ts` + `09-critic-simulation-evolution.md` |
 | **10** | **API Wiring** — sambung engine 1–9 ke HTTP API (stateless, klien bawa Blueprint JSON), tanpa UI baru | Ya (route baru; UI/Builder TIDAK diubah) | ✅ SELESAI — `server/blueprint-engine-routes.ts` → `/api/blueprint/{start,answer,state,analyze,configure}` |
+| **11** | **UI Wizard** — halaman wizard frontend yang memakai API Tahap 10 (auth-gated, additif) | Ya (page baru; flow lama tak diubah) | ✅ SELESAI — `client/src/pages/blueprint-builder.tsx` (route `/blueprint-builder`): intro → dialog → analisis → configure (preview `dryRun` lalu create) |
+| **12** | **Discoverability** — pintu masuk ke wizard dari Dashboard & landing `/blueprint`, tanpa mengubah CTA dialog lama | Ya (link additif) | ✅ SELESAI — kartu "Rancang Agen" di Aksi Cepat Dashboard + CTA sekunder di hero & CTA final `/blueprint` |
 
 ## Tahap 10 — catatan penyambungan API
 - **Stateless:** tak ada tabel DB untuk Blueprint in-progress; klien mengirim seluruh Blueprint JSON tiap request. Validasi via `blueprintSchema`.
 - **`/configure` = satu-satunya jalur tulis** dan **aman secara default**: `dryRun` dianggap `true` kecuali klien kirim `dryRun:false` eksplisit.
 - **Otorisasi:** mode `update` wajib pemilik agen (`agent.userId`) atau admin (403 bila bukan). Semua endpoint di balik `isAuthenticated`.
 - **Pipeline tiap perubahan:** `applyAnswers` → `inferBlueprint` → `applyConfidence` → `getDialogueState`.
-- **Langkah lanjut (Tahap 11, belum dikerjakan):** UI wizard dialog di frontend yang memakai API ini.
+- **Langkah lanjut:** ✅ Tahap 11 (UI wizard `/blueprint-builder`) & Tahap 12 (discoverability) SELESAI.
 
 ## Tempat kerja engine (rencana, belum dibuat)
 Direktori service baru terpisah dari Builder, mis. `server/services/blueprint-engine/` —
