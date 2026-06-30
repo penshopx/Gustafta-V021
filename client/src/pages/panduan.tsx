@@ -4,6 +4,7 @@ import { SharedHeader } from "@/components/shared-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { PRICING } from "@/data/pricing";
 import {
   BookOpen, CheckCircle2, Circle, ChevronRight, ChevronLeft,
   Search, MessageCircle, Bot, Database, ShoppingBag, CreditCard,
@@ -622,7 +623,7 @@ export default function Panduan() {
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
             {[
-              { icon: "📦", label: "Starter Kit", sub: "Rp 245.000 · lisensi + 7 hari trial Builder" },
+              { icon: "📦", label: "Starter Kit", sub: `${PRICING.starterKit.price} · lisensi + 7 hari trial Builder` },
               { icon: "🧭", label: "Framework Gustafta", sub: "Cara berpikir & merakit AI" },
               { icon: "📖", label: "Trilogi Gustafta", sub: "Blueprint · Playbook · Prompt" },
               { icon: "🎬", label: "Video Tutorial", sub: "Panduan langkah demi langkah" },
@@ -639,7 +640,7 @@ export default function Panduan() {
           <div className="flex flex-wrap gap-3 mt-4">
             <a href="https://wa.me/6282299417818?text=Halo%2C%20saya%20tertarik%20beli%20Starter%20Kit%20Gustafta" target="_blank" rel="noopener noreferrer">
               <button className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors">
-                <BookOpen className="h-3.5 w-3.5" /> Beli Starter Kit (Rp 245rb)
+                <BookOpen className="h-3.5 w-3.5" /> Beli Starter Kit ({PRICING.starterKit.short})
               </button>
             </a>
             <a href="https://wa.me/6282299417818?text=Halo%2C%20saya%20ingin%20tahu%20jadwal%20Workshop%20Gustafta" target="_blank" rel="noopener noreferrer">

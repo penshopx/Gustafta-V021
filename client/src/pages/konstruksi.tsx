@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { SharedHeader } from "@/components/shared-header";
 import { useAuth } from "@/hooks/use-auth";
 import { useTrialCTA } from "@/hooks/use-trial-cta";
+import { PRICING, TRILOGI } from "@/data/pricing";
 import {
   Check, ArrowRight, MessageCircle, HardHat, Building2,
   ShieldCheck, FileText, TrendingUp, Zap,
@@ -404,7 +405,7 @@ export default function KonstruksiPage() {
                 step: "1",
                 title: "Pelajari Dasarnya",
                 desc: "Starter Kit: Buku I + Panduan Builder. Fondasi membangun chatbot AI pertama Anda tanpa coding.",
-                cta: "Starter Kit — Rp 245.000",
+                cta: `Starter Kit — ${PRICING.starterKit.price}`,
                 href: CHECKOUT_BASIC,
                 variant: "outline" as const,
               },
@@ -412,7 +413,7 @@ export default function KonstruksiPage() {
                 step: "2",
                 title: "Bangun Chatbot Konstruksi",
                 desc: "Bundle Trilogi: 3 buku + prompt pack + template 6-agen AI + 1 bulan Builder gratis.",
-                cta: "Bundle Trilogi — Rp 499.000",
+                cta: `Bundle Trilogi — ${TRILOGI.bundle.price}`,
                 href: CHECKOUT_URL,
                 variant: "default" as const,
               },
