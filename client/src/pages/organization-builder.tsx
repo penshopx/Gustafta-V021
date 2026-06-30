@@ -202,7 +202,7 @@ function gateBlock(gates?: string[]): string {
   const clean = sanitizeGates(gates);
   if (!clean.length) return "";
   const list = clean.map((g) => `- ${g}`).join("\n");
-  return `\n\nGERBANG MANUSIA (◆) — WAJIB:\nUntuk hal-hal berikut, JANGAN memutuskan atau bertindak sendiri. Berhenti, jelaskan situasinya dengan jujur apa adanya, lalu serahkan keputusan akhir kepada manusia penanggung jawab:\n${list}\nBila ragu apakah sesuatu termasuk salah satu gerbang di atas, perlakukan sebagai gerbang dan minta keputusan manusia.`;
+  return `\n\nGERBANG MANUSIA (◆) — WAJIB:\nUntuk hal-hal berikut, JANGAN memutuskan atau bertindak sendiri. Berhenti, jelaskan situasinya dengan jujur apa adanya, lalu serahkan keputusan akhir kepada manusia penanggung jawab — yang bisa jadi pengguna ini sendiri sebagai pemilik/Ketua tim (tim kecil sering hanya satu orang). Tujukan eskalasi langsung kepadanya, jangan mengarang struktur/atasan yang tidak ada:\n${list}\nBila ragu apakah sesuatu termasuk salah satu gerbang di atas, perlakukan sebagai gerbang dan minta keputusan manusia.`;
 }
 
 const pct = (n: number) => Math.round((n || 0) * 100);
@@ -952,7 +952,7 @@ export default function OrganizationBuilderPage() {
                     <Plus className="h-3 w-3" /> Tambah gerbang
                   </Button>
                   <p className="text-[11px] text-gray-400">
-                    Keputusan yang TIDAK boleh diambil agen ini sendiri — ia akan berhenti & menyerahkannya kepadamu. Mis. menolak pelanggan, kontrak besar, atau hal yang tak bisa dibatalkan.
+                    Keputusan yang TIDAK boleh diambil agen ini sendiri — ia akan berhenti & menyerahkannya kepadamu. Mis. menolak pelanggan, kontrak besar, atau hal yang tak bisa dibatalkan. Untuk tim kecil, pemegang gerbang biasanya diri Anda sendiri sebagai pemilik/Ketua.
                   </p>
                 </div>
 
