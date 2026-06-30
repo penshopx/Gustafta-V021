@@ -440,6 +440,11 @@ export class MemStorage implements IStorage {
   private coresMap: Map<string, Core>;
   private leadsMap: Map<string, Lead>;
   private scoringResultsMap: Map<string, ScoringResult>;
+  // Kolaborator agen: key = `${agentId}::${userId}` (agentId disimpan apa adanya
+  // sebagai string agar cocok dengan id UUID MemStorage). DatabaseStorage pakai
+  // integer agentId; di sini cukup string supaya lookup konsisten.
+  private agentCollaboratorsMap: Map<string, AgentCollaborator & { rawAgentId: string }>;
+  private collaboratorIdSeq = 0;
 
   constructor() {
     this.users = new Map();
@@ -465,6 +470,7 @@ export class MemStorage implements IStorage {
     this.userMemoriesMap = new Map();
     this.leadsMap = new Map();
     this.scoringResultsMap = new Map();
+    this.agentCollaboratorsMap = new Map();
   }
 
   // User methods
@@ -1049,32 +1055,86 @@ export class MemStorage implements IStorage {
     return deleted;
   }
 
-  // Agent Collaborator methods (in-memory stub — DatabaseStorage is the real impl)
-  async getCollaboratorRole(_agentId: string, _userId: string): Promise<CollaboratorRole | null> {
-    return null;
+  // Agent Collaborator methods (in-memory — paritas perilaku dengan DatabaseStorage).
+  private collaboratorKey(agentId: string, userId: string): string {
+    return `${agentId}::${userId}`;
   }
-  async listCollaboratorsForAgent(_agentId: string): Promise<CollaboratorView[]> {
-    return [];
+
+  async getCollaboratorRole(agentId: string, userId: string): Promise<CollaboratorRole | null> {
+    if (!agentId || !userId) return null;
+    const rec = this.agentCollaboratorsMap.get(this.collaboratorKey(agentId, userId));
+    if (!rec) return null;
+    return rec.role === "editor" || rec.role === "viewer" ? rec.role : null;
   }
-  async listAgentIdsForCollaborator(_userId: string): Promise<string[]> {
-    return [];
+
+  async listCollaboratorsForAgent(agentId: string): Promise<CollaboratorView[]> {
+    return Array.from(this.agentCollaboratorsMap.values())
+      .filter((c) => c.rawAgentId === agentId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .map((c) => {
+        const u = this.users.get(c.userId);
+        const displayName = u
+          ? [(u as any).firstName, (u as any).lastName].filter(Boolean).join(" ") || null
+          : null;
+        return {
+          id: c.id,
+          agentId: c.agentId,
+          userId: c.userId,
+          role: c.role,
+          invitedBy: c.invitedBy,
+          createdAt: c.createdAt,
+          email: (u as any)?.email ?? null,
+          displayName,
+        };
+      });
   }
+
+  async listAgentIdsForCollaborator(userId: string): Promise<string[]> {
+    if (!userId) return [];
+    return Array.from(this.agentCollaboratorsMap.values())
+      .filter((c) => c.userId === userId)
+      .map((c) => c.rawAgentId);
+  }
+
   async addOrUpdateCollaborator(data: { agentId: string; userId: string; role: CollaboratorRole; invitedBy: string }): Promise<AgentCollaborator> {
+    const key = this.collaboratorKey(data.agentId, data.userId);
+    const existing = this.agentCollaboratorsMap.get(key);
+    const rec: AgentCollaborator & { rawAgentId: string } = existing
+      ? { ...existing, role: data.role, invitedBy: data.invitedBy }
+      : {
+          id: ++this.collaboratorIdSeq,
+          agentId: parseInt(data.agentId) || 0,
+          rawAgentId: data.agentId,
+          userId: data.userId,
+          role: data.role,
+          invitedBy: data.invitedBy,
+          createdAt: new Date(),
+        };
+    this.agentCollaboratorsMap.set(key, rec);
+    const { rawAgentId: _omit, ...out } = rec;
+    return out as AgentCollaborator;
+  }
+
+  async removeCollaborator(agentId: string, userId: string): Promise<boolean> {
+    if (!agentId || !userId) return false;
+    return this.agentCollaboratorsMap.delete(this.collaboratorKey(agentId, userId));
+  }
+
+  async getUserByEmail(email: string): Promise<{ id: string; email: string; firstName?: string | null; lastName?: string | null } | undefined> {
+    const normalized = (email || "").trim().toLowerCase();
+    if (!normalized) return undefined;
+    const u = Array.from(this.users.values()).find(
+      (x) => ((x as any).email || "").trim().toLowerCase() === normalized,
+    );
+    if (!u) return undefined;
     return {
-      id: 0,
-      agentId: parseInt(data.agentId) || 0,
-      userId: data.userId,
-      role: data.role,
-      invitedBy: data.invitedBy,
-      createdAt: new Date(),
-    } as AgentCollaborator;
+      id: u.id,
+      email: (u as any).email || "",
+      firstName: (u as any).firstName ?? null,
+      lastName: (u as any).lastName ?? null,
+    };
   }
-  async removeCollaborator(_agentId: string, _userId: string): Promise<boolean> {
-    return false;
-  }
-  async getUserByEmail(_email: string): Promise<{ id: string; email: string; firstName?: string | null; lastName?: string | null } | undefined> {
-    return undefined;
-  }
+
   async getAgentsByIds(ids: string[]): Promise<Agent[]> {
     return ids.map((id) => this.agents.get(id)).filter((a): a is Agent => !!a);
   }

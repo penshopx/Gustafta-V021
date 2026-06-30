@@ -27,3 +27,10 @@ There are FOUR capability tiers, each with its own guard. The recurring failure 
 
 ## Regression locks
 Static source-grep tests assert each route family calls the correct guard (mutation vs owner-only vs chat-access), plus a pure decision matrix (editor/viewer/non-collaborator/system/anonymous). Moving a route between tiers requires updating these tests in lockstep, or the grep test fails loudly.
+
+## Testing route authz at HTTP level without booting the monolith
+routes.ts is ~20k lines and full boot needs DB + Replit OIDC + seeding — too brittle for node:test (project convention = pure/MemStorage, no server). To still verify real request behaviour (status codes, middleware order), extract the guard closures into an INJECTABLE factory module (`server/lib/agent-access-guards.ts`, deps: getCollaboratorRole + getDbRole + optional adminUserIds). Production routes destructure the factory's guards; an HTTP test mounts those SAME guards on a tiny Express app + real MemStorage + an auth shim (header sets req.user) + injected getDbRole, then issues real fetch() and asserts 200/401/403.
+
+**Why:** logic-only tests can't catch route-wiring/status/middleware bugs; re-implementing guards in the test is tautological. One shared module = same code in prod and test, so HTTP assertions are meaningful.
+
+**How to apply:** when a guard/closure lives inside the route monolith and you need request-level coverage, lift it to an injectable module rather than booting the app. Keep the static call-site grep (each endpoint calls the right guard) — combined with the HTTP test it gives end-to-end coverage without DB/OIDC. Note: a guard converted from hoisted `async function` to a `const` from a factory must be declared BEFORE its first textual use in registerRoutes (lost hoisting ⇒ TS use-before-declaration).

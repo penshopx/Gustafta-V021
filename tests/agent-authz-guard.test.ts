@@ -36,33 +36,55 @@ function routeBlock(registrationLiteral: string): string {
   return src.slice(start, end);
 }
 
-// ── 1. Helper assertCanMutateAgent: mendelegasikan keputusan ke fungsi murni ──
-// Cabang otorisasi (401/admin/agen-sistem 403/non-owner 403) diuji menyeluruh
-// di tests/agent-authz-decision.test.ts (mengimpor decideAgentMutation langsung).
-// Di sini cukup memastikan helper masih ada & masih memakai fungsi murni itu.
-test("assertCanMutateAgent mendelegasikan keputusan ke decideAgentMutation (logika authz murni & teruji)", () => {
+// ── 1. Guard akses agen: implementasi tunggal diekstrak + diwiring dengan benar ─
+// Cabang otorisasi (401/admin/agen-sistem 403/non-owner 403) diuji menyeluruh:
+//   - logika murni  → tests/agent-authz-decision.test.ts (decideAgent* langsung)
+//   - request HTTP  → tests/agent-access-guards-http.test.ts (guard NYATA via fetch)
+// Di sini cukup memastikan routes.ts memakai guard dari modul tunggal teruji itu
+// (bukan re-implementasi diam-diam), dan modul itu mendelegasikan ke fungsi murni.
+const guardsModulePath = resolve(__dirname, "../server/lib/agent-access-guards.ts");
+const guardsSrc = readFileSync(guardsModulePath, "utf8");
+
+test("routes.ts mewiring guard akses agen dari ./lib/agent-access-guards (sumber tunggal)", () => {
   assert.match(
     src,
-    /import\s*\{[^}]*decideAgentMutation[^}]*\}\s*from\s*["']\.\/lib\/agent-authz["']/,
-    "routes.ts harus mengimpor decideAgentMutation dari ./lib/agent-authz.",
+    /import\s*\{[^}]*makeAgentAccessGuards[^}]*\}\s*from\s*["']\.\/lib\/agent-access-guards["']/,
+    "routes.ts harus mengimpor makeAgentAccessGuards dari ./lib/agent-access-guards.",
   );
-  const defIdx = src.indexOf("async function assertCanMutateAgent(");
-  assert.ok(
-    defIdx !== -1,
-    "Helper assertCanMutateAgent WAJIB tetap ada di routes.ts (standar guard mutasi agen).",
+  // Ketiga guard di-destructure dari hasil factory yang sama (bukan didefinisikan ulang).
+  assert.match(
+    src,
+    /makeAgentAccessGuards\s*\(/,
+    "routes.ts harus memanggil makeAgentAccessGuards(...) untuk membuat guard.",
   );
-  const nextIdx = src.indexOf("\n  app.", defIdx);
-  const body = src.slice(defIdx, nextIdx === -1 ? defIdx + 2000 : nextIdx);
+  for (const name of ["assertCanMutateAgent", "assertOwnerOrAdminAgent", "assertCanAccessAgentChat"]) {
+    assert.ok(
+      !new RegExp(`async function ${name}\\s*\\(`).test(src),
+      `${name} TIDAK boleh didefinisikan ulang di routes.ts — pakai modul tunggal agar tak ada logika authz bercabang.`,
+    );
+  }
+});
 
+test("agent-access-guards mendelegasikan keputusan ke decideAgentMutation/decideAgentReadAccess (logika murni & teruji)", () => {
   assert.match(
-    body,
-    /getDbRole|ADMIN_USER_IDS/,
-    "Status admin tetap ditentukan via DB role dan/atau ADMIN_USER_IDS.",
+    guardsSrc,
+    /import\s*\{[\s\S]*?decideAgentMutation[\s\S]*?decideAgentReadAccess[\s\S]*?\}\s*from\s*["']\.\/agent-authz["']/,
+    "Modul guard harus mengimpor decideAgentMutation & decideAgentReadAccess dari ./agent-authz.",
   );
   assert.match(
-    body,
+    guardsSrc,
+    /getDbRole|ADMIN_USER_IDS|adminUserIds/,
+    "Status admin tetap ditentukan via DB role dan/atau daftar admin id.",
+  );
+  assert.match(
+    guardsSrc,
     /decideAgentMutation\s*\(/,
-    "assertCanMutateAgent harus menyerahkan keputusan akhir ke decideAgentMutation.",
+    "Guard mutasi harus menyerahkan keputusan akhir ke decideAgentMutation.",
+  );
+  assert.match(
+    guardsSrc,
+    /decideAgentReadAccess\s*\(/,
+    "Guard chat/baca harus menyerahkan keputusan akhir ke decideAgentReadAccess.",
   );
 });
 
