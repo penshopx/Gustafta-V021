@@ -2914,8 +2914,15 @@ SKK berlaku 5 tahun. Perpanjangan via: Pengembangan Keprofesian Berkelanjutan (P
   });
 
   // Get messages by session ID (for public chat persistence)
-  app.get("/api/messages/:agentId/session/:sessionId", async (req, res) => {
+  app.get("/api/messages/:agentId/session/:sessionId", optionalAuth, async (req: any, res) => {
     try {
+      const agent = await storage.getAgent(req.params.agentId as string);
+      if (!agent) return res.status(404).json({ error: "Agent not found" });
+      // Gate anti-IDOR: riwayat sesi agen PRIVAT milik user lain hanya untuk
+      // owner/admin/kolaborator. Agen publik (persistensi chat pengunjung) &
+      // agen sistem tetap terbuka sesuai assertCanAccessAgentChat.
+      const _sessAuth = await assertCanAccessAgentChat(req, agent);
+      if (!_sessAuth.ok) return res.status(_sessAuth.status).json({ error: _sessAuth.error });
       const messages = await storage.getMessagesBySession(req.params.agentId, req.params.sessionId);
       res.json(messages);
     } catch (error) {
