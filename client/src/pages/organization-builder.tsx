@@ -265,6 +265,33 @@ export default function OrganizationBuilderPage() {
     } finally { setBusy(false); }
   };
 
+  /* Regenerasi anggota tunggal: tulis ulang instruksi (systemPrompt) SATU anggota
+   * dari nama + tugasnya, via /infer. Mengosongkan systemPrompt anggota target di
+   * payload agar inferensi membuatkan yang baru, lalu menimpa HANYA anggota itu. */
+  const regenerateMember = async (localId: string) => {
+    const target = members.find((m) => m.localId === localId);
+    if (!target || !target.title.trim()) {
+      toast({ title: "Isi nama agen dulu", description: "Nama agen diperlukan untuk membuat instruksinya.", variant: "destructive" });
+      return;
+    }
+    setBusy(true);
+    try {
+      const org = buildOrg(false);
+      const om = org.members.find((m) => m.localId === localId);
+      if (om) (om.blueprint.modules.aiEngine.data as any).systemPrompt = "";
+      const data: InferResponse = await apiRequest("POST", "/api/organization/infer", { organization: org });
+      const inf = data.members.find((m) => m.localId === localId);
+      if (inf?.systemPrompt?.trim()) {
+        patchMember(localId, { systemPrompt: inf.systemPrompt.trim() });
+        toast({ title: "Instruksi dibuat ulang", description: `Instruksi untuk "${target.title.trim()}" diperbarui. Tinjau & sesuaikan bila perlu.` });
+      } else {
+        toast({ title: "Belum bisa dibuat", description: "Tambahkan tugas anggota agar instruksinya lebih lengkap.", variant: "destructive" });
+      }
+    } catch (e: any) {
+      toast({ title: "Gagal membuat instruksi", description: e?.message || "Coba lagi.", variant: "destructive" });
+    } finally { setBusy(false); }
+  };
+
   const runAnalyze = async () => {
     setBusy(true);
     try {
@@ -515,6 +542,23 @@ export default function OrganizationBuilderPage() {
                     className="min-h-20 mt-2"
                     data-testid={`input-prompt-${m.localId}`}
                   />
+                  <div className="mt-2 flex items-center gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => regenerateMember(m.localId)}
+                      disabled={busy || !m.title.trim()}
+                      className="gap-1.5 h-7 text-[11px] border-violet-300 text-violet-700 dark:border-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-900/30"
+                      data-testid={`btn-regenerate-${m.localId}`}
+                    >
+                      <Wand2 className="h-3 w-3" /> {m.systemPrompt.trim() ? "Tulis ulang otomatis" : "Buatkan otomatis"}
+                    </Button>
+                    {!m.title.trim() && (
+                      <span className="text-[11px] text-gray-400">Isi nama agen dulu.</span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-gray-400 mt-1">Hanya menulis ulang instruksi anggota ini, dari nama & tugasnya. Anggota lain tidak terpengaruh.</p>
                 </details>
               </div>
             ))}
