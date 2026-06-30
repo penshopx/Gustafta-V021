@@ -1148,6 +1148,54 @@ export default function OrganizationBuilderPage() {
               );
             })()}
 
+            {/* Gate advisory (Tahap 34) — pengingat Gerbang Manusia (◆) */}
+            {(() => {
+              const cleanGatesOf = (m: MemberDraft) => (m.gates ?? []).filter((g) => g.trim());
+              const withGates = members.filter((m) => cleanGatesOf(m).length > 0);
+              const totalGates = members.reduce((s, m) => s + cleanGatesOf(m).length, 0);
+              const withoutGates = members.filter((m) => cleanGatesOf(m).length === 0);
+              const none = totalGates === 0;
+              return (
+                <div
+                  className={`rounded-2xl border p-5 ${none ? "border-rose-300 dark:border-rose-500/40 bg-rose-50 dark:bg-rose-950/20" : "border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-950/20"}`}
+                  data-testid="card-gate-advisory"
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className={none ? "text-rose-500" : "text-emerald-500"} aria-hidden="true">◆</span>
+                    <h3 className="text-sm font-bold text-gray-900 dark:text-white">Gerbang Manusia</h3>
+                  </div>
+                  {none ? (
+                    <>
+                      <p className="text-xs text-gray-700 dark:text-gray-300" data-testid="text-gate-advisory">
+                        Tim ini belum punya satu pun Gerbang Manusia (◆). Alur tanpa gerbang berisiko: agen bisa memutuskan hal yang seharusnya berhenti di manusia — mis. menolak pelanggan, kontrak besar, atau hal yang tak bisa dibatalkan. Pertimbangkan menambah minimal satu gerbang sebelum membuat tim.
+                      </p>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setStep("members")}
+                        className="mt-3 gap-1.5 h-7 text-[11px] border-rose-300 text-rose-700 dark:border-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/30"
+                        data-testid="btn-add-gate-advisory"
+                      >
+                        <ArrowLeft className="h-3 w-3" /> Tambah gerbang di anggota
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-xs text-gray-700 dark:text-gray-300" data-testid="text-gate-advisory">
+                        <span className="font-semibold">{totalGates}</span> gerbang di <span className="font-semibold">{withGates.length}</span> anggota. Agen akan berhenti & menyerahkan keputusan ini kepada manusia penanggung jawab.
+                      </p>
+                      {withoutGates.length > 0 && (
+                        <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1" data-testid="text-gate-missing">
+                          Belum punya gerbang: {withoutGates.map((m) => m.title.trim() || `Anggota ${m.localId}`).join(", ")}. Tambah bila anggota itu juga mengambil keputusan berisiko.
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
+              );
+            })()}
+
             {/* Configure preview / create */}
             <div className="rounded-2xl border border-violet-200 dark:border-violet-500/30 bg-violet-50 dark:bg-violet-950/20 p-5" data-testid="card-configure">
               <div className="flex items-center gap-2 mb-2">
