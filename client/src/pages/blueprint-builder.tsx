@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { SharedHeader } from "@/components/shared-header";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -99,6 +99,21 @@ export default function BlueprintBuilderPage() {
   const [preview, setPreview] = useState<ConfigureResult | null>(null);
   const [created, setCreated] = useState<ConfigureResult | null>(null);
   const [busy, setBusy] = useState(false);
+  const [, setLocation] = useLocation();
+
+  /* Buka agen yang baru dibuat langsung di Builder (Dashboard): aktifkan lalu navigasi. */
+  const openInBuilder = async () => {
+    const agentId = created?.agentId;
+    if (!agentId) { setLocation("/dashboard"); return; }
+    setBusy(true);
+    try {
+      await apiRequest("POST", `/api/agents/${agentId}/activate`);
+      setLocation("/dashboard");
+    } catch (e: any) {
+      toast({ title: "Gagal membuka Builder", description: e?.message || "Buka manual dari Dashboard.", variant: "destructive" });
+      setLocation("/dashboard");
+    } finally { setBusy(false); }
+  };
 
   /* ── API helpers ── */
   const start = async () => {
@@ -415,8 +430,13 @@ export default function BlueprintBuilderPage() {
               <p className="text-xs text-amber-600 dark:text-amber-400 mb-4">⚠ {created.warnings.slice(0, 3).join(" · ")}</p>
             )}
             <div className="flex flex-wrap gap-3 justify-center mt-4">
+              {created.agentId && (
+                <Button onClick={openInBuilder} disabled={busy} className="bg-emerald-600 hover:bg-emerald-500 text-white gap-2" data-testid="btn-open-in-builder">
+                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Rocket className="h-4 w-4" />} Buka di Builder
+                </Button>
+              )}
               <Link href="/dashboard">
-                <Button className="bg-indigo-600 hover:bg-indigo-500 text-white gap-2" data-testid="btn-to-dashboard">
+                <Button variant="outline" className="gap-2" data-testid="btn-to-dashboard">
                   Buka Dashboard <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
@@ -424,6 +444,7 @@ export default function BlueprintBuilderPage() {
                 <RotateCcw className="h-4 w-4" /> Rancang Agen Lain
               </Button>
             </div>
+            <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-3">"Buka di Builder" mengaktifkan agen ini & membawa Anda ke editor — field sudah terisi otomatis dari Blueprint.</p>
           </div>
         )}
       </div>

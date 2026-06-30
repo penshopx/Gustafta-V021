@@ -17,7 +17,8 @@ The Tahap 1–9 engines (`server/services/blueprint-engine/*`) are pure/stateles
 
 ## Non-obvious constraint: agent ownership is NOT in the insert type
 - `InsertAgent` (z.infer of `insertAgentSchema`) **omits `userId`** — you cannot type-safely pass `userId` into `storage.createAgent(...)`. The existing `/api/agents` create route adds `userId` pre-parse but Zod strips it too.
-- Consequence: agents created via the Configuration Engine are **not owned** through the insert (default `userId=""`). Enforcing create-time ownership would require schema/storage changes — out of scope for API wiring. The real cross-tenant risk surface is **update**, which is guarded.
+- Consequence: a naive create leaves `userId=""`, and `GET /api/agents` filters `a.userId === userId` for non-admins → the created agent is **invisible to its own creator** and can't be `update`d (the ownership check fails).
+- **Fix (in use):** `ConfigurationOptions.ownerUserId`. The create branch spreads ownership in **after** `insertAgentSchema.safeParse` (which strips `userId`): `storage.createAgent({ ...parsed.data, userId: ownerUserId })`; storage persists it via `(insertAgent as any).userId`. The `/configure` route sets `ownerUserId = sessionUserId` **only for mode `create`** (server identity, never client input). Any new write surface that creates agents MUST stamp ownership the same way or the agent vanishes from the user's dashboard.
 
 ## Dialogue UI: boolean answer submission (Tahap 11)
 - `/answer` treats any present key in `answers` as a real user-sourced answer (updates source/confidence). For boolean dialogue questions, **only submit the key if the user actually toggled it** — never default untouched booleans to `false`, or you silently write wrong answers and skew confidence/progression.
