@@ -72,6 +72,75 @@ interface MemberDraft {
   title: string;
   responsibility: string;
   systemPrompt: string; // opsional (lanjutan); kosong → di-generate otomatis
+  /** localId atasan langsung (harus Ketua Tim). Kosong = lapor ke Ketua puncak. */
+  parentLocalId?: string;
+}
+
+const ROOT_SENTINEL = "__root__";
+
+/* ── Struktur pohon tim (bertingkat) — murni, dari state `members` ──────────────
+ * Mendukung tim berjenjang: anggota Ketua Tim (orchestrator) bisa punya bawahan
+ * sendiri. Sumber kebenaran = field `parentLocalId` tiap anggota.
+ *  - Akar (root) = orchestrator tanpa atasan valid (Ketua puncak).
+ *  - Atasan valid harus: ada, ber-role orchestrator, bukan diri sendiri, tanpa siklus.
+ *  - Anggota non-akar tanpa atasan eksplisit → default lapor ke akar (kompat. datar). */
+function computeOrgTree(members: MemberDraft[]) {
+  const byId = new Map(members.map((m) => [m.localId, m] as const));
+  const isOrch = (id?: string) => !!id && byId.get(id)?.role === "orchestrator";
+
+  const validExplicitParent = (m: MemberDraft): string | null => {
+    const p = m.parentLocalId;
+    if (!p || p === m.localId || !byId.has(p) || !isOrch(p)) return null;
+    // Cegah siklus: telusuri ke atas via atasan eksplisit.
+    let cur: string | undefined = p;
+    const seen = new Set<string>([m.localId]);
+    while (cur) {
+      if (seen.has(cur)) return null;
+      seen.add(cur);
+      const par: string | undefined = byId.get(cur)?.parentLocalId;
+      cur = par && isOrch(par) ? par : undefined;
+    }
+    return p;
+  };
+
+  // Akar = orchestrator tanpa atasan eksplisit valid.
+  const rootCandidates = members.filter(
+    (m) => m.role === "orchestrator" && validExplicitParent(m) === null,
+  );
+  const rootId = rootCandidates[0]?.localId;
+
+  const effectiveParentOf = (m: MemberDraft): string | null => {
+    if (m.localId === rootId) return null;
+    return validExplicitParent(m) ?? rootId ?? null;
+  };
+
+  // Anak efektif (dengan default ke akar) → untuk bagan & buildOrg.
+  const effectiveChildrenOf = new Map<string, string[]>();
+  // Anak eksplisit (hanya atasan eksplisit) → untuk filter opsi/anti-siklus.
+  const explicitChildrenOf = new Map<string, string[]>();
+  for (const m of members) {
+    const ep = effectiveParentOf(m);
+    if (ep) (effectiveChildrenOf.get(ep) ?? effectiveChildrenOf.set(ep, []).get(ep)!).push(m.localId);
+    const xp = validExplicitParent(m);
+    if (xp) (explicitChildrenOf.get(xp) ?? explicitChildrenOf.set(xp, []).get(xp)!).push(m.localId);
+  }
+
+  const explicitDescendants = (id: string): Set<string> => {
+    const out = new Set<string>();
+    const stack = [...(explicitChildrenOf.get(id) ?? [])];
+    while (stack.length) {
+      const c = stack.pop()!;
+      if (out.has(c)) continue;
+      out.add(c);
+      stack.push(...(explicitChildrenOf.get(c) ?? []));
+    }
+    return out;
+  };
+
+  return {
+    byId, rootId, rootCount: rootCandidates.length,
+    validExplicitParent, effectiveParentOf, effectiveChildrenOf, explicitDescendants,
+  };
 }
 
 type Step = "intro" | "members" | "review" | "done";
@@ -138,8 +207,12 @@ const sanitizeDraft = (raw: any): OrgDraft => {
         title: typeof m.title === "string" ? m.title : "",
         responsibility: typeof m.responsibility === "string" ? m.responsibility : "",
         systemPrompt: typeof m.systemPrompt === "string" ? m.systemPrompt : "",
+        parentLocalId: typeof m.parentLocalId === "string" && m.parentLocalId.trim() ? m.parentLocalId : undefined,
       };
     });
+  // Buang atasan yang menunjuk localId tak dikenal (cegah edge menggantung).
+  const ids = new Set(members.map((m) => m.localId));
+  for (const m of members) if (m.parentLocalId && !ids.has(m.parentLocalId)) m.parentLocalId = undefined;
   return {
     orgName: typeof raw?.orgName === "string" ? raw.orgName : "",
     mission: typeof raw?.mission === "string" ? raw.mission : "",
@@ -273,7 +346,12 @@ export default function OrganizationBuilderPage() {
     });
   };
   const removeMember = (localId: string) =>
-    setMembers((ms) => ms.filter((m) => m.localId !== localId));
+    setMembers((ms) =>
+      ms
+        .filter((m) => m.localId !== localId)
+        // Bersihkan referensi atasan yang menunjuk anggota terhapus (cegah ref menggantung).
+        .map((m) => (m.parentLocalId === localId ? { ...m, parentLocalId: undefined } : m)),
+    );
   const duplicateMember = (localId: string) =>
     setMembers((ms) => {
       const idx = ms.findIndex((m) => m.localId === localId);
@@ -289,6 +367,7 @@ export default function OrganizationBuilderPage() {
         title: src.title.trim() ? `${src.title} (salinan)` : "",
         responsibility: src.responsibility,
         systemPrompt: src.systemPrompt,
+        parentLocalId: src.parentLocalId,
       };
       return [...ms.slice(0, idx + 1), clone, ...ms.slice(idx + 1)];
     });
@@ -320,35 +399,44 @@ export default function OrganizationBuilderPage() {
       };
     });
 
-    const lead = members.find((m) => m.role === "orchestrator");
-    const edges = lead
+    // Wiring berjenjang: tiap anggota non-akar → edge dari atasan efektifnya
+    // (selalu orchestrator). Anggota tanpa atasan eksplisit default ke akar.
+    const tree = computeOrgTree(members);
+    const edges = tree.rootId
       ? members
-          .filter((m) => m.localId !== lead.localId)
-          .map((m, i) => ({
-            fromLocalId: lead.localId,
-            toLocalId: m.localId,
-            role: roleCode(m.title, i),
-            description: m.responsibility.trim() || m.title.trim() || undefined,
-          }))
+          .filter((m) => m.localId !== tree.rootId)
+          .map((m, i) => {
+            const parent = tree.effectiveParentOf(m) ?? tree.rootId!;
+            return {
+              fromLocalId: parent,
+              toLocalId: m.localId,
+              role: roleCode(m.title, i),
+              description: m.responsibility.trim() || m.title.trim() || undefined,
+            };
+          })
       : [];
-    org.structure = { leadLocalId: lead?.localId, edges };
+    org.structure = { leadLocalId: tree.rootId, edges };
     return org;
   };
 
-  /* ── Validasi sebelum lanjut ── */
+  /* ── Validasi sebelum lanjut (mendukung tim bertingkat) ── */
+  const tree = computeOrgTree(members);
   const membersReady = members.every((m) => m.title.trim().length > 0);
   const orchestratorCount = members.filter((m) => m.role === "orchestrator").length;
-  // Tim valid = tepat satu Ketua Tim + minimal satu anggota lain.
-  const topologyValid = orchestratorCount === 1 && members.length >= 2;
+  // Tim valid = tepat satu Ketua puncak (akar) + minimal satu anggota lain.
+  // Ketua Tim lain boleh ada sebagai pemimpin sub-tim (punya atasan).
+  const topologyValid = tree.rootCount === 1 && members.length >= 2;
   const topologyHint = !membersReady
     ? "Isi nama setiap anggota dulu."
     : orchestratorCount === 0
-      ? "Tetapkan tepat satu anggota sebagai Ketua Tim."
-      : orchestratorCount > 1
-        ? "Hanya boleh ada satu Ketua Tim."
-        : members.length < 2
-          ? "Tambah minimal satu anggota lain (Spesialis/Pendukung)."
-          : "";
+      ? "Tetapkan minimal satu anggota sebagai Ketua Tim."
+      : tree.rootCount === 0
+        ? "Tentukan satu Ketua puncak (Ketua Tim tanpa atasan)."
+        : tree.rootCount > 1
+          ? "Hanya boleh ada satu Ketua puncak. Beri atasan pada Ketua Tim lainnya."
+          : members.length < 2
+            ? "Tambah minimal satu anggota lain (Spesialis/Pendukung)."
+            : "";
 
   /* ── API ── */
   /* Susun otomatis dari misi (Tahap 23 engine via /api/organization/suggest). */
@@ -689,14 +777,16 @@ export default function OrganizationBuilderPage() {
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 {composedDomain
                   ? "Ini usulan otomatis. Tinjau, ubah nama/tugas, tambah atau hapus anggota sesuai kebutuhan sebelum membuat tim."
-                  : <>Tetapkan <span className="font-semibold">satu Ketua Tim</span> yang mengoordinasi, lalu tambah Spesialis/Pendukung. Ketua otomatis terhubung ke setiap anggota lain.</>}
+                  : <>Tetapkan <span className="font-semibold">satu Ketua puncak</span>, lalu tambah anggota. Tim bisa <span className="font-semibold">bertingkat</span>: jadikan seorang anggota "Ketua Tim", lalu pasang anggota lain sebagai bawahannya lewat "Lapor ke".</>}
               </p>
-              {orchestratorCount !== 1 && (
+              {!topologyValid && (orchestratorCount === 0 || tree.rootCount !== 1) && (
                 <div className="mt-3 flex items-start gap-2 text-xs text-amber-600 dark:text-amber-400" data-testid="warn-orchestrator-count">
                   <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
                   {orchestratorCount === 0
                     ? "Belum ada Ketua Tim. Tetapkan satu anggota sebagai Ketua Tim agar anggota lain terhubung."
-                    : "Disarankan hanya satu Ketua Tim. Yang pertama akan dipakai untuk menghubungkan anggota."}
+                    : tree.rootCount > 1
+                      ? "Ada lebih dari satu Ketua puncak. Beri atasan ('Lapor ke') pada Ketua Tim yang menjadi sub-pemimpin."
+                      : "Tentukan satu Ketua puncak (Ketua Tim tanpa atasan)."}
                 </div>
               )}
             </div>
@@ -741,6 +831,45 @@ export default function OrganizationBuilderPage() {
                     <p className="text-[11px] text-gray-400">{ROLE_HINT[m.role]}</p>
                   </div>
                 </div>
+
+                {members.length > 1 && (() => {
+                  const desc = tree.explicitDescendants(m.localId);
+                  const parentOptions = members.filter(
+                    (o) => o.localId !== m.localId && o.role === "orchestrator" && !desc.has(o.localId),
+                  );
+                  const isRoot = m.localId === tree.rootId;
+                  const selectValue = m.role === "orchestrator"
+                    ? (tree.validExplicitParent(m) ?? ROOT_SENTINEL)
+                    : (tree.validExplicitParent(m) ?? tree.rootId ?? "");
+                  const noParentAvailable = m.role !== "orchestrator" && parentOptions.length === 0;
+                  return (
+                    <div className="space-y-1.5" data-testid={`field-parent-${m.localId}`}>
+                      <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">Lapor ke (atasan)</Label>
+                      <Select
+                        value={selectValue || undefined}
+                        onValueChange={(v) => patchMember(m.localId, { parentLocalId: v === ROOT_SENTINEL ? undefined : v })}
+                        disabled={noParentAvailable}
+                      >
+                        <SelectTrigger data-testid={`select-parent-${m.localId}`}>
+                          <SelectValue placeholder={noParentAvailable ? "Tetapkan Ketua Tim dulu" : "Pilih atasan"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {m.role === "orchestrator" && (
+                            <SelectItem value={ROOT_SENTINEL}>Ketua puncak (tanpa atasan)</SelectItem>
+                          )}
+                          {parentOptions.map((o) => (
+                            <SelectItem key={o.localId} value={o.localId}>{o.title.trim() || `Anggota ${o.localId}`}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-[11px] text-gray-400">
+                        {isRoot
+                          ? "Ini Ketua puncak — titik masuk percakapan tim."
+                          : "Pilih Ketua Tim yang menjadi atasan langsung. Hanya \"Ketua Tim\" bisa punya bawahan."}
+                      </p>
+                    </div>
+                  );
+                })()}
 
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">Tugas Anggota Ini</Label>
@@ -884,8 +1013,45 @@ export default function OrganizationBuilderPage() {
 
             {/* Visual team chart */}
             {(() => {
-              const lead = members.find((m) => m.role === "orchestrator");
-              const others = members.filter((m) => m.role !== "orchestrator");
+              // Bagan berjenjang: render rekursif dari akar via anak efektif.
+              const renderNode = (localId: string, depth: number): JSX.Element | null => {
+                const m = tree.byId.get(localId);
+                if (!m) return null;
+                const kids = tree.effectiveChildrenOf.get(localId) ?? [];
+                const isRoot = localId === tree.rootId;
+                return (
+                  <div
+                    key={localId}
+                    className="flex flex-col items-center"
+                    data-testid={isRoot ? "chart-lead" : `chart-node-${localId}`}
+                  >
+                    {depth > 0 && <div className="h-3 w-px bg-violet-300 dark:bg-violet-700" aria-hidden="true" />}
+                    {isRoot ? (
+                      <div className="flex items-center gap-2 rounded-xl border border-amber-300 dark:border-amber-500/40 bg-amber-50 dark:bg-amber-950/20 px-4 py-2.5 shadow-sm">
+                        <Crown className="h-4 w-4 text-amber-500 shrink-0" />
+                        <span className="text-sm font-bold text-gray-900 dark:text-white">{m.title || "Ketua Tim"}</span>
+                        <Badge variant="outline" className="text-[10px] border-amber-400 text-amber-700 dark:text-amber-300">{ROLE_LABEL.orchestrator}</Badge>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 rounded-xl border bg-white dark:bg-card px-3.5 py-2 shadow-sm">
+                        {m.role === "orchestrator"
+                          ? <Crown className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                          : <Users className="h-3.5 w-3.5 text-violet-500 shrink-0" />}
+                        <span className="text-xs font-semibold text-gray-900 dark:text-white">{m.title || "Anggota"}</span>
+                        <Badge variant="outline" className="text-[10px]">{ROLE_LABEL[m.role]}</Badge>
+                      </div>
+                    )}
+                    {kids.length > 0 && (
+                      <>
+                        <div className="h-6 w-px bg-violet-300 dark:bg-violet-700" aria-hidden="true" />
+                        <div className="flex flex-wrap justify-center gap-3 items-start">
+                          {kids.map((k) => renderNode(k, depth + 1))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              };
               return (
                 <div className="rounded-2xl border bg-white dark:bg-card p-5" data-testid="card-org-chart">
                   <div className="flex items-center gap-2 mb-4">
@@ -893,37 +1059,7 @@ export default function OrganizationBuilderPage() {
                     <h3 className="text-sm font-bold text-gray-900 dark:text-white">Bagan Tim</h3>
                   </div>
                   <div className="flex flex-col items-center">
-                    {lead && (
-                      <div
-                        className="flex items-center gap-2 rounded-xl border border-amber-300 dark:border-amber-500/40 bg-amber-50 dark:bg-amber-950/20 px-4 py-2.5 shadow-sm"
-                        data-testid="chart-lead"
-                      >
-                        <Crown className="h-4 w-4 text-amber-500 shrink-0" />
-                        <span className="text-sm font-bold text-gray-900 dark:text-white">{lead.title || "Ketua Tim"}</span>
-                        <Badge variant="outline" className="text-[10px] border-amber-400 text-amber-700 dark:text-amber-300">{ROLE_LABEL.orchestrator}</Badge>
-                      </div>
-                    )}
-                    {lead && others.length > 0 && (
-                      <div className="h-6 w-px bg-violet-300 dark:bg-violet-700" aria-hidden="true" />
-                    )}
-                    {others.length > 0 && (
-                      <div className="flex flex-wrap justify-center gap-3">
-                        {others.map((m) => (
-                          <div
-                            key={m.localId}
-                            className="flex flex-col items-center"
-                            data-testid={`chart-node-${m.localId}`}
-                          >
-                            <div className="h-3 w-px bg-violet-300 dark:bg-violet-700" aria-hidden="true" />
-                            <div className="flex items-center gap-2 rounded-xl border bg-white dark:bg-card px-3.5 py-2 shadow-sm">
-                              <Users className="h-3.5 w-3.5 text-violet-500 shrink-0" />
-                              <span className="text-xs font-semibold text-gray-900 dark:text-white">{m.title || "Anggota"}</span>
-                              <Badge variant="outline" className="text-[10px]">{ROLE_LABEL[m.role]}</Badge>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    {tree.rootId && renderNode(tree.rootId, 0)}
                   </div>
                 </div>
               );
