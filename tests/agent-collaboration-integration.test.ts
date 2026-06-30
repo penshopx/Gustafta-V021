@@ -159,9 +159,10 @@ test("[divergensi terdokumentasi] MemStorage: agentId numerik non-otoritatif unt
   const { storage, owner, editor, agent } = await setup();
   assert.ok(!/^\d+$/.test(agent.id), "prasyarat: id agen MemStorage adalah UUID (non-numerik penuh)");
   const rec = await storage.addOrUpdateCollaborator({ agentId: agent.id, userId: editor.id, role: "editor", invitedBy: owner.id });
-  // Field numerik tidak bermakna di MemStorage → diturunkan dari `parseInt(uuid) || 0`
-  // (bukan dipakai untuk authz; nilai persisnya tergantung apakah UUID diawali digit).
-  assert.equal(rec.agentId, parseInt(agent.id) || 0, "agentId numerik = parseInt(uuid)||0 (divergensi disengaja, non-otoritatif)");
+  // Field numerik tidak bermakna di MemStorage → untuk id UUID selalu 0 secara
+  // DETERMINISTIK. (Jangan pakai parseInt(uuid) mentah: UUID berawalan digit,
+  // mis. "8e4f…", menghasilkan angka sampah non-deterministik & test flaky.)
+  assert.equal(rec.agentId, 0, "agentId numerik = 0 untuk id UUID (deterministik, non-otoritatif; sumber kebenaran = rawAgentId)");
   // Sumber kebenaran authz: lookup via id string mentah tetap menemukan peran.
   assert.equal(await storage.getCollaboratorRole(agent.id, editor.id), "editor", "lookup via rawAgentId tetap benar");
 });
