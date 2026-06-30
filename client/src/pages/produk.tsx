@@ -107,7 +107,7 @@ const BISNIS_PLANS: BisnisPlan[] = [
       "Modul pembelajaran",
       "Web widget no-branding",
       "Email support",
-      "Starter Kit — Panduan Gustafta (bulan pertama)",
+      "Starter Kit (paket perkenalan, add-on lintas-tier) — Panduan Gustafta",
     ],
     chatbots: [
       { name: "Sample Bot 1 & 2", icon: Bot, tag: "2 contoh konfigurasi" },
@@ -144,7 +144,7 @@ const BISNIS_PLANS: BisnisPlan[] = [
       "E-Course & Document Generator",
       "Custom Domain (1)",
       "Priority email support",
-      "Starter Kit — Panduan Gustafta (bulan pertama)",
+      "Starter Kit (paket perkenalan, add-on lintas-tier) — Panduan Gustafta",
     ],
     chatbots: [
       { name: "Semua bot Starter", icon: Zap, tag: "Termasuk" },
@@ -183,7 +183,7 @@ const BISNIS_PLANS: BisnisPlan[] = [
       "Priority Support & Dedicated Manager",
       "Semua Mini Apps (45 tipe)",
       "Priority WhatsApp support",
-      "Starter Kit — Panduan Gustafta (bulan pertama)",
+      "Starter Kit (paket perkenalan, add-on lintas-tier) — Panduan Gustafta",
     ],
     chatbots: [
       { name: "Semua bot Profesional", icon: Crown, tag: "Termasuk" },
@@ -279,6 +279,10 @@ function BisnisPaket() {
         </p>
         <p className="text-emerald-600 dark:text-emerald-400 mt-2 text-xs font-medium">
           Produk chatbot sudah jadi, tinggal pakai — hanya biaya lisensi, tanpa biaya setup.
+        </p>
+        <p className="text-gray-400 dark:text-gray-500 mt-2 text-[11px] leading-relaxed">
+          Catatan: <strong>Starter Kit</strong> bukan salah satu tier — ini paket perkenalan sekali bayar
+          (lisensi + panduan + 7 hari trial) yang bisa dipakai sebagai pintu masuk ke tier mana pun di atas.
         </p>
       </div>
 
