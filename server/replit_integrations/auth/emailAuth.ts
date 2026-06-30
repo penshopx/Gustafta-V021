@@ -277,10 +277,11 @@ export function registerEmailAuthRoutes(app: Express): void {
 
       // Apply any pending agent-share invites addressed to this email — non-blocking.
       // Turns an owner's "invite by email before signup" into a real collaborator grant.
+      let appliedGrants: import("@shared/schema").AppliedInviteGrant[] = [];
       try {
         const { storage } = await import("../../storage");
-        const applied = await storage.applyPendingInvitesForUser(userRow.id, email);
-        if (applied > 0) console.log(`[EmailAuth] Applied ${applied} pending agent invite(s) for ${email}`);
+        appliedGrants = await storage.applyPendingInvitesForUser(userRow.id, email);
+        if (appliedGrants.length > 0) console.log(`[EmailAuth] Applied ${appliedGrants.length} pending agent invite(s) for ${email}`);
       } catch (inviteErr) {
         console.error("[EmailAuth] Failed to apply pending invites:", inviteErr);
       }
@@ -317,6 +318,12 @@ export function registerEmailAuthRoutes(app: Express): void {
         lastName: userRow.lastName,
         role: userRow.role,
       };
+
+      // Stash freshly-applied invite grants so the client can show a first-login
+      // notice ("You now have access to <agent>"). Set after regenerate so it survives.
+      if (appliedGrants.length > 0) {
+        (req.session as any).newAgentGrants = appliedGrants;
+      }
 
       await new Promise<void>((resolve, reject) => {
         req.session.save((err: any) => {

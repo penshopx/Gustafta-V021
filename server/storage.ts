@@ -85,6 +85,7 @@ import type {
   AgentCollaborator,
   CollaboratorRole,
   PendingAgentInvite,
+  AppliedInviteGrant,
   Notification,
   InsertNotification,
 } from "@shared/schema";
@@ -164,7 +165,7 @@ export interface IStorage {
   addOrUpdatePendingInvite(data: { agentId: string; email: string; role: CollaboratorRole; invitedBy: string }): Promise<PendingAgentInvite>;
   listPendingInvitesForAgent(agentId: string): Promise<PendingAgentInvite[]>;
   removePendingInvite(agentId: string, email: string): Promise<boolean>;
-  applyPendingInvitesForUser(userId: string, email: string): Promise<number>;
+  applyPendingInvitesForUser(userId: string, email: string): Promise<AppliedInviteGrant[]>;
 
   // Notification methods (in-app notices, e.g. agent shared)
   createNotification(data: InsertNotification): Promise<Notification>;
@@ -1201,24 +1202,30 @@ export class MemStorage implements IStorage {
     return this.pendingInvitesMap.delete(this.pendingInviteKey(agentId, email));
   }
 
-  async applyPendingInvitesForUser(userId: string, email: string): Promise<number> {
+  async applyPendingInvitesForUser(userId: string, email: string): Promise<AppliedInviteGrant[]> {
     const normalized = (email || "").trim().toLowerCase();
-    if (!userId || !normalized) return 0;
+    if (!userId || !normalized) return [];
     const matches = Array.from(this.pendingInvitesMap.values()).filter(
       (p) => p.email === normalized,
     );
-    let applied = 0;
+    const grants: AppliedInviteGrant[] = [];
     for (const inv of matches) {
+      const role = inv.role === "editor" || inv.role === "viewer" ? inv.role : "viewer";
       await this.addOrUpdateCollaborator({
         agentId: inv.rawAgentId,
         userId,
-        role: inv.role as CollaboratorRole,
+        role,
         invitedBy: inv.invitedBy,
       });
       this.pendingInvitesMap.delete(this.pendingInviteKey(inv.rawAgentId, inv.email));
-      applied++;
+      const agent = this.agents.get(inv.rawAgentId);
+      grants.push({
+        agentId: inv.rawAgentId,
+        agentName: agent?.name || "agen bersama",
+        role,
+      });
     }
-    return applied;
+    return grants;
   }
 
   // Notification methods

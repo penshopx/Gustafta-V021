@@ -62,19 +62,9 @@ async function upsertUser(claims: any) {
     lastName: claims["last_name"],
     profileImageUrl: claims["profile_image_url"],
   });
-
-  // Apply any pending agent-share invites addressed to this email — non-blocking.
-  // Lets an owner invite-by-email before the recipient ever signed in via Replit.
-  try {
-    const email = claims["email"];
-    if (email) {
-      const { storage } = await import("../../storage");
-      const applied = await storage.applyPendingInvitesForUser(claims["sub"], email);
-      if (applied > 0) console.log(`[ReplitAuth] Applied ${applied} pending agent invite(s) for ${email}`);
-    }
-  } catch (inviteErr) {
-    console.error("[ReplitAuth] Failed to apply pending invites:", inviteErr);
-  }
+  // NB: pending agent-share invites are applied in the /api/callback handler
+  // (not here) because that's where req/session are available to stash the
+  // applied grants for the client's first-login notice.
 }
 
 export async function setupAuth(app: Express) {
@@ -134,6 +124,26 @@ export async function setupAuth(app: Express) {
     })(req, res, next);
   }, async (req: any, res: any) => {
     const userId = req.user?.claims?.sub;
+    const email = req.user?.claims?.email;
+    // Apply any pending agent-share invites addressed to this email — non-blocking.
+    // Lets an owner invite-by-email before the recipient ever signed in via Replit.
+    // Done here (not in upsertUser) so we can stash applied grants in the session
+    // for the client's first-login "you now have access to <agent>" notice.
+    if (userId && email) {
+      try {
+        const { storage } = await import("../../storage");
+        const grants = await storage.applyPendingInvitesForUser(userId, email);
+        if (grants.length > 0) {
+          console.log(`[ReplitAuth] Applied ${grants.length} pending agent invite(s) for ${email}`);
+          (req.session as any).newAgentGrants = grants;
+          await new Promise<void>((resolve) => {
+            req.session.save(() => resolve());
+          });
+        }
+      } catch (inviteErr) {
+        console.error("[ReplitAuth] Failed to apply pending invites:", inviteErr);
+      }
+    }
     if (userId) {
       const user = await authStorage.getUser(userId);
       // Blocked users get kicked out

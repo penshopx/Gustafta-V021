@@ -656,6 +656,30 @@ export default function Dashboard() {
     }
   }, [activeAgent?.id, localAgentId]);
 
+  // Deep-link ke agen tertentu via ?agent=<id> (mis. dari notice "Anda kini punya
+  // akses agen baru"). Pakai state lokal saja (tanpa /activate yang owner-only),
+  // sehingga kolaborator pun bisa langsung membuka agen yang dibagikan.
+  const agentDeepLinkHandled = useRef(false);
+  useEffect(() => {
+    if (agentDeepLinkHandled.current) return;
+    const wantAgentId = new URLSearchParams(window.location.search).get("agent");
+    if (!wantAgentId) return;
+    if (!allUserAgents || allUserAgents.length === 0) return;
+    const target = allUserAgents.find((a: any) => String(a.id) === String(wantAgentId));
+    agentDeepLinkHandled.current = true;
+    if (target) {
+      if ((target as any).toolboxId) {
+        setLocalToolboxId(String((target as any).toolboxId));
+      }
+      setLocalAgentId(String(wantAgentId));
+      setNavLevel('agents');
+    }
+    // Bersihkan query param agar refresh tidak memicu ulang seleksi.
+    const url = new URL(window.location.href);
+    url.searchParams.delete("agent");
+    window.history.replaceState({}, "", url.pathname + url.search);
+  }, [allUserAgents]);
+
   useEffect(() => {
     if (bigIdeaCreationCooldown.current) return;
     if (toolboxCreationCooldown.current) return;
