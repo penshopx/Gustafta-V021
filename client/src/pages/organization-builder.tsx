@@ -119,6 +119,8 @@ export default function OrganizationBuilderPage() {
   const [created, setCreated] = useState<ConfigureResult | null>(null);
   const [createError, setCreateError] = useState<string[] | null>(null);
   const [busy, setBusy] = useState(false);
+  const [maxSpecialists, setMaxSpecialists] = useState(3);
+  const [composedDomain, setComposedDomain] = useState<string | null>(null);
 
   /* ── Member helpers ── */
   const addMember = (role: OrgMemberRole) => {
@@ -196,7 +198,7 @@ export default function OrganizationBuilderPage() {
     }
     setBusy(true);
     try {
-      const data: SuggestResponse = await apiRequest("POST", "/api/organization/suggest", { mission: mission.trim() });
+      const data: SuggestResponse = await apiRequest("POST", "/api/organization/suggest", { mission: mission.trim(), maxSpecialists });
       const suggested: MemberDraft[] = (data.members || []).map((m) => ({
         localId: m.localId,
         role: m.role,
@@ -209,6 +211,7 @@ export default function OrganizationBuilderPage() {
         return;
       }
       setMembers(suggested);
+      setComposedDomain(data.domain || null);
       setAnalysis(null); setPreview(null); setCreated(null); setCreateError(null);
       setStep("members");
       toast({ title: `Tim disusun otomatis (${data.domain})`, description: `${suggested.length} anggota diusulkan. Tinjau & sesuaikan sebelum dibuat.` });
@@ -269,6 +272,7 @@ export default function OrganizationBuilderPage() {
     setStep("intro"); setOrgName(""); setMission("");
     setMembers([{ localId: "m1", role: "orchestrator", title: "", responsibility: "", systemPrompt: "" }]);
     setAnalysis(null); setPreview(null); setCreated(null); setCreateError(null);
+    setComposedDomain(null); setMaxSpecialists(3);
   };
 
   /* ── Auth gate ── */
@@ -341,14 +345,28 @@ export default function OrganizationBuilderPage() {
               <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
                 Biarkan sistem mengusulkan susunan anggota (Ketua Tim + Spesialis) dari misi Anda. Anda tetap bisa meninjau & menyesuaikan sebelum tim dibuat.
               </p>
-              <Button
-                onClick={composeFromMission}
-                disabled={busy || !mission.trim()}
-                className="bg-violet-600 hover:bg-violet-500 text-white gap-2"
-                data-testid="btn-compose-auto"
-              >
-                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />} Susun Otomatis
-              </Button>
+              <div className="flex flex-wrap items-end gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">Jumlah Spesialis</Label>
+                  <Select value={String(maxSpecialists)} onValueChange={(v) => setMaxSpecialists(Number(v))}>
+                    <SelectTrigger className="w-28" data-testid="select-max-specialists"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <SelectItem key={n} value={String(n)}>{n} spesialis</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  onClick={composeFromMission}
+                  disabled={busy || !mission.trim()}
+                  className="bg-violet-600 hover:bg-violet-500 text-white gap-2"
+                  data-testid="btn-compose-auto"
+                >
+                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />} Susun Otomatis
+                </Button>
+              </div>
+              <p className="text-[11px] text-gray-400 mt-2">Tim selalu punya 1 Ketua Tim. Jumlah spesialis nyata bisa lebih sedikit jika bidangnya terbatas.</p>
               {!mission.trim() && (
                 <span className="text-xs text-amber-600 dark:text-amber-400 ml-3" data-testid="hint-compose-needs-mission">
                   Isi misi tim dulu untuk memakai fitur ini.
@@ -363,7 +381,7 @@ export default function OrganizationBuilderPage() {
             </div>
 
             <Button
-              onClick={() => setStep("members")}
+              onClick={() => { setComposedDomain(null); setStep("members"); }}
               disabled={!orgName.trim()}
               variant="outline"
               className="gap-2"
@@ -378,12 +396,19 @@ export default function OrganizationBuilderPage() {
         {step === "members" && (
           <div className="space-y-5" data-testid="step-members">
             <div className="rounded-2xl border bg-white dark:bg-card p-5" data-testid="card-members-intro">
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
                 <Users className="h-5 w-5 text-violet-600 dark:text-violet-400" />
                 <h2 className="text-base font-bold text-gray-900 dark:text-white">Anggota Tim</h2>
+                {composedDomain && (
+                  <Badge className="bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300 gap-1 text-[10px]" data-testid="badge-composed-domain">
+                    <Wand2 className="h-3 w-3" /> Disusun otomatis · bidang {composedDomain}
+                  </Badge>
+                )}
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Tetapkan <span className="font-semibold">satu Ketua Tim</span> yang mengoordinasi, lalu tambah Spesialis/Pendukung. Ketua otomatis terhubung ke setiap anggota lain.
+                {composedDomain
+                  ? "Ini usulan otomatis. Tinjau, ubah nama/tugas, tambah atau hapus anggota sesuai kebutuhan sebelum membuat tim."
+                  : <>Tetapkan <span className="font-semibold">satu Ketua Tim</span> yang mengoordinasi, lalu tambah Spesialis/Pendukung. Ketua otomatis terhubung ke setiap anggota lain.</>}
               </p>
               {orchestratorCount !== 1 && (
                 <div className="mt-3 flex items-start gap-2 text-xs text-amber-600 dark:text-amber-400" data-testid="warn-orchestrator-count">
