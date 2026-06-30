@@ -1921,7 +1921,7 @@ export async function registerRoutes(
     try {
       const agent = await storage.getAgent(req.params.id as string);
       if (!agent) return res.status(404).json({ error: "Agent not found" });
-      const authTE = await assertCanMutateAgent(req, agent);
+      const authTE = await assertOwnerOrAdminAgent(req, agent);
       if (!authTE.ok) return res.status(authTE.status).json({ error: authTE.error });
       const newEnabled = !(agent.isEnabled !== false);
       const updated = await storage.updateAgent(req.params.id as string, { isEnabled: newEnabled } as any);

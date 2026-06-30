@@ -69,7 +69,6 @@ test("assertCanMutateAgent mendelegasikan keputusan ke decideAgentMutation (logi
 // ── 2. Endpoint mutasi / exfiltration mentah / cost-LLM: wajib assertCanMutateAgent ──
 const STRICT_GUARDED: Array<[string, string]> = [
   ["PATCH /api/agents/:id", 'app.patch("/api/agents/:id"'],
-  ["PATCH /api/agents/:id/toggle-enabled", 'app.patch("/api/agents/:id/toggle-enabled"'],
   ["PATCH /api/agents/:id/folder", 'app.patch("/api/agents/:id/folder"'],
   ["POST /api/agents/:id/apply-import", 'app.post("/api/agents/:id/apply-import"'],
   ["POST /api/agents/:id/publish-template", 'app.post("/api/agents/:id/publish-template"'],
@@ -100,6 +99,7 @@ for (const [label, literal] of STRICT_GUARDED) {
 // editor otomatis 403. Lihat assertOwnerOrAdminAgent di routes.ts.
 const OWNER_ONLY_GUARDED: Array<[string, string]> = [
   ["PATCH /api/agents/:id/archive", 'app.patch("/api/agents/:id/archive"'],
+  ["PATCH /api/agents/:id/toggle-enabled", 'app.patch("/api/agents/:id/toggle-enabled"'],
   ["DELETE /api/agents/:id", 'app.delete("/api/agents/:id"'],
 ];
 
