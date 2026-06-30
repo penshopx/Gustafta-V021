@@ -123,6 +123,7 @@ const CHAT_READ_GUARDED: Array<[string, string]> = [
   ["POST /api/messages", 'app.post("/api/messages"'],
   ["POST /api/messages/stream", 'app.post("/api/messages/stream"'],
   ["GET /api/messages/:agentId", 'app.get("/api/messages/:agentId"'],
+  ["GET /api/messages/:agentId/session/:sessionId", 'app.get("/api/messages/:agentId/session/:sessionId"'],
   ["GET /api/messages/:agentId/export/json", 'app.get("/api/messages/:agentId/export/json"'],
   ["GET /api/messages/:agentId/export/csv", 'app.get("/api/messages/:agentId/export/csv"'],
 ];
