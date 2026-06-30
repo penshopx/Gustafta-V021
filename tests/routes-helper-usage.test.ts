@@ -69,7 +69,14 @@ test("server/routes.ts: handler chat streaming tetap memakai helper", () => {
     'Route handler app.post("/api/messages/stream", ...) tidak ditemukan di routes.ts',
   );
 
-  const slice = routesSource.slice(streamRouteIndex, streamRouteIndex + 8000);
+  // Ambil blok handler sampai registrasi route berikutnya (`\n  app.`), bukan
+  // jendela karakter tetap: handler streaming cukup panjang sehingga pemanggilan
+  // helper berada >8000 char setelah deklarasi route (jendela tetap = false negative).
+  const nextRouteIndex = routesSource.indexOf("\n  app.", streamRouteIndex + 1);
+  const slice = routesSource.slice(
+    streamRouteIndex,
+    nextRouteIndex === -1 ? routesSource.length : nextRouteIndex,
+  );
   assert.match(
     slice,
     HELPER_CALL_REGEX,
