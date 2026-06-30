@@ -85,6 +85,8 @@ import type {
   AgentCollaborator,
   CollaboratorRole,
   PendingAgentInvite,
+  Notification,
+  InsertNotification,
 } from "@shared/schema";
 
 export type CollaboratorView = AgentCollaborator & {
@@ -163,6 +165,13 @@ export interface IStorage {
   listPendingInvitesForAgent(agentId: string): Promise<PendingAgentInvite[]>;
   removePendingInvite(agentId: string, email: string): Promise<boolean>;
   applyPendingInvitesForUser(userId: string, email: string): Promise<number>;
+
+  // Notification methods (in-app notices, e.g. agent shared)
+  createNotification(data: InsertNotification): Promise<Notification>;
+  listNotificationsForUser(userId: string, limit?: number): Promise<Notification[]>;
+  getUnreadNotificationCount(userId: string): Promise<number>;
+  markNotificationRead(id: number, userId: string): Promise<boolean>;
+  markAllNotificationsRead(userId: string): Promise<number>;
 
   // Blueprint methods (AI Organization Builder — additive, not yet route-wired)
   getBlueprints(userId?: string): Promise<BlueprintRecord[]>;
@@ -454,6 +463,8 @@ export class MemStorage implements IStorage {
   private collaboratorIdSeq = 0;
   private pendingInvitesMap: Map<string, PendingAgentInvite & { rawAgentId: string }> = new Map();
   private pendingInviteIdSeq = 0;
+  private notificationsMap: Map<number, Notification> = new Map();
+  private notificationIdSeq = 0;
 
   constructor() {
     this.users = new Map();
@@ -1208,6 +1219,55 @@ export class MemStorage implements IStorage {
       applied++;
     }
     return applied;
+  }
+
+  // Notification methods
+  async createNotification(data: InsertNotification): Promise<Notification> {
+    const rec: Notification = {
+      id: ++this.notificationIdSeq,
+      userId: data.userId,
+      type: data.type ?? "agent_shared",
+      title: data.title,
+      message: data.message ?? "",
+      link: data.link ?? null,
+      agentId: data.agentId ?? null,
+      read: false,
+      createdAt: new Date(),
+    };
+    this.notificationsMap.set(rec.id, rec);
+    return rec;
+  }
+
+  async listNotificationsForUser(userId: string, limit = 30): Promise<Notification[]> {
+    if (!userId) return [];
+    return Array.from(this.notificationsMap.values())
+      .filter((n) => n.userId === userId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, limit);
+  }
+
+  async getUnreadNotificationCount(userId: string): Promise<number> {
+    if (!userId) return 0;
+    return Array.from(this.notificationsMap.values())
+      .filter((n) => n.userId === userId && !n.read).length;
+  }
+
+  async markNotificationRead(id: number, userId: string): Promise<boolean> {
+    const rec = this.notificationsMap.get(id);
+    if (!rec || rec.userId !== userId) return false;
+    rec.read = true;
+    return true;
+  }
+
+  async markAllNotificationsRead(userId: string): Promise<number> {
+    let count = 0;
+    for (const rec of this.notificationsMap.values()) {
+      if (rec.userId === userId && !rec.read) {
+        rec.read = true;
+        count++;
+      }
+    }
+    return count;
   }
 
   // Knowledge Base methods

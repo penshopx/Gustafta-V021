@@ -45,6 +45,7 @@ import {
   blueprints,
   agentCollaborators,
   pendingAgentInvites,
+  notifications,
 } from "@shared/schema";
 import { users } from "@shared/models/auth";
 import type {
@@ -67,7 +68,7 @@ import type {
 } from "@shared/schema";
 import { applyDefaultPolicies } from "./lib/agent-policies";
 import type { IStorage, CollaboratorView } from "./storage";
-import type { AgentCollaborator, CollaboratorRole, PendingAgentInvite } from "@shared/schema";
+import type { AgentCollaborator, CollaboratorRole, PendingAgentInvite, Notification, InsertNotification } from "@shared/schema";
 import type {
   Agent,
   InsertAgent,
@@ -1260,6 +1261,47 @@ export class DatabaseStorage implements IStorage {
     await db.delete(pendingAgentInvites).where(eq(pendingAgentInvites.email, normalized));
     agentListCache.clear();
     return applied;
+  }
+
+  // ─── Notification methods ──────────────────────────────────────────────────
+  async createNotification(data: InsertNotification): Promise<Notification> {
+    const rows = await db.insert(notifications).values(data).returning();
+    return rows[0];
+  }
+
+  async listNotificationsForUser(userId: string, limit = 30): Promise<Notification[]> {
+    if (!userId) return [];
+    return db.select()
+      .from(notifications)
+      .where(eq(notifications.userId, userId))
+      .orderBy(desc(notifications.createdAt))
+      .limit(limit);
+  }
+
+  async getUnreadNotificationCount(userId: string): Promise<number> {
+    if (!userId) return 0;
+    const rows = await db.select({ count: sql<number>`count(*)::int` })
+      .from(notifications)
+      .where(and(eq(notifications.userId, userId), eq(notifications.read, false)));
+    return rows[0]?.count ?? 0;
+  }
+
+  async markNotificationRead(id: number, userId: string): Promise<boolean> {
+    if (!userId || Number.isNaN(id)) return false;
+    const result = await db.update(notifications)
+      .set({ read: true })
+      .where(and(eq(notifications.id, id), eq(notifications.userId, userId)))
+      .returning();
+    return result.length > 0;
+  }
+
+  async markAllNotificationsRead(userId: string): Promise<number> {
+    if (!userId) return 0;
+    const result = await db.update(notifications)
+      .set({ read: true })
+      .where(and(eq(notifications.userId, userId), eq(notifications.read, false)))
+      .returning();
+    return result.length;
   }
 
   private parseJsonArray(value: unknown): unknown[] {

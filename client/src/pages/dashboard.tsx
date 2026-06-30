@@ -67,6 +67,7 @@ import { ShareAgentDialog } from "@/components/dialogs/share-agent-dialog";
 import { ChatPopup } from "@/components/chat-popup";
 import { SeriesManagementDialog } from "@/components/series-management-dialog";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { NotificationBell } from "@/components/notification-bell";
 import { useAgents, useActiveAgent, useSetActiveAgent, useDeleteAgent } from "@/hooks/use-agents";
 import { useBigIdeas, useActiveBigIdea, useActivateBigIdea, useDeleteBigIdea } from "@/hooks/use-big-ideas";
 import { useToolboxes, useActiveToolbox, useActivateToolbox, useDeleteToolbox, useOrchestratorToolbox, useCreateToolbox } from "@/hooks/use-toolboxes";
@@ -3125,6 +3126,7 @@ export default function Dashboard() {
           </div>
 
           <div className="flex items-center gap-1 md:gap-2">
+            <NotificationBell />
             <ThemeToggle />
             <Button
               onClick={() => setCreateDialogOpen(true)}
