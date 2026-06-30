@@ -96,6 +96,12 @@ export interface ConfigurationResult {
   mode: "create" | "update";
   agentId?: string;
   agentPatchKeys: string[];
+  /**
+   * Pratinjau nilai field yang AKAN ditulis ke agen (untuk "review-before-create"
+   * di wizard). Hanya field primitif (string/number/boolean) yang ditampilkan,
+   * string panjang dipotong, dan field rahasia (mis. customApiKey) DIBUANG.
+   */
+  agentPatchPreview: Record<string, string>;
   created: {
     knowledgeBases: number;
     miniApps: number;
@@ -308,7 +314,78 @@ function finalize(
   created: ConfigurationResult["created"],
   warnings: string[],
 ): ConfigurationResult {
-  return { applied, dryRun, mode, agentId, agentPatchKeys: Object.keys(patch), created, warnings };
+  return {
+    applied,
+    dryRun,
+    mode,
+    agentId,
+    agentPatchKeys: Object.keys(patch),
+    agentPatchPreview: buildPatchPreview(patch),
+    created,
+    warnings,
+  };
+}
+
+/**
+ * ALLOWLIST field yang AMAN ditampilkan di pratinjau klien.
+ *
+ * KEAMANAN: sengaja allowlist (bukan denylist) — kunci yang tidak dikenal
+ * DIBUANG secara default. Ini mencegah kebocoran kredensial/endpoint sensitif
+ * (mis. customApiKey, customBaseUrl, customModelName, accessToken) maupun field
+ * baru di masa depan yang belum sempat ditinjau. Hanya field presentasional /
+ * persona / parameter model yang masuk daftar ini.
+ */
+const PREVIEW_ALLOWLIST = new Set<string>([
+  "name",
+  "description",
+  "avatar",
+  "tagline",
+  "philosophy",
+  "chatStyle",
+  "systemPrompt",
+  "temperature",
+  "maxTokens",
+  "aiModel",
+  "greetingMessage",
+  "language",
+  "category",
+  "subcategory",
+  "personality",
+  "communicationStyle",
+  "toneOfVoice",
+  "responseFormat",
+  "responseStyle",
+  "behaviorPreset",
+  "autonomyLevel",
+  "responseDepth",
+  "outputFormat",
+  "interactionStyle",
+  "contextualEmpathy",
+]);
+
+/**
+ * buildPatchPreview — pratinjau JUJUR atas nilai yang akan ditulis, untuk
+ * "review-before-create" di wizard.
+ * - Hanya kunci di PREVIEW_ALLOWLIST (kunci tak dikenal dibuang → tak ada
+ *   permukaan kebocoran).
+ * - Hanya primitif (string/number/boolean) — array/objek dilewati (sudah
+ *   tercermin di `created`/`agentPatchKeys`).
+ * - String kosong/whitespace dilewati; string >200 char dipotong dengan "…".
+ */
+export function buildPatchPreview(patch: Record<string, any>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [key, value] of Object.entries(patch)) {
+    if (!PREVIEW_ALLOWLIST.has(key)) continue;
+    if (value === undefined || value === null) continue;
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      if (!trimmed) continue;
+      out[key] = trimmed.length > 200 ? `${trimmed.slice(0, 200)}…` : trimmed;
+    } else if (typeof value === "number" || typeof value === "boolean") {
+      out[key] = String(value);
+    }
+  }
+  return out;
 }
 
 function formatZod(err: { issues: Array<{ path: (string | number)[]; message: string }> }): string {
