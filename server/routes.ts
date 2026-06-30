@@ -1819,6 +1819,30 @@ export async function registerRoutes(
     });
   }
 
+  // Guard AKSES BACA/CHAT terhadap agen. Menutup IDOR pada endpoint pesan:
+  // user login yang BUKAN kolaborator tidak boleh chat/baca riwayat agen
+  // PRIVAT milik orang lain. Aturan:
+  //   1) agent.isPublic               → boleh siapa pun (termasuk anonim/widget)
+  //   2) privat & belum login         → 401
+  //   3) privat & agen sistem (tanpa pemilik) → boleh (agen platform bersama;
+  //      mis. MultiClaw/Legal AI — entitlement diatur PremiumPageGuard di UI)
+  //   4) privat & ada pemilik         → owner/admin/kolaborator saja (decideAgentReadAccess)
+  async function assertCanAccessAgentChat(req: any, agent: any): Promise<AgentAuthzResult> {
+    if (agent && agent.isPublic) return { ok: true };
+    const userId = (req.user as any)?.claims?.sub || (req.user as any)?.id || "";
+    if (!userId) return { ok: false, status: 401, error: "Unauthorized" };
+    const agentOwnerId = (agent && agent.userId) || "";
+    if (!agentOwnerId) return { ok: true }; // agen sistem/seeded bersama
+    const adminIds = (process.env.ADMIN_USER_IDS || "").split(",").map((s: string) => s.trim()).filter(Boolean);
+    const dbRole = await getDbRole(req);
+    const isAdmin = dbRole === "admin" || dbRole === "superadmin" || adminIds.includes(userId);
+    let collaboratorRole: "editor" | "viewer" | null = null;
+    if (!isAdmin && agentOwnerId !== userId && agent?.id != null) {
+      collaboratorRole = await storage.getCollaboratorRole(String(agent.id), userId);
+    }
+    return decideAgentReadAccess({ userId, isAdmin, agentOwnerId, collaboratorRole });
+  }
+
   // Preview hasil perakitan PERSONA + 7 field Kebijakan Agen menjadi
   // system prompt FINAL (tanpa Knowledge Base / Project Brain / memori,
   // yang ditambahkan saat runtime chat). Builder pakai untuk memastikan
@@ -2875,12 +2899,13 @@ SKK berlaku 5 tahun. Perpanjangan via: Pengembangan Keprofesian Berkelanjutan (P
       if (!agent) return res.status(404).json({ error: "Agent not found" });
       
       const isAuthed = req.isAuthenticated && req.isAuthenticated();
-      if (!agent.isPublic && !isAuthed) {
-        return res.status(401).json({ error: "Unauthorized" });
-      }
+      // Riwayat chat agen publik tidak dibocorkan ke anonim (privasi pengunjung lain).
       if (agent.isPublic && !isAuthed) {
         return res.json([]);
       }
+      // Gate anti-IDOR: agen PRIVAT milik user lain hanya untuk owner/admin/kolaborator.
+      const _readAuth = await assertCanAccessAgentChat(req, agent);
+      if (!_readAuth.ok) return res.status(_readAuth.status).json({ error: _readAuth.error });
       const messages = await storage.getMessages(agentId);
       res.json(messages);
     } catch (error) {
@@ -2901,9 +2926,12 @@ SKK berlaku 5 tahun. Perpanjangan via: Pengembangan Keprofesian Berkelanjutan (P
   // Export messages as JSON
   app.get("/api/messages/:agentId/export/json", isAuthenticated, async (req, res) => {
     try {
-      const messages = await storage.getMessages(req.params.agentId as string);
       const agent = await storage.getAgent(req.params.agentId as string);
-      
+      if (!agent) return res.status(404).json({ error: "Agent not found" });
+      const _expAuth = await assertCanAccessAgentChat(req, agent);
+      if (!_expAuth.ok) return res.status(_expAuth.status).json({ error: _expAuth.error });
+      const messages = await storage.getMessages(req.params.agentId as string);
+
       const exportData = {
         agentName: agent?.name || "Unknown Agent",
         exportDate: new Date().toISOString(),
@@ -2926,9 +2954,12 @@ SKK berlaku 5 tahun. Perpanjangan via: Pengembangan Keprofesian Berkelanjutan (P
   // Export messages as CSV
   app.get("/api/messages/:agentId/export/csv", isAuthenticated, async (req, res) => {
     try {
-      const messages = await storage.getMessages(req.params.agentId as string);
       const agent = await storage.getAgent(req.params.agentId as string);
-      
+      if (!agent) return res.status(404).json({ error: "Agent not found" });
+      const _expAuthCsv = await assertCanAccessAgentChat(req, agent);
+      if (!_expAuthCsv.ok) return res.status(_expAuthCsv.status).json({ error: _expAuthCsv.error });
+      const messages = await storage.getMessages(req.params.agentId as string);
+
       // Build CSV
       const csvRows = ["Timestamp,Role,Content"];
       messages.forEach(m => {
@@ -2957,6 +2988,11 @@ SKK berlaku 5 tahun. Perpanjangan via: Pengembangan Keprofesian Berkelanjutan (P
       if (!agent) {
         return res.status(404).json({ error: "Agent not found" });
       }
+
+      // Gate akses: agen PRIVAT milik user lain hanya boleh diakses
+      // owner/admin/kolaborator (anti-IDOR). Publik & agen sistem tetap terbuka.
+      const _chatAuth = await assertCanAccessAgentChat(req, agent);
+      if (!_chatAuth.ok) return res.status(_chatAuth.status).json({ error: _chatAuth.error });
 
       // ── Trial quota check — keyed to agent OWNER, before persisting message ──
       let _nonStreamTrialSubId: string | undefined;
@@ -3456,6 +3492,11 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
       if (!agent) {
         return res.status(404).json({ error: "Agent not found" });
       }
+
+      // Gate akses: agen PRIVAT milik user lain hanya boleh diakses
+      // owner/admin/kolaborator (anti-IDOR). Publik & agen sistem tetap terbuka.
+      const _chatAuthStream = await assertCanAccessAgentChat(req, agent);
+      if (!_chatAuthStream.ok) return res.status(_chatAuthStream.status).json({ error: _chatAuthStream.error });
 
       // ── Platform-owner monthly quota check ──────────────────────────────
       // Authenticated dashboard users (platform owners) are subject to their
