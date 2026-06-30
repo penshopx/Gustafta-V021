@@ -42,9 +42,9 @@ Gustafta is an AI chatbot builder platform that enables users to create, configu
 
 ## Product
 - **Kerangka Produk (acuan resmi — 3 sumbu terpisah, jangan dicampur)**:
-  1. **Cara dapat chatbot (3 jalur)**: Produk (lisensi+langganan, kelola sendiri) · Layanan Jasa (tim rakit, ada biaya setup) · Chatbot Store (beli jadi dari kreator, lisensi sekali bayar).
+  1. **Cara dapat chatbot (3 jalur)**: Produk (lisensi+langganan, kelola sendiri) · Layanan Jasa (tim rakit, ada biaya setup — **setup sudah termasuk lisensi**) · Chatbot Store (beli jadi dari kreator, lisensi sekali bayar). **Semua pengguna wajib punya lisensi (hak pakai)**; di jalur Jasa lisensi tidak ditagih terpisah.
   2. **Tier langganan platform (4)**: Starter → Profesional → Bisnis → Enterprise. Naik tier = naik kuota + tambah chatbot premium + tambah Mini Apps. Angka di `client/src/data/pricing.ts`, gating di `shared/feature-plans.ts`.
-  3. **Starter Kit = produk onboarding sekali bayar (Rp 245rb), BUKAN tier** (lisensi + panduan + trial 7 hari; pintu masuk lintas-tier). Jangan sejajarkan dengan tier "Starter". Detail: `.agents/memory/gustafta-pricing-model.md`.
+  3. **Starter Kit = produk onboarding sekali bayar (Rp 245rb), BUKAN tier** (lisensi + panduan + trial 7 hari; pintu masuk lintas-tier). Jangan sejajarkan dengan tier "Starter". Di jalur Jasa, Starter Kit otomatis dibundel **gratis** (tanpa tagihan tambahan) — yang diberikan di situ panduan/enablement, bukan lisensi kedua. Detail: `.agents/memory/gustafta-pricing-model.md`.
 - **AI Chatbot Builder**: Create, configure, and deploy intelligent conversational agents.
 - **LexCom Legal AI**: Integrated system with 12 specialized legal agents and a floating "Chaesa Lexbot" widget.
 - **Federation Layer (131 hubs — COMPLETE)**: 131 hub orchestrators with `agenticSubAgents` configured, SYNTHESIS ORCHESTRATOR marker, SCORECARD/WIN PROBABILITY 4-dimension table, T5-HANDOVER, F3-FALLBACK MODE, MASTER STANDAR v2.0 — semua 129/129 complete.

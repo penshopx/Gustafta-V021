@@ -7,8 +7,10 @@ description: Durable product rules for the "Produk & Layanan" pages (landing.tsx
 
 Aturan produk yang harus dijaga konsisten lintas halaman pemasaran. Ini keputusan bisnis pemilik, bukan sekadar detail kode — jangan "memperbaiki" dengan menambah balik tier yang sudah dihapus.
 
-- **Produk chatbot (langganan / Store Creator) = hanya biaya LISENSI, TANPA biaya setup.** Produk sudah jadi, tinggal pakai.
-- **Layanan Jasa (modul dirakit tim Gustafta) = ada biaya SETUP (sekali bayar).** Inilah satu-satunya jalur yang punya biaya setup.
+- **Lisensi (hak pakai) wajib untuk SEMUA pengguna.** Yang berbeda hanya cara mendapatkannya — itulah inti model.
+- **Produk chatbot (langganan / Store Creator) = hanya biaya LISENSI, TANPA biaya setup.** Produk sudah jadi, tinggal pakai. Lisensi Rp 299rb sekali, atau Rp 0 bila ambil Starter Kit (Rp 245rb).
+- **Layanan Jasa (modul dirakit tim Gustafta) = ada biaya SETUP (sekali bayar).** Inilah satu-satunya jalur yang punya biaya setup. **Setup SUDAH TERMASUK lisensi** — pelanggan jasa tidak ditagih lisensi terpisah (hindari kesan bayar dua kali).
+- **Starter Kit di jalur Jasa = otomatis dibundel GRATIS (tanpa tagihan tambahan).** Tetap wajib hadir sebagai pintu masuk + panduan, supaya pelanggan jasa bisa merakit sendiri kelak (retensi + upsell ke jalur Produk). Lisensinya sudah di setup; yang "diberikan" lewat Starter Kit di sini adalah panduan/enablement, bukan lisensi kedua. **Why:** menagih Starter Kit lagi = double-charge lisensi; menggratiskannya lebih bersih & lebih kuat secara penjualan.
 - **Tidak ada tier "Gratis" permanen.** "Gratis" HANYA berarti bonus 7 hari trial.
 - **Funnel wajib:** isi Blueprint (Dialog Gustafta) → beli Starter Kit → bonus 7 hari. Tidak boleh ada tombol yang langsung mulai trial; CTA trial harus mengarah ke `/dialog-gustafta` dulu.
 
