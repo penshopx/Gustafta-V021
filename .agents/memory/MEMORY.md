@@ -20,3 +20,4 @@
 - [Agent Collaboration authz](agent-collaboration-authz.md) — 4 tier hak agen (config-edit/destruktif/chat-read/config-read); pilih guard per tier, jangan campur. Chat agen privat = IDOR surface.
 - [Reusable Brevo email helper](reusable-email-helper.md) — server/lib/email.ts (sendEmail + sendAgentShareNotification); reuse instead of cloning emailAuth pattern. Always fire-and-forget so missing BREVO_API_KEY never breaks the action.
 - [Pending agent invites](agent-invite-pending.md) — sharing to unknown email = persist pending invite + 202, never 404; auto-apply grant at EVERY signup path (idempotent, non-blocking, lowercased email).
+- [getAgent must expose userId](agent-userid-mapping.md) — mapAgentRow drop userId → owner 403 di agennya sendiri + daftar agen non-admin kosong. Authz baca agent.userId; integration test HTTP nyata yang menangkapnya.

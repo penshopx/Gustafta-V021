@@ -200,12 +200,13 @@ function incrementGuestCount(key: string): number {
   return entry.count;
 }
 
+// .unref(): jangan tahan event loop (lihat catatan di server/routes.ts).
 setInterval(() => {
   const today = new Date().toISOString().split("T")[0];
   for (const [key, val] of Array.from(guestLegalTracker.entries())) {
     if (val.lastReset !== today) guestLegalTracker.delete(key);
   }
-}, 60 * 60 * 1000);
+}, 60 * 60 * 1000).unref();
 
 function getUserId(req: any): string | null {
   return req.user?.claims?.sub || req.user?.id || null;

@@ -1276,6 +1276,13 @@ export class DatabaseStorage implements IStorage {
   private mapAgentRow(row: typeof agents.$inferSelect): Agent {
     return ({
       id: String(row.id),
+      // userId = pemilik agen. WAJIB diekspos: seluruh otorisasi kepemilikan
+      // (assertCanMutateAgent / assertOwnerOrAdminAgent / decideAgentReadAccess)
+      // dan filter daftar agen non-admin membaca agent.userId. Tanpa ini,
+      // agentOwnerId selalu kosong → pemilik diperlakukan seperti agen sistem
+      // (admin-only) dan agen miliknya tak muncul di dashboard. Disanitasi
+      // keluar untuk response non-admin oleh sanitizeAgentForPublic.
+      userId: (row as any).userId || "",
       name: row.name,
       description: row.description || "",
       avatar: row.avatar || "",
