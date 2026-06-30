@@ -44,7 +44,7 @@ import {
   type FileAttachment,
 } from "./lib/file-processing";
 import { processKnowledgeBaseForRAG, searchKnowledgeBase } from "./lib/rag-service";
-import { buildFinalSystemPrompt } from "./lib/build-final-system-prompt";
+import { buildFinalSystemPrompt, buildAgenticPrinciplesBlock } from "./lib/build-final-system-prompt";
 import { decideAgentMutation, type AgentAuthzResult } from "./lib/agent-authz";
 import { getDefaultPoliciesForSeries, type AgentPolicySet } from "./lib/agent-policies";
 import { importDocumentToProposal, mergeProposalIntoAgent, type ApplyMode } from "./lib/document-importer";
@@ -2868,12 +2868,10 @@ Kamu dapat memperbarui data Project Brain secara otomatis ketika percakapan meng
 
       systemPrompt += `\n\nMODE INSTRUCTION (OPTIONAL)\n${MODE_SNAPSHOT}\n\n${MODE_DECISION_SUMMARY}\n\n${MODE_RISK_RADAR}`;
 
-      systemPrompt += `\n\nPRINSIP AGENTIC AI:
-- Dengarkan dengan cermat setiap detail dalam pesan pengguna (Attentive Listening).
-- Identifikasi kebutuhan tersirat, bukan hanya yang tersurat.
-- Proaktif memberikan saran, peringatan, atau informasi relevan meski tidak diminta.
-- Jika mendeteksi inkonsistensi antara data yang ada dengan yang baru disebutkan, sampaikan dengan sopan.
-- Ingat konteks percakapan sebelumnya dan hubungkan dengan informasi baru.`;
+      {
+        const agenticBlock = buildAgenticPrinciplesBlock(agent);
+        if (agenticBlock) systemPrompt += `\n\n${agenticBlock}`;
+      }
 
       // Inject user memories
       if (nonStreamMemories.length > 0) {
@@ -3484,12 +3482,10 @@ Kamu dapat memperbarui data Project Brain secara otomatis ketika percakapan meng
 
       systemPrompt += `\n\nMODE INSTRUCTION (OPTIONAL)\n${MODE_SNAPSHOT}\n\n${MODE_DECISION_SUMMARY}\n\n${MODE_RISK_RADAR}`;
 
-      systemPrompt += `\n\nPRINSIP AGENTIC AI:
-- Dengarkan dengan cermat setiap detail dalam pesan pengguna (Attentive Listening).
-- Identifikasi kebutuhan tersirat, bukan hanya yang tersurat.
-- Proaktif memberikan saran, peringatan, atau informasi relevan meski tidak diminta.
-- Jika mendeteksi inkonsistensi antara data yang ada dengan yang baru disebutkan, sampaikan dengan sopan.
-- Ingat konteks percakapan sebelumnya dan hubungkan dengan informasi baru.`;
+      {
+        const agenticBlock = buildAgenticPrinciplesBlock(agent);
+        if (agenticBlock) systemPrompt += `\n\n${agenticBlock}`;
+      }
 
       // Inject user memories into system prompt
       if (existingMemories.length > 0) {
@@ -5918,10 +5914,10 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
       }
     } catch (pbExtErr) { console.error("External integration Project Brain error:", pbExtErr); }
 
-    systemPrompt += `\n\nPRINSIP AGENTIC AI:
-- Dengarkan dengan cermat setiap detail dalam pesan pengguna.
-- Identifikasi kebutuhan tersirat, bukan hanya yang tersurat.
-- Proaktif memberikan saran dan informasi relevan.`;
+    {
+      const agenticBlock = buildAgenticPrinciplesBlock(agent);
+      if (agenticBlock) systemPrompt += `\n\n${agenticBlock}`;
+    }
 
     systemPrompt += `\n\nREKOMENDASI DOKUMENTENDER:
 Jika kamu kesulitan memberikan jawaban yang lengkap, tidak memiliki informasi yang cukup di knowledge base, atau pengguna membutuhkan:

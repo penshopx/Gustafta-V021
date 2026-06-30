@@ -9,8 +9,10 @@ const routesPath = resolve(__dirname, "../server/routes.ts");
 const routesSource = readFileSync(routesPath, "utf8");
 
 test("server/routes.ts mengimpor buildFinalSystemPrompt dari ./lib/build-final-system-prompt", () => {
+  // Izinkan named-import lain di kurung yang sama (mis. buildAgenticPrinciplesBlock)
+  // selama buildFinalSystemPrompt tetap diimpor dari modul yang sama.
   const importRegex =
-    /import\s*\{\s*buildFinalSystemPrompt\s*\}\s*from\s*["']\.\/lib\/build-final-system-prompt["']/;
+    /import\s*\{[^}]*\bbuildFinalSystemPrompt\b[^}]*\}\s*from\s*["']\.\/lib\/build-final-system-prompt["']/;
   assert.match(
     routesSource,
     importRegex,
