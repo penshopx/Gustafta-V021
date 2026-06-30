@@ -30,6 +30,7 @@ Gustafta is an AI chatbot builder platform that enables users to create, configu
 - **AI Vision K3 Inspector**: `client/src/pages/k3-vision.tsx` (route `/k3-vision`) — upload foto → GPT-4o Vision → laporan temuan K3 + skor kepatuhan. Backend: `POST /api/tools/k3-vision`.
 - **AI Tools Hub**: `client/src/pages/ai-tools-hub.tsx` (route `/ai-tools`) — directory semua AI tools standalone + penjelasan Model Router.
 - **Model Router**: `server/lib/model-router.ts` — utility `chooseModel(task)` + `callWithRouter()` untuk intelligent LLM routing: GPT-4o (orchestration/vision), DeepSeek (math/RAB), Gemini (large docs), Qwen (data extraction).
+- **Blueprint Engine (Tahap 1–10)**: engine pure di `server/services/blueprint-engine/*` (Dialogue/Inference/Confidence/Gap/Critic/Simulation/Evolution + Mapping/Configuration), skema di `shared/blueprint/blueprint-schema.ts`. API wiring (Tahap 10): `server/blueprint-engine-routes.ts` → `POST /api/blueprint/{start,answer,state,analyze,configure}` (stateless, `isAuthenticated`). `/configure` = satu-satunya jalur tulis, **safe-by-default `dryRun`** (tulis hanya bila `dryRun:false` eksplisit); mode `update` wajib pemilik/admin. Belum ada UI (Tahap 11). Roadmap: `docs/blueprint-engine/00-roadmap.md`.
 
 ## Architecture decisions
 - **5-Level Modular Hierarchy**: Agents organized Master → Series HUB → Sub-HUB → Specialist → Deep Specialist.
