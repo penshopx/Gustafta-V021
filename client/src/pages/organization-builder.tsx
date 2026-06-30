@@ -42,6 +42,16 @@ interface SuggestMember {
   localId: string; role: OrgMemberRole; title: string; responsibility: string;
 }
 interface SuggestResponse { domain: string; members: SuggestMember[] }
+interface InferMember {
+  localId: string; role: OrgMemberRole; title: string; responsibility: string; systemPrompt: string;
+}
+interface InferResponse {
+  overallConfidence: number;
+  edgesAdded: number;
+  memberInferences: { localId: string; written: number }[];
+  warnings: string[];
+  members: InferMember[];
+}
 interface ConfigureResult {
   applied: boolean;
   dryRun: boolean;
@@ -121,6 +131,7 @@ export default function OrganizationBuilderPage() {
   const [busy, setBusy] = useState(false);
   const [maxSpecialists, setMaxSpecialists] = useState(3);
   const [composedDomain, setComposedDomain] = useState<string | null>(null);
+  const [readiness, setReadiness] = useState<number | null>(null);
 
   /* ── Member helpers ── */
   const addMember = (role: OrgMemberRole) => {
@@ -137,8 +148,10 @@ export default function OrganizationBuilderPage() {
   const patchMember = (localId: string, patch: Partial<MemberDraft>) =>
     setMembers((ms) => ms.map((m) => (m.localId === localId ? { ...m, ...patch } : m)));
 
-  /* ── Bangun OrganizationBlueprint dari draft (client-side, valid by schema) ── */
-  const buildOrg = (): OrganizationBlueprint => {
+  /* ── Bangun OrganizationBlueprint dari draft (client-side, valid by schema) ──
+   * fillDefaults=false → JANGAN isi systemPrompt default (biar inferensi tahu
+   * field mana yang masih kosong; dipakai oleh "Sempurnakan Detail"). */
+  const buildOrg = (fillDefaults = true): OrganizationBlueprint => {
     const org = createEmptyOrganizationBlueprint(mission.trim() || undefined);
     org.meta.name = orgName.trim() || undefined;
     org.meta.mission = mission.trim() || undefined;
@@ -148,8 +161,9 @@ export default function OrganizationBuilderPage() {
       bp.meta.intent = m.responsibility.trim() || m.title.trim() || undefined;
       (bp.modules.identity.data as any).name = m.title.trim() || `Anggota ${m.localId}`;
       if (m.responsibility.trim()) (bp.modules.identity.data as any).description = m.responsibility.trim();
-      (bp.modules.aiEngine.data as any).systemPrompt =
-        m.systemPrompt.trim() || defaultPrompt(m, orgName, mission);
+      (bp.modules.aiEngine.data as any).systemPrompt = fillDefaults
+        ? (m.systemPrompt.trim() || defaultPrompt(m, orgName, mission))
+        : m.systemPrompt.trim();
       return {
         localId: m.localId,
         role: m.role,
@@ -220,6 +234,37 @@ export default function OrganizationBuilderPage() {
     } finally { setBusy(false); }
   };
 
+  /* Sempurnakan Detail: isi otomatis tugas + prompt anggota yang masih kosong
+   * (Tahap 23 inferOrganization via /api/organization/infer). Input pengguna
+   * tak pernah ditimpa — hanya field kosong yang diisi. */
+  const enrichMembers = async () => {
+    if (!membersReady) {
+      toast({ title: "Isi nama anggota dulu", description: "Setiap anggota perlu nama agar bisa dilengkapi otomatis.", variant: "destructive" });
+      return;
+    }
+    setBusy(true);
+    try {
+      const data: InferResponse = await apiRequest("POST", "/api/organization/infer", { organization: buildOrg(false) });
+      const byId = new Map(data.members.map((m) => [m.localId, m]));
+      let filled = 0;
+      setMembers((ms) => ms.map((m) => {
+        const inf = byId.get(m.localId);
+        if (!inf) return m;
+        const next = { ...m };
+        if (!m.responsibility.trim() && inf.responsibility.trim()) { next.responsibility = inf.responsibility.trim(); filled++; }
+        if (!m.systemPrompt.trim() && inf.systemPrompt.trim()) { next.systemPrompt = inf.systemPrompt.trim(); filled++; }
+        return next;
+      }));
+      setReadiness(data.overallConfidence);
+      toast({
+        title: `Kesiapan tim ${pct(data.overallConfidence)}%`,
+        description: filled > 0 ? `${filled} bagian dilengkapi otomatis. Tinjau & sesuaikan bila perlu.` : "Detail tim sudah lengkap.",
+      });
+    } catch (e: any) {
+      toast({ title: "Gagal melengkapi", description: e?.message || "Coba lagi.", variant: "destructive" });
+    } finally { setBusy(false); }
+  };
+
   const runAnalyze = async () => {
     setBusy(true);
     try {
@@ -272,7 +317,7 @@ export default function OrganizationBuilderPage() {
     setStep("intro"); setOrgName(""); setMission("");
     setMembers([{ localId: "m1", role: "orchestrator", title: "", responsibility: "", systemPrompt: "" }]);
     setAnalysis(null); setPreview(null); setCreated(null); setCreateError(null);
-    setComposedDomain(null); setMaxSpecialists(3);
+    setComposedDomain(null); setMaxSpecialists(3); setReadiness(null);
   };
 
   /* ── Auth gate ── */
@@ -481,7 +526,24 @@ export default function OrganizationBuilderPage() {
               <Button onClick={() => addMember("support")} variant="outline" className="gap-2" data-testid="btn-add-support">
                 <Plus className="h-4 w-4" /> Tambah Pendukung
               </Button>
+              <Button
+                onClick={enrichMembers}
+                disabled={busy || !membersReady}
+                variant="outline"
+                className="gap-2 border-violet-300 text-violet-700 dark:border-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-900/30"
+                data-testid="btn-enrich-members"
+              >
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Sempurnakan Detail
+              </Button>
+              {readiness !== null && (
+                <span className="self-center text-xs font-medium text-violet-700 dark:text-violet-300" data-testid="text-readiness">
+                  Kesiapan setelah penyempurnaan: {pct(readiness)}%
+                </span>
+              )}
             </div>
+            <p className="text-[11px] text-gray-400 -mt-2">
+              "Sempurnakan Detail" mengisi tugas & instruksi anggota yang masih kosong secara otomatis. Isian Anda tidak akan ditimpa.
+            </p>
 
             <div className="flex flex-wrap gap-3 pt-2 border-t">
               <Button onClick={() => setStep("intro")} variant="ghost" className="gap-2 text-gray-500" data-testid="btn-back-intro">

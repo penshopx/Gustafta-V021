@@ -28,7 +28,10 @@ import {
 } from "@shared/blueprint/organization-blueprint-schema";
 import { mapOrganizationToBuilder } from "./services/blueprint-engine/organization-mapping-engine";
 import { applyOrganizationToBuilder } from "./services/blueprint-engine/organization-configuration-engine";
-import { suggestTeamComposition } from "./services/blueprint-engine/organization-dialogue-engine";
+import {
+  suggestTeamComposition,
+  inferOrganization,
+} from "./services/blueprint-engine/organization-dialogue-engine";
 
 /* ===========================================================================
  * Helper
@@ -158,6 +161,45 @@ export function registerOrganizationEngineRoutes(app: Express): void {
         : 3;
 
       res.json(suggestTeamComposition(mission, { maxSpecialists }));
+    }),
+  );
+
+  /**
+   * POST /api/organization/infer  (read-only)
+   * Body: { organization }
+   * → Jalankan Organization Inference Engine (Tahap 23): isi field anggota yang
+   *   kosong (deskripsi/tugas + systemPrompt) via inferensi single-agent, sarankan
+   *   struktur bila kosong, lalu hitung kesiapan tim. TIDAK menulis ke DB.
+   *
+   *   Mengembalikan ringkasan per-anggota (field hasil inferensi) agar wizard bisa
+   *   mengisi HANYA bagian yang masih kosong — input pengguna tak pernah ditimpa.
+   */
+  app.post(
+    "/api/organization/infer",
+    isAuthenticated,
+    handler(async (req, res) => {
+      const org = parseOrganization(req.body?.organization);
+      const result = inferOrganization(org);
+
+      const members = result.organization.members.map((m) => {
+        const id = m.blueprint.modules.identity.data as Record<string, any>;
+        const ai = m.blueprint.modules.aiEngine.data as Record<string, any>;
+        return {
+          localId: m.localId,
+          role: m.role,
+          title: (m.title || id.name || "") as string,
+          responsibility: (m.responsibility || id.description || m.blueprint.meta.intent || "") as string,
+          systemPrompt: (ai.systemPrompt || "") as string,
+        };
+      });
+
+      res.json({
+        overallConfidence: result.overallConfidence,
+        edgesAdded: result.edgesAdded.length,
+        memberInferences: result.memberInferences,
+        warnings: result.warnings,
+        members,
+      });
     }),
   );
 }
