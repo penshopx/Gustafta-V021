@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { MessageContent } from "@/lib/format-message";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -137,7 +138,9 @@ export default function BsClawChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [streaming, setStreaming] = useState(false);
   const [agentId, setAgentId] = useState<number | null>(null);
+  const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const { data: agentData, isLoading: agentLoading } = useQuery<{ id: number; name: string }>({
     queryKey: ["/api/bs-claw/orchestrator"],

@@ -3435,7 +3435,17 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
 
   app.delete("/api/messages/:agentId", isAuthenticated, async (req, res) => {
     try {
-      await storage.clearMessages(req.params.agentId as string);
+      const agentId = req.params.agentId as string;
+      const agent = await storage.getAgent(agentId);
+      if (!agent) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+      // Gate akses: hapus riwayat hanya boleh oleh owner/admin/kolaborator agen
+      // privat (anti-IDOR). Publik & agen sistem tetap terbuka, paritas dgn
+      // endpoint /api/messages lainnya.
+      const _delAuth = await assertCanAccessAgentChat(req, agent);
+      if (!_delAuth.ok) return res.status(_delAuth.status).json({ error: _delAuth.error });
+      await storage.clearMessages(agentId);
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Failed to clear messages" });
@@ -12579,7 +12589,7 @@ Jika informasi tidak ditemukan, isi dengan string kosong "".
   // ─── MLM Commission Rate defaults seed ──────────────────────────────────────
   (async () => {
     try {
-      const { db } = await import("../db");
+      const { db } = await import("./db");
       const { mlmCommissionRates } = await import("../shared/schema");
       const { count } = await import("drizzle-orm");
       const [{ value }] = await db.select({ value: count() }).from(mlmCommissionRates);
@@ -12599,7 +12609,7 @@ Jika informasi tidak ditemukan, isi dengan string kosong "".
   // ─── MLM: Commission Rates config ────────────────────────────────────────────
   app.get("/api/mlm/rates", isAuthenticated, async (req: any, res: any) => {
     try {
-      const { db } = await import("../db");
+      const { db } = await import("./db");
       const { mlmCommissionRates } = await import("../shared/schema");
       const rows = await db.select().from(mlmCommissionRates);
       res.json(rows);
@@ -12608,7 +12618,7 @@ Jika informasi tidak ditemukan, isi dengan string kosong "".
 
   app.put("/api/mlm/rates/:id", isAuthenticated, async (req: any, res: any) => {
     try {
-      const { db } = await import("../db");
+      const { db } = await import("./db");
       const { mlmCommissionRates } = await import("../shared/schema");
       const { eq } = await import("drizzle-orm");
       const [row] = await db.update(mlmCommissionRates)
@@ -12622,7 +12632,7 @@ Jika informasi tidak ditemukan, isi dengan string kosong "".
   // ─── MLM: Affiliates CRUD ─────────────────────────────────────────────────
   app.get("/api/mlm/affiliates", isAuthenticated, async (req: any, res: any) => {
     try {
-      const { db } = await import("../db");
+      const { db } = await import("./db");
       const { affiliates } = await import("../shared/schema");
       const { asc } = await import("drizzle-orm");
       const rows = await db.select().from(affiliates).orderBy(asc(affiliates.mlmLevel), asc(affiliates.id));
@@ -12632,7 +12642,7 @@ Jika informasi tidak ditemukan, isi dengan string kosong "".
 
   app.post("/api/mlm/affiliates", isAuthenticated, async (req: any, res: any) => {
     try {
-      const { db } = await import("../db");
+      const { db } = await import("./db");
       const { affiliates } = await import("../shared/schema");
       const { eq } = await import("drizzle-orm");
       const { id, createdAt, ...body } = req.body;
@@ -12655,7 +12665,7 @@ Jika informasi tidak ditemukan, isi dengan string kosong "".
 
   app.put("/api/mlm/affiliates/:id", isAuthenticated, async (req: any, res: any) => {
     try {
-      const { db } = await import("../db");
+      const { db } = await import("./db");
       const { affiliates } = await import("../shared/schema");
       const { eq } = await import("drizzle-orm");
       const { id, createdAt, ...body } = req.body;
@@ -12666,7 +12676,7 @@ Jika informasi tidak ditemukan, isi dengan string kosong "".
 
   app.delete("/api/mlm/affiliates/:id", isAuthenticated, async (req: any, res: any) => {
     try {
-      const { db } = await import("../db");
+      const { db } = await import("./db");
       const { affiliates, mlmCommissions } = await import("../shared/schema");
       const { eq } = await import("drizzle-orm");
       await db.delete(affiliates).where(eq(affiliates.id, Number(req.params.id)));
@@ -12677,7 +12687,7 @@ Jika informasi tidak ditemukan, isi dengan string kosong "".
   // ─── MLM: Commission Ledger ────────────────────────────────────────────────
   app.get("/api/mlm/commissions", isAuthenticated, async (req: any, res: any) => {
     try {
-      const { db } = await import("../db");
+      const { db } = await import("./db");
       const { mlmCommissions } = await import("../shared/schema");
       const { desc } = await import("drizzle-orm");
       const rows = await db.select().from(mlmCommissions).orderBy(desc(mlmCommissions.createdAt));
@@ -12689,7 +12699,7 @@ Jika informasi tidak ditemukan, isi dengan string kosong "".
   // Body: { affiliateCode, grossAmount, transactionType: "license"|"recurring", transactionRef, userId }
   app.post("/api/mlm/commissions/record", isAuthenticated, async (req: any, res: any) => {
     try {
-      const { db } = await import("../db");
+      const { db } = await import("./db");
       const { affiliates, mlmCommissions, mlmCommissionRates } = await import("../shared/schema");
       const { eq } = await import("drizzle-orm");
 
@@ -12777,7 +12787,7 @@ Jika informasi tidak ditemukan, isi dengan string kosong "".
   // PATCH: update commission status (approve/paid/cancel)
   app.patch("/api/mlm/commissions/:id", isAuthenticated, async (req: any, res: any) => {
     try {
-      const { db } = await import("../db");
+      const { db } = await import("./db");
       const { mlmCommissions } = await import("../shared/schema");
       const { eq } = await import("drizzle-orm");
       const patch: any = { status: req.body.status };
@@ -12790,7 +12800,7 @@ Jika informasi tidak ditemukan, isi dengan string kosong "".
   // ─── MLM: Public validate affiliate code ──────────────────────────────────
   app.get("/api/mlm/validate/:code", async (req: any, res: any) => {
     try {
-      const { db } = await import("../db");
+      const { db } = await import("./db");
       const { affiliates } = await import("../shared/schema");
       const { eq } = await import("drizzle-orm");
       const [aff] = await db.select().from(affiliates).where(eq(affiliates.code, req.params.code));
@@ -20368,7 +20378,7 @@ Instruksi pembuatan dokumen:
     try {
       const userId = req.user?.claims?.sub || req.user?.id;
       if (!userId) return res.status(401).json({ error: "Unauthorized" });
-      const { db } = await import("../db");
+      const { db } = await import("./db");
       const { bjActivities } = await import("../shared/schema");
       const { eq, desc } = await import("drizzle-orm");
       const result = await db.select().from(bjActivities)
@@ -20382,7 +20392,7 @@ Instruksi pembuatan dokumen:
     try {
       const userId = req.user?.claims?.sub || req.user?.id;
       if (!userId) return res.status(401).json({ error: "Unauthorized" });
-      const { db } = await import("../db");
+      const { db } = await import("./db");
       const { bjActivities } = await import("../shared/schema");
       const { id, createdAt, ...body } = req.body;
       const [row] = await db.insert(bjActivities).values({ ...body, userId: String(userId) }).returning();
@@ -20393,7 +20403,7 @@ Instruksi pembuatan dokumen:
   app.put("/api/client-hub/activities/:id", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.user?.claims?.sub || req.user?.id;
-      const { db } = await import("../db");
+      const { db } = await import("./db");
       const { bjActivities } = await import("../shared/schema");
       const { eq, and } = await import("drizzle-orm");
       const { id, createdAt, ...body } = req.body;
@@ -20407,7 +20417,7 @@ Instruksi pembuatan dokumen:
   app.delete("/api/client-hub/activities/:id", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.user?.claims?.sub || req.user?.id;
-      const { db } = await import("../db");
+      const { db } = await import("./db");
       const { bjActivities } = await import("../shared/schema");
       const { eq, and } = await import("drizzle-orm");
       await db.delete(bjActivities)
@@ -20420,7 +20430,7 @@ Instruksi pembuatan dokumen:
     try {
       const userId = req.user?.claims?.sub || req.user?.id;
       if (!userId) return res.status(401).json({ error: "Unauthorized" });
-      const { db } = await import("../db");
+      const { db } = await import("./db");
       const { bjFollowups } = await import("../shared/schema");
       const { eq, desc } = await import("drizzle-orm");
       const result = await db.select().from(bjFollowups)
@@ -20434,7 +20444,7 @@ Instruksi pembuatan dokumen:
     try {
       const userId = req.user?.claims?.sub || req.user?.id;
       if (!userId) return res.status(401).json({ error: "Unauthorized" });
-      const { db } = await import("../db");
+      const { db } = await import("./db");
       const { bjFollowups } = await import("../shared/schema");
       const { id, createdAt, updatedAt, ...body } = req.body;
       const [row] = await db.insert(bjFollowups).values({ ...body, userId: String(userId) }).returning();
@@ -20445,7 +20455,7 @@ Instruksi pembuatan dokumen:
   app.put("/api/client-hub/followups/:id", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.user?.claims?.sub || req.user?.id;
-      const { db } = await import("../db");
+      const { db } = await import("./db");
       const { bjFollowups } = await import("../shared/schema");
       const { eq, and } = await import("drizzle-orm");
       const { id, createdAt, updatedAt, ...body } = req.body;
@@ -20459,7 +20469,7 @@ Instruksi pembuatan dokumen:
   app.delete("/api/client-hub/followups/:id", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.user?.claims?.sub || req.user?.id;
-      const { db } = await import("../db");
+      const { db } = await import("./db");
       const { bjFollowups } = await import("../shared/schema");
       const { eq, and } = await import("drizzle-orm");
       await db.delete(bjFollowups)
@@ -20473,7 +20483,7 @@ Instruksi pembuatan dokumen:
     try {
       const userId = req.user?.claims?.sub || req.user?.id;
       if (!userId) return res.status(401).json({ error: "Unauthorized" });
-      const { db } = await import("../db");
+      const { db } = await import("./db");
       const { bjTenders } = await import("../shared/schema");
       const { eq, desc } = await import("drizzle-orm");
       const result = await db.select().from(bjTenders)
@@ -20487,7 +20497,7 @@ Instruksi pembuatan dokumen:
     try {
       const userId = req.user?.claims?.sub || req.user?.id;
       if (!userId) return res.status(401).json({ error: "Unauthorized" });
-      const { db } = await import("../db");
+      const { db } = await import("./db");
       const { bjTenders } = await import("../shared/schema");
       const { id, createdAt, updatedAt, ...body } = req.body;
       const [row] = await db.insert(bjTenders).values({ ...body, userId: String(userId) }).returning();
@@ -20498,7 +20508,7 @@ Instruksi pembuatan dokumen:
   app.put("/api/tender-mate/tenders/:id", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.user?.claims?.sub || req.user?.id;
-      const { db } = await import("../db");
+      const { db } = await import("./db");
       const { bjTenders } = await import("../shared/schema");
       const { eq, and } = await import("drizzle-orm");
       const { id, createdAt, updatedAt, ...body } = req.body;
@@ -20513,7 +20523,7 @@ Instruksi pembuatan dokumen:
   app.delete("/api/tender-mate/tenders/:id", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.user?.claims?.sub || req.user?.id;
-      const { db } = await import("../db");
+      const { db } = await import("./db");
       const { bjTenders } = await import("../shared/schema");
       const { eq, and } = await import("drizzle-orm");
       await db.delete(bjTenders)
@@ -20581,7 +20591,7 @@ Hasilkan dokumen lengkap yang siap ditandatangani. Gunakan format surat Indonesi
     try {
       const userId = req.user?.claims?.sub || req.user?.id;
       if (!userId) return res.status(401).json({ error: "Unauthorized" });
-      const { db } = await import("../db");
+      const { db } = await import("./db");
       const { bjClients } = await import("../shared/schema");
       const { eq, desc } = await import("drizzle-orm");
       const result = await db.select().from(bjClients).where(eq(bjClients.userId, String(userId))).orderBy(desc(bjClients.createdAt));
@@ -20593,7 +20603,7 @@ Hasilkan dokumen lengkap yang siap ditandatangani. Gunakan format surat Indonesi
     try {
       const userId = req.user?.claims?.sub || req.user?.id;
       if (!userId) return res.status(401).json({ error: "Unauthorized" });
-      const { db } = await import("../db");
+      const { db } = await import("./db");
       const { bjClients } = await import("../shared/schema");
       const [row] = await db.insert(bjClients).values({ ...req.body, userId: String(userId) }).returning();
       res.json(row);
@@ -20603,7 +20613,7 @@ Hasilkan dokumen lengkap yang siap ditandatangani. Gunakan format surat Indonesi
   app.put("/api/cert-tracker/clients/:id", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.user?.claims?.sub || req.user?.id;
-      const { db } = await import("../db");
+      const { db } = await import("./db");
       const { bjClients } = await import("../shared/schema");
       const { eq, and } = await import("drizzle-orm");
       const { id, createdAt, updatedAt, ...body } = req.body;
@@ -20618,7 +20628,7 @@ Hasilkan dokumen lengkap yang siap ditandatangani. Gunakan format surat Indonesi
   app.delete("/api/cert-tracker/clients/:id", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.user?.claims?.sub || req.user?.id;
-      const { db } = await import("../db");
+      const { db } = await import("./db");
       const { bjClients, bjCertificates } = await import("../shared/schema");
       const { eq, and } = await import("drizzle-orm");
       const clientId = Number(req.params.id);
@@ -20633,7 +20643,7 @@ Hasilkan dokumen lengkap yang siap ditandatangani. Gunakan format surat Indonesi
     try {
       const userId = req.user?.claims?.sub || req.user?.id;
       if (!userId) return res.status(401).json({ error: "Unauthorized" });
-      const { db } = await import("../db");
+      const { db } = await import("./db");
       const { bjClients, bjCertificates } = await import("../shared/schema");
       const { eq } = await import("drizzle-orm");
       // Join via clientId → userId scope
@@ -20648,7 +20658,7 @@ Hasilkan dokumen lengkap yang siap ditandatangani. Gunakan format surat Indonesi
 
   app.post("/api/cert-tracker/certificates", isAuthenticated, async (req: any, res: any) => {
     try {
-      const { db } = await import("../db");
+      const { db } = await import("./db");
       const { bjCertificates } = await import("../shared/schema");
       const { id, createdAt, updatedAt, ...body } = req.body;
       const [row] = await db.insert(bjCertificates).values(body).returning();
@@ -20658,7 +20668,7 @@ Hasilkan dokumen lengkap yang siap ditandatangani. Gunakan format surat Indonesi
 
   app.put("/api/cert-tracker/certificates/:id", isAuthenticated, async (req: any, res: any) => {
     try {
-      const { db } = await import("../db");
+      const { db } = await import("./db");
       const { bjCertificates } = await import("../shared/schema");
       const { eq } = await import("drizzle-orm");
       const { id, createdAt, updatedAt, ...body } = req.body;
@@ -20672,7 +20682,7 @@ Hasilkan dokumen lengkap yang siap ditandatangani. Gunakan format surat Indonesi
 
   app.delete("/api/cert-tracker/certificates/:id", isAuthenticated, async (req: any, res: any) => {
     try {
-      const { db } = await import("../db");
+      const { db } = await import("./db");
       const { bjCertificates } = await import("../shared/schema");
       const { eq } = await import("drizzle-orm");
       await db.delete(bjCertificates).where(eq(bjCertificates.id, Number(req.params.id)));

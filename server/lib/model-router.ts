@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 
 /**
  * MODEL ROUTER — Cost-Optimized Multi-Provider LLM Routing
@@ -120,12 +120,14 @@ export async function callWithRouter(
 
   if (choice.provider === "gemini") {
     const apiKey = process.env.GEMINI_API_KEY || process.env.AI_INTEGRATIONS_GEMINI_API_KEY;
-    const genai = new GoogleGenerativeAI(apiKey!);
-    const model = genai.getGenerativeModel({ model: choice.model });
+    const genai = new GoogleGenAI({ apiKey: apiKey! });
     const systemMsg = messages.find(m => m.role === "system")?.content ?? "";
     const userMsg = messages.filter(m => m.role !== "system").map(m => m.content).join("\n");
-    const result = await model.generateContent(`${systemMsg}\n\n${userMsg}`);
-    return { text: result.response.text(), choice };
+    const result = await genai.models.generateContent({
+      model: choice.model,
+      contents: `${systemMsg}\n\n${userMsg}`,
+    });
+    return { text: result.text ?? "", choice };
   }
 
   throw new Error(`Unknown provider: ${choice.provider}`);
