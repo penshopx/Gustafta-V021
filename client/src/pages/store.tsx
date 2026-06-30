@@ -352,7 +352,7 @@ export default function Store() {
               <div className="flex items-center justify-between rounded-xl bg-white border border-orange-200 px-4 py-3 shadow-sm">
                 <div>
                   <p className="text-xs font-bold text-gray-700">Biaya Setup <span className="font-normal text-gray-400">(opsional)</span></p>
-                  <p className="text-[11px] text-gray-400">Dikonfigurasi penuh oleh tim Gustafta</p>
+                  <p className="text-[11px] text-gray-400">Jasa konfigurasi oleh tim — lisensi sudah dihitung terpisah di atas</p>
                 </div>
                 <p className="text-base font-bold text-orange-600">{PRICING.setup.price}</p>
               </div>
@@ -651,7 +651,7 @@ export default function Store() {
                 <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 flex items-center justify-between">
                   <div>
                     <p className="text-gray-700 text-sm font-medium">Biaya Setup <span className="font-normal text-gray-400">(opsional)</span></p>
-                    <p className="text-[11px] text-gray-400">Dikonfigurasi penuh oleh tim Gustafta</p>
+                    <p className="text-[11px] text-gray-400">Jasa konfigurasi oleh tim — lisensi sudah dihitung terpisah di atas</p>
                   </div>
                   <span className="text-base font-bold text-orange-600">{PRICING.setup.price}</span>
                 </div>
