@@ -1,3 +1,4 @@
+- [Ebook 2 collaboration model](ebook2-collaboration-model.md) — TRILOGI Buku II (KOLABORASI) is the spec the Teams/Organization Builder implements: ◆ human-gate named per workflow, narrow roles, ~3 starter agents, log+escalation, success = time/judgment not headcount.
 - [Lucide Map icon crash](lucide-map-crash.md) — `{ Map }` from lucide-react (no alias) → global Map in prod build → blank screen crash.
 - [Orchestrator lookup pattern](orchestrator-lookup.md) — never trust hardcoded agent IDs; resolve via slug → ID-validated → word-boundary name fallback. Audit must mirror runtime, not raw ID lookup.
 - [Orchestrator endpoint conventions](orchestrator-endpoint-conventions.md) — SPA returns index HTML at HTTP 200 for unwired routes; orchestrators use 4 URL shapes — single-convention curl sweep gives false positives.
