@@ -304,6 +304,33 @@ const TEAM_TEMPLATES: { key: string; emoji: string; label: string; desc: string;
   },
 ];
 
+/* Panduan Operasi Tim (Tahap 36) — ringkasan teks polos dari state lokal, untuk disalin/disimpan.
+   Mewujudkan Prinsip 5 ebook ("log + ringkasan"): catatan siapa mengerjakan apa & keputusan
+   apa yang tetap di tangan manusia (◆). */
+const ROLE_NAME: Record<OrgMemberRole, string> = { orchestrator: "Ketua Tim", specialist: "Spesialis", support: "Pendukung" };
+const buildBriefText = (orgName: string, mission: string, members: MemberDraft[]): string => {
+  const lines: string[] = [];
+  lines.push(`PANDUAN OPERASI TIM — ${orgName.trim() || "Tim AI"}`);
+  if (mission.trim()) lines.push(`Misi: ${mission.trim()}`);
+  lines.push("", "ANGGOTA TIM:");
+  members.forEach((m, i) => {
+    lines.push(`${i + 1}. ${m.title.trim() || `Anggota ${m.localId}`} (${ROLE_NAME[m.role]})`);
+    if (m.responsibility.trim()) lines.push(`   Tugas: ${m.responsibility.trim()}`);
+  });
+  lines.push("", "KEPUTUSAN YANG TETAP DI TANGAN MANUSIA (◆):");
+  const gated = members.filter((m) => (m.gates ?? []).some((g) => g.trim()));
+  if (gated.length === 0) {
+    lines.push("- (Belum ada gerbang manusia yang ditetapkan.)");
+  } else {
+    gated.forEach((m) => {
+      (m.gates ?? []).filter((g) => g.trim()).forEach((g) => {
+        lines.push(`- [${m.title.trim() || m.localId}] ${g.trim()}`);
+      });
+    });
+  }
+  return lines.join("\n");
+};
+
 /* ── Component ─────────────────────────────────────────────────────────────── */
 export default function OrganizationBuilderPage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
@@ -372,6 +399,16 @@ export default function OrganizationBuilderPage() {
     setAnalysis(null); setPreview(null); setCreated(null); setCreateError(null);
     setStep("members");
     toast({ title: `Template dimuat: ${tpl.label}`, description: `${tpl.draft.members.length} anggota siap ditinjau. Sesuaikan sebelum tim dibuat.` });
+  };
+
+  /* Tahap 36: salin Panduan Operasi Tim ke clipboard. */
+  const copyBrief = async () => {
+    try {
+      await navigator.clipboard.writeText(buildBriefText(created?.organizationName || orgName, mission, members));
+      toast({ title: "Ringkasan disalin", description: "Panduan operasi tim sudah ada di clipboard." });
+    } catch {
+      toast({ title: "Gagal menyalin", description: "Browser memblokir akses clipboard. Salin manual dari layar.", variant: "destructive" });
+    }
   };
 
   const restoreDraft = () => {
@@ -1365,6 +1402,61 @@ export default function OrganizationBuilderPage() {
             {created.warnings.length > 0 && (
               <p className="text-xs text-amber-600 dark:text-amber-400 mb-4">⚠ {created.warnings.slice(0, 3).join(" · ")}</p>
             )}
+
+            {/* Panduan Operasi Tim (Tahap 36) — ringkasan untuk disimpan/dibagikan */}
+            <div className="text-left rounded-xl border bg-white dark:bg-card p-4 mt-2 mb-4" data-testid="card-operating-brief">
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <div className="flex items-center gap-2">
+                  <ClipboardList className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                  <h3 className="text-sm font-bold text-gray-900 dark:text-white">Panduan Operasi Tim</h3>
+                </div>
+                <Button size="sm" variant="outline" onClick={copyBrief} className="gap-1.5 h-7 text-[11px]" data-testid="btn-copy-brief">
+                  <Copy className="h-3 w-3" /> Salin
+                </Button>
+              </div>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-3">Simpan sebagai catatan: siapa mengerjakan apa, dan keputusan apa yang tetap di tangan Anda.</p>
+              <div className="space-y-2">
+                {members.map((m) => (
+                  <div key={m.localId} className="text-xs" data-testid={`brief-member-${m.localId}`}>
+                    <div className="flex items-center gap-1.5">
+                      {m.role === "orchestrator"
+                        ? <Crown className="h-3 w-3 text-amber-500 shrink-0" />
+                        : <Users className="h-3 w-3 text-violet-500 shrink-0" />}
+                      <span className="font-semibold text-gray-900 dark:text-white">{m.title.trim() || `Anggota ${m.localId}`}</span>
+                      <Badge variant="outline" className="text-[10px]">{ROLE_NAME[m.role]}</Badge>
+                    </div>
+                    {m.responsibility.trim() && (
+                      <p className="text-gray-600 dark:text-gray-400 ml-[18px] mt-0.5">{m.responsibility.trim()}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {(() => {
+                const gated = members.filter((m) => (m.gates ?? []).some((g) => g.trim()));
+                return (
+                  <div className="border-t mt-3 pt-3" data-testid="brief-gates">
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <span className="text-rose-500" aria-hidden="true">◆</span>
+                      <span className="text-xs font-semibold text-gray-900 dark:text-white">Keputusan yang tetap di tangan Anda</span>
+                    </div>
+                    {gated.length === 0 ? (
+                      <p className="text-[11px] text-gray-400">Belum ada gerbang manusia yang ditetapkan.</p>
+                    ) : (
+                      <ul className="space-y-1">
+                        {gated.flatMap((m) =>
+                          (m.gates ?? []).filter((g) => g.trim()).map((g, i) => (
+                            <li key={`${m.localId}-${i}`} className="text-[11px] text-gray-600 dark:text-gray-400">
+                              <span className="font-medium text-gray-700 dark:text-gray-300">{m.title.trim() || m.localId}:</span> {g.trim()}
+                            </li>
+                          ))
+                        )}
+                      </ul>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+
             <div className="flex flex-wrap gap-3 justify-center mt-4">
               <Link href="/dashboard">
                 <Button className="bg-emerald-600 hover:bg-emerald-500 text-white gap-2" data-testid="btn-to-dashboard">
