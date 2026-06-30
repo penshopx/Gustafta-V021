@@ -15,7 +15,7 @@ import {
 import {
   Users, Sparkles, ArrowRight, ArrowLeft, Loader2, Lock, Check, AlertTriangle,
   Plus, Trash2, Crown, Rocket, RotateCcw, Info, Network, ClipboardList, Wand2,
-  Download, Upload, Copy, X, Save, FolderOpen,
+  Download, Upload, Copy, X, Save, FolderOpen, MessageSquare,
 } from "lucide-react";
 import {
   createEmptyOrganizationBlueprint,
@@ -211,6 +211,8 @@ const pct = (n: number) => Math.round((n || 0) * 100);
 const DRAFT_KEY = "gustafta_org_builder_draft_v1";
 interface OrgDraft { orgName: string; mission: string; members: MemberDraft[]; maxSpecialists: number }
 interface SavedDraftSummary { id: number; name: string; mission: string; memberCount: number; updatedAt: string }
+/* Tahap 39: pertanyaan dialog org-level (cermin /api/organization/dialogue → nextQuestions). */
+interface OrgDialogueQuestion { id: string; field: "name" | "mission"; question: string; why?: string; inputType: "text" | "textarea" }
 const hasMeaningfulDraft = (d: Partial<OrgDraft>): boolean =>
   !!(d.orgName?.trim() || d.mission?.trim() ||
     (Array.isArray(d.members) && (d.members.length > 1 ||
@@ -358,6 +360,10 @@ export default function OrganizationBuilderPage() {
   /* Tahap 38: rancangan tersimpan yang SEDANG dibuka (agar "simpan" memperbarui, bukan menduplikasi). */
   const [activeDraftId, setActiveDraftId] = useState<number | null>(null);
   const [activeDraftName, setActiveDraftName] = useState<string>("");
+  /* Tahap 39: dialog org-level terpandu (tanya-jawab) di step intro. */
+  const [guided, setGuided] = useState(false);
+  const [guidedQs, setGuidedQs] = useState<OrgDialogueQuestion[]>([]);
+  const [guidedBusy, setGuidedBusy] = useState(false);
   const bootRef = useRef(false);
   const holdRef = useRef(false);
 
@@ -673,6 +679,24 @@ export default function OrganizationBuilderPage() {
             : "";
 
   /* ── API ── */
+  /* Tahap 39: dialog org-level terpandu. Ambil pertanyaan berikutnya (misi → nama)
+   * dari engine (Tahap 23) via /api/organization/dialogue. Jawaban diisi ke field
+   * nama/misi yang SAMA dengan jalur manual → kedua jalur tetap sinkron. */
+  const refreshGuided = async () => {
+    setGuidedBusy(true);
+    try {
+      const data: { nextQuestions?: OrgDialogueQuestion[] } = await apiRequest(
+        "POST", "/api/organization/dialogue", { name: orgName, mission },
+      );
+      setGuidedQs(Array.isArray(data.nextQuestions) ? data.nextQuestions : []);
+    } catch (e: any) {
+      toast({ title: "Gagal memuat panduan", description: e?.message || "Coba lagi.", variant: "destructive" });
+      setGuided(false);
+    } finally { setGuidedBusy(false); }
+  };
+
+  const startGuided = () => { setGuided(true); refreshGuided(); };
+
   /* Susun otomatis dari misi (Tahap 23 engine via /api/organization/suggest). */
   const composeFromMission = async () => {
     if (!mission.trim()) {
@@ -956,6 +980,79 @@ export default function OrganizationBuilderPage() {
               <Sparkles className="h-5 w-5 text-violet-600 dark:text-violet-400" />
               <h2 className="text-base font-bold text-gray-900 dark:text-white">Mulai dari Misi Tim</h2>
             </div>
+
+            {/* Tahap 39: Dialog terpandu (tanya-jawab) — mengisi nama & misi langkah demi langkah */}
+            <div className="rounded-xl border border-indigo-200 dark:border-indigo-500/30 bg-indigo-50 dark:bg-indigo-950/20 p-4" data-testid="card-guided">
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <MessageSquare className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                <span className="text-sm font-bold text-gray-900 dark:text-white">Dipandu langkah demi langkah</span>
+                <Badge variant="outline" className="text-[10px]">Baru</Badge>
+              </div>
+              {!guided ? (
+                <>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+                    Bingung mulai dari mana? Jawab beberapa pertanyaan singkat satu per satu, lalu kami susunkan timnya untuk Anda tinjau.
+                  </p>
+                  <Button onClick={startGuided} variant="outline" className="gap-2 border-indigo-300 dark:border-indigo-500/40 text-indigo-700 dark:text-indigo-300" data-testid="btn-start-guided">
+                    <MessageSquare className="h-4 w-4" /> Mulai dipandu
+                  </Button>
+                </>
+              ) : guidedBusy && guidedQs.length === 0 ? (
+                <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400" data-testid="guided-loading">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Memuat pertanyaan…
+                </div>
+              ) : guidedQs.length > 0 ? (
+                <div className="space-y-2" data-testid="guided-question">
+                  <Label className="text-sm font-medium text-gray-900 dark:text-white" data-testid="text-guided-question">{guidedQs[0].question}</Label>
+                  {guidedQs[0].why && <p className="text-[11px] text-gray-500 dark:text-gray-400">{guidedQs[0].why}</p>}
+                  {guidedQs[0].inputType === "textarea" ? (
+                    <Textarea
+                      value={guidedQs[0].field === "mission" ? mission : orgName}
+                      onChange={(e) => (guidedQs[0].field === "mission" ? setMission : setOrgName)(e.target.value)}
+                      className="min-h-24"
+                      placeholder="Tulis jawaban Anda…"
+                      data-testid="input-guided-answer"
+                    />
+                  ) : (
+                    <Input
+                      value={guidedQs[0].field === "mission" ? mission : orgName}
+                      onChange={(e) => (guidedQs[0].field === "mission" ? setMission : setOrgName)(e.target.value)}
+                      placeholder="Tulis jawaban Anda…"
+                      data-testid="input-guided-answer"
+                    />
+                  )}
+                  <div className="flex items-center gap-2 pt-1">
+                    <Button
+                      onClick={refreshGuided}
+                      disabled={guidedBusy || !(guidedQs[0].field === "mission" ? mission : orgName).trim()}
+                      className="bg-indigo-600 hover:bg-indigo-500 text-white gap-2"
+                      data-testid="btn-guided-next"
+                    >
+                      {guidedBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />} Lanjut
+                    </Button>
+                    <Button onClick={() => setGuided(false)} variant="ghost" size="sm" data-testid="btn-guided-close">Tutup panduan</Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2" data-testid="guided-ready">
+                  <p className="text-xs text-emerald-700 dark:text-emerald-300">
+                    Bagus! Nama &amp; misi tim sudah terisi. Sekarang kami bisa menyusun anggota timnya untuk Anda tinjau.
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={() => { setGuided(false); composeFromMission(); }}
+                      disabled={busy || !mission.trim()}
+                      className="bg-indigo-600 hover:bg-indigo-500 text-white gap-2"
+                      data-testid="btn-guided-compose"
+                    >
+                      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />} Susun tim sekarang
+                    </Button>
+                    <Button onClick={() => setGuided(false)} variant="ghost" size="sm" data-testid="btn-guided-close">Tutup panduan</Button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="space-y-1.5">
               <Label className="text-sm font-medium text-gray-900 dark:text-white">Nama Tim</Label>
               <Input value={orgName} onChange={(e) => setOrgName(e.target.value)} placeholder="Contoh: Tim Konsultan Konstruksi" data-testid="input-org-name" />

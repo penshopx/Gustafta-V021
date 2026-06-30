@@ -25,6 +25,7 @@ import { storage } from "./storage";
 import {
   organizationBlueprintSchema,
   lintOrganizationBlueprint,
+  createEmptyOrganizationBlueprint,
   type OrganizationBlueprint,
 } from "@shared/blueprint/organization-blueprint-schema";
 import { mapOrganizationToBuilder } from "./services/blueprint-engine/organization-mapping-engine";
@@ -32,6 +33,7 @@ import { applyOrganizationToBuilder } from "./services/blueprint-engine/organiza
 import {
   suggestTeamComposition,
   inferOrganization,
+  getOrgDialogueState,
 } from "./services/blueprint-engine/organization-dialogue-engine";
 
 /* ===========================================================================
@@ -162,6 +164,29 @@ export function registerOrganizationEngineRoutes(app: Express): void {
         : 3;
 
       res.json(suggestTeamComposition(mission, { maxSpecialists }));
+    }),
+  );
+
+  /**
+   * POST /api/organization/dialogue  (read-only)
+   * Body: { name?, mission? }
+   * → Wawancara org-level terpandu (Tahap 23 engine): kembalikan pertanyaan
+   *   berikutnya yang perlu ditanyakan (misi → nama) + status kesiapan menyusun
+   *   tim. TIDAK menulis apa pun & tidak membangun OrganizationBlueprint penuh —
+   *   klien mengisi jawaban ke field nama/misi yang sama dengan jalur manual.
+   */
+  app.post(
+    "/api/organization/dialogue",
+    isAuthenticated,
+    handler(async (req, res) => {
+      const name = typeof req.body?.name === "string" ? req.body.name.trim() : "";
+      const mission = typeof req.body?.mission === "string" ? req.body.mission.trim() : "";
+
+      const org = createEmptyOrganizationBlueprint();
+      if (name) org.meta.name = name;
+      if (mission) org.meta.mission = mission;
+
+      res.json(getOrgDialogueState(org));
     }),
   );
 
