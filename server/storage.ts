@@ -1165,7 +1165,9 @@ export class MemStorage implements IStorage {
       ? { ...existing, role: data.role, invitedBy: data.invitedBy }
       : {
           id: ++this.pendingInviteIdSeq,
-          agentId: parseInt(data.agentId) || 0,
+          // Sama seperti addOrUpdateCollaborator: numerik hanya bermakna bila id
+          // agen integer; UUID → 0 deterministik (parseInt(uuid) mentah = sampah).
+          agentId: /^\d+$/.test(data.agentId) ? parseInt(data.agentId, 10) : 0,
           rawAgentId: data.agentId,
           email,
           role: data.role,
