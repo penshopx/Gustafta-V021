@@ -1,14 +1,21 @@
 import type { Express, Request, Response } from "express";
 import { chatStorage } from "../chat/storage";
 import { openai, speechToText, voiceChatWithTextModel, convertWebmToWav } from "./client";
+import { isAuthenticated } from "../auth";
+
+function getUserId(req: Request): string | undefined {
+  return (req.user as any)?.claims?.sub || (req.user as any)?.id;
+}
 
 // Note: Set express.json({ limit: "50mb" }) for audio payloads.
 // Note: Use convertWebmToWav() to convert browser WebM to WAV before API calls.
 export function registerAudioRoutes(app: Express): void {
   // Get all conversations
-  app.get("/api/conversations", async (req: Request, res: Response) => {
+  app.get("/api/conversations", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const conversations = await chatStorage.getAllConversations();
+      const userId = getUserId(req);
+      if (!userId) return res.status(401).json({ error: "Unauthorized" });
+      const conversations = await chatStorage.getAllConversations(userId);
       res.json(conversations);
     } catch (error) {
       console.error("Error fetching conversations:", error);
@@ -17,10 +24,12 @@ export function registerAudioRoutes(app: Express): void {
   });
 
   // Get single conversation with messages
-  app.get("/api/conversations/:id", async (req: Request, res: Response) => {
+  app.get("/api/conversations/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
+      const userId = getUserId(req);
+      if (!userId) return res.status(401).json({ error: "Unauthorized" });
       const id = parseInt(req.params.id as string);
-      const conversation = await chatStorage.getConversation(id);
+      const conversation = await chatStorage.getConversation(id, userId);
       if (!conversation) {
         return res.status(404).json({ error: "Conversation not found" });
       }
@@ -33,10 +42,12 @@ export function registerAudioRoutes(app: Express): void {
   });
 
   // Create new conversation
-  app.post("/api/conversations", async (req: Request, res: Response) => {
+  app.post("/api/conversations", isAuthenticated, async (req: Request, res: Response) => {
     try {
+      const userId = getUserId(req);
+      if (!userId) return res.status(401).json({ error: "Unauthorized" });
       const { title } = req.body;
-      const conversation = await chatStorage.createConversation(title || "New Chat");
+      const conversation = await chatStorage.createConversation(title || "New Chat", userId);
       res.status(201).json(conversation);
     } catch (error) {
       console.error("Error creating conversation:", error);
@@ -45,10 +56,15 @@ export function registerAudioRoutes(app: Express): void {
   });
 
   // Delete conversation
-  app.delete("/api/conversations/:id", async (req: Request, res: Response) => {
+  app.delete("/api/conversations/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
+      const userId = getUserId(req);
+      if (!userId) return res.status(401).json({ error: "Unauthorized" });
       const id = parseInt(req.params.id as string);
-      await chatStorage.deleteConversation(id);
+      const deleted = await chatStorage.deleteConversation(id, userId);
+      if (!deleted) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting conversation:", error);
@@ -59,9 +75,15 @@ export function registerAudioRoutes(app: Express): void {
   // Send voice message and get streaming audio response
   // Uses gpt-4o-mini-transcribe for STT, gpt-audio-mini for voice response
   // For text model control, chain: speechToText() -> text model -> textToSpeech()
-  app.post("/api/conversations/:id/messages", async (req: Request, res: Response) => {
+  app.post("/api/conversations/:id/messages", isAuthenticated, async (req: Request, res: Response) => {
     try {
+      const userId = getUserId(req);
+      if (!userId) return res.status(401).json({ error: "Unauthorized" });
       const conversationId = parseInt(req.params.id as string);
+      const owned = await chatStorage.getConversation(conversationId, userId);
+      if (!owned) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
       const { audio, voice = "alloy", inputFormat = "wav" } = req.body;
 
       if (!audio) {
@@ -133,9 +155,15 @@ export function registerAudioRoutes(app: Express): void {
   // Voice chat using separate text model (GPT-5) + TTS pipeline
   // Streams sentences to TTS as they're generated for lower latency
   // Supports multilingual sentence detection via locale parameter
-  app.post("/api/conversations/:id/voice-stream", async (req: Request, res: Response) => {
+  app.post("/api/conversations/:id/voice-stream", isAuthenticated, async (req: Request, res: Response) => {
     try {
+      const userId = getUserId(req);
+      if (!userId) return res.status(401).json({ error: "Unauthorized" });
       const conversationId = parseInt(req.params.id as string);
+      const owned = await chatStorage.getConversation(conversationId, userId);
+      if (!owned) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
       const { audio, voice = "alloy", inputFormat = "wav", locale = "en" } = req.body;
 
       if (!audio) {
