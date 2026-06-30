@@ -175,7 +175,7 @@ export default function OnboardingPage() {
             Mulai Ekosistem Digital Anda
           </h1>
           <p className="text-muted-foreground max-w-xl mx-auto">
-            Setiap paket terdiri dari <strong>Biaya Setup</strong> (satu kali) + <strong>Biaya Bulanan</strong>. 
+            Setiap paket terdiri dari <strong>Biaya Setup</strong> (satu kali, sudah termasuk lisensi + Starter Kit) + <strong>Biaya Bulanan</strong>. 
             Pilih paket yang sesuai kebutuhan, tim kami akan menghubungi Anda dalam 24 jam.
           </p>
         </div>
