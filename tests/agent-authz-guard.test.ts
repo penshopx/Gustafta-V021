@@ -148,6 +148,7 @@ const CHAT_READ_GUARDED: Array<[string, string]> = [
   ["GET /api/messages/:agentId/session/:sessionId", 'app.get("/api/messages/:agentId/session/:sessionId"'],
   ["GET /api/messages/:agentId/export/json", 'app.get("/api/messages/:agentId/export/json"'],
   ["GET /api/messages/:agentId/export/csv", 'app.get("/api/messages/:agentId/export/csv"'],
+  ["DELETE /api/messages/:agentId", 'app.delete("/api/messages/:agentId"'],
 ];
 
 for (const [label, literal] of CHAT_READ_GUARDED) {

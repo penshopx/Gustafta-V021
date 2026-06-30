@@ -109,7 +109,7 @@ export default function CrmSalesClawChat() {
       const orchMs=Date.now()-orchStart;
       setMessages(prev=>{const u=[...prev];const l=u[u.length-1];if(l.role==="assistant")u[u.length-1]={...l,isStreaming:false,subAgents:Array.from(subAgentMap.values()),orchestrationMs:orchMs};return u;});
     }catch{setMessages(prev=>{const u=[...prev];const l=u[u.length-1];if(l.role==="assistant")u[u.length-1]={...l,content:"Maaf, terjadi kesalahan. Silakan coba lagi.",isStreaming:false};return u;});}
-    finally{setStreaming(false);inputRef.current?.focus();}
+    finally{setStreaming(false);}
   }
   const ready=!isLoading&&agentId!==null;
   return (

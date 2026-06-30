@@ -1103,7 +1103,11 @@ export class MemStorage implements IStorage {
       ? { ...existing, role: data.role, invitedBy: data.invitedBy }
       : {
           id: ++this.collaboratorIdSeq,
-          agentId: parseInt(data.agentId) || 0,
+          // Numeric agentId hanya bermakna bila id agen memang integer (paritas
+          // DatabaseStorage). Untuk id UUID (MemStorage) → 0; JANGAN parseInt
+          // mentah karena UUID berawalan digit (mis. "8e4f…") menghasilkan angka
+          // sampah (8) yang non-deterministik. Sumber kebenaran authz = rawAgentId.
+          agentId: /^\d+$/.test(data.agentId) ? parseInt(data.agentId, 10) : 0,
           rawAgentId: data.agentId,
           userId: data.userId,
           role: data.role,
