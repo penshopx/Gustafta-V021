@@ -5,6 +5,7 @@ Gustafta is an AI chatbot builder platform that enables users to create, configu
 - **Run Development Server**: `npm run dev`
 - **Build**: `npm run build`
 - **Typecheck**: `npm run typecheck`
+- **Run Tests**: `npx tsx --test tests/*.test.ts` (Node built-in `node:test`; tidak ada script `npm test`). Mis. regresi authz: `npx tsx --test tests/agent-authz-guard.test.ts`
 - **Codegen (Drizzle)**: `npx drizzle-kit generate`
 - **DB Push (Drizzle)**: `npx drizzle-kit push`
 - **Environment Variables**: `MIDTRANS_SERVER_KEY`, `MIDTRANS_CLIENT_KEY` (for Midtrans payment integration)
