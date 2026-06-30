@@ -163,6 +163,48 @@ for (const [label, literal] of CHAT_READ_GUARDED) {
   });
 }
 
+// ── 2d. Knowledge Base: mutasi KB = mutasi config agen → wajib assertCanMutateAgent ──
+// KB endpoint dulu hanya `isAuthenticated` → user mana pun bisa baca/tulis/hapus KB
+// agen orang lain atau ~900 agen sistem (IDOR + abuse biaya RAG). Mutasi KB
+// mengikuti hak EDIT KONFIGURASI agen (owner/editor/admin).
+const KB_MUTATE_GUARDED: Array<[string, string]> = [
+  ["POST /api/knowledge-base", 'app.post("/api/knowledge-base"'],
+  ["PATCH /api/knowledge-base/:id", 'app.patch("/api/knowledge-base/:id"'],
+  ["DELETE /api/knowledge-base/:id", 'app.delete("/api/knowledge-base/:id"'],
+  ["POST /api/knowledge-base/:id/reprocess", 'app.post("/api/knowledge-base/:id/reprocess"'],
+  ["POST /api/knowledge-base/:id/supersede", 'app.post("/api/knowledge-base/:id/supersede"'],
+];
+
+for (const [label, literal] of KB_MUTATE_GUARDED) {
+  test(`${label} dijaga assertCanMutateAgent (anti IDOR KB / abuse biaya RAG)`, () => {
+    const block = routeBlock(literal);
+    assert.match(
+      block,
+      /assertCanMutateAgent\s*\(\s*req\s*,/,
+      `Handler ${label} WAJIB memanggil assertCanMutateAgent(req, agent) — KB adalah config privat agen; ` +
+        "tanpa ini user mana pun yang login bisa mengubah pengetahuan agen orang lain / agen sistem.",
+    );
+  });
+}
+
+// ── 2e. Knowledge Base: baca KB/stat = baca config privat → wajib assertCanAccessAgentChat ──
+const KB_READ_GUARDED: Array<[string, string]> = [
+  ["GET /api/knowledge-base/:agentId", 'app.get("/api/knowledge-base/:agentId"'],
+  ["GET /api/knowledge-base/:agentId/rag-stats", 'app.get("/api/knowledge-base/:agentId/rag-stats"'],
+  ["GET /api/knowledge-base/:id/versions", 'app.get("/api/knowledge-base/:id/versions"'],
+];
+
+for (const [label, literal] of KB_READ_GUARDED) {
+  test(`${label} dijaga assertCanAccessAgentChat (anti baca KB agen privat orang lain)`, () => {
+    const block = routeBlock(literal);
+    assert.match(
+      block,
+      /assertCanAccessAgentChat\s*\(\s*req\s*,/,
+      `Handler ${label} WAJIB memanggil assertCanAccessAgentChat(req, agent) sebelum mengembalikan daftar/stat KB.`,
+    );
+  });
+}
+
 // ── 3. Ekspor dokumen (ebook/docgen): gate anti-eksfiltrasi KB agen privat ──
 // Berbeda dari grup ketat: ekspor "render" ini SENGAJA tetap terbuka untuk
 // agen sistem bersama (tanpa userId) & agen publik (isPublic). Yang wajib

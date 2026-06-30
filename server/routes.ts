@@ -2385,8 +2385,24 @@ SKK berlaku 5 tahun. Perpanjangan via: Pengembangan Keprofesian Berkelanjutan (P
   // ==================== Knowledge Base Routes (Protected) ====================
 
   // Get knowledge bases for an agent
+  // Helper: ambil agen pemilik sebuah KB (lewat knowledgeBases.agentId).
+  // Dipakai guard mutasi KB agar otorisasi mengikuti kepemilikan AGEN, bukan
+  // sekadar "sudah login" (mencegah IDOR: user lain mengedit KB agen orang lain
+  // atau ~900 agen sistem). Return null kalau KB / agen tidak ditemukan.
+  async function getAgentForKB(kbId: string): Promise<any | null> {
+    const numId = parseInt(kbId);
+    if (Number.isNaN(numId)) return null;
+    const [row] = await db.select().from(knowledgeBases).where(eq(knowledgeBases.id, numId));
+    if (!row) return null;
+    return storage.getAgent(String((row as any).agentId));
+  }
+
   app.get("/api/knowledge-base/:agentId", isAuthenticated, async (req, res) => {
     try {
+      const agent = await storage.getAgent(req.params.agentId as string);
+      if (!agent) return res.status(404).json({ error: "Agent not found" });
+      const auth = await assertCanAccessAgentChat(req, agent);
+      if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
       const kbs = await storage.getKnowledgeBases(req.params.agentId as string);
       res.json(kbs);
     } catch (error) {
@@ -2401,6 +2417,11 @@ SKK berlaku 5 tahun. Perpanjangan via: Pengembangan Keprofesian Berkelanjutan (P
       if (!parsed.success) {
         return res.status(400).json({ error: parsed.error.message });
       }
+      // Otorisasi: hanya owner/editor/admin dari AGEN target boleh menambah KB.
+      const targetAgent = await storage.getAgent(String(parsed.data.agentId));
+      if (!targetAgent) return res.status(404).json({ error: "Agent not found" });
+      const createAuth = await assertCanMutateAgent(req, targetAgent);
+      if (!createAuth.ok) return res.status(createAuth.status).json({ error: createAuth.error });
       const kb = await storage.createKnowledgeBase({
         ...parsed.data,
         processingStatus: "processing",
@@ -2535,6 +2556,10 @@ SKK berlaku 5 tahun. Perpanjangan via: Pengembangan Keprofesian Berkelanjutan (P
   // Update knowledge base
   app.patch("/api/knowledge-base/:id", isAuthenticated, async (req, res) => {
     try {
+      const ownerAgent = await getAgentForKB(req.params.id as string);
+      if (!ownerAgent) return res.status(404).json({ error: "Knowledge base not found" });
+      const editAuth = await assertCanMutateAgent(req, ownerAgent);
+      if (!editAuth.ok) return res.status(editAuth.status).json({ error: editAuth.error });
       const kb = await storage.updateKnowledgeBase(req.params.id as string, {
         ...req.body,
         processingStatus: "processing",
@@ -2578,6 +2603,10 @@ SKK berlaku 5 tahun. Perpanjangan via: Pengembangan Keprofesian Berkelanjutan (P
   // Delete knowledge base
   app.delete("/api/knowledge-base/:id", isAuthenticated, async (req, res) => {
     try {
+      const ownerAgent = await getAgentForKB(req.params.id as string);
+      if (!ownerAgent) return res.status(404).json({ error: "Knowledge base not found" });
+      const delAuth = await assertCanMutateAgent(req, ownerAgent);
+      if (!delAuth.ok) return res.status(delAuth.status).json({ error: delAuth.error });
       const deleted = await storage.deleteKnowledgeBase(req.params.id as string);
       if (!deleted) {
         return res.status(404).json({ error: "Knowledge base not found" });
@@ -2598,6 +2627,11 @@ SKK berlaku 5 tahun. Perpanjangan via: Pengembangan Keprofesian Berkelanjutan (P
       if (!kb) {
         return res.status(404).json({ error: "Knowledge base not found" });
       }
+      // Otorisasi: hanya owner/editor/admin agen pemilik KB boleh reproses (jalankan biaya RAG).
+      const reprocAgent = await storage.getAgent(kb.agentId);
+      if (!reprocAgent) return res.status(404).json({ error: "Agent not found" });
+      const reprocAuth = await assertCanMutateAgent(req, reprocAgent);
+      if (!reprocAuth.ok) return res.status(reprocAuth.status).json({ error: reprocAuth.error });
 
       await storage.updateKnowledgeBase(kb.id, { processingStatus: "processing" });
       res.json({ status: "processing", message: "RAG reprocessing started" });
@@ -2639,6 +2673,10 @@ SKK berlaku 5 tahun. Perpanjangan via: Pengembangan Keprofesian Berkelanjutan (P
   app.get("/api/knowledge-base/:agentId/rag-stats", isAuthenticated, async (req, res) => {
     try {
       const agentId = req.params.agentId as string;
+      const statAgent = await storage.getAgent(agentId);
+      if (!statAgent) return res.status(404).json({ error: "Agent not found" });
+      const statAuth = await assertCanAccessAgentChat(req, statAgent);
+      if (!statAuth.ok) return res.status(statAuth.status).json({ error: statAuth.error });
       const chunks = await storage.getChunksByAgent(agentId);
       const kbs = await storage.getKnowledgeBases(agentId);
       const stats = {
@@ -2712,24 +2750,6 @@ SKK berlaku 5 tahun. Perpanjangan via: Pengembangan Keprofesian Berkelanjutan (P
     }
   });
 
-  // Helper: cek ownership KB lewat agent.userId. Return null kalau OK,
-  // atau {status, error} kalau tidak boleh akses.
-  async function assertKBOwnership(kbId: string, req: any): Promise<{ status: number; error: string } | null> {
-    const userId = req.user?.claims?.sub || (req.user as any)?.id;
-    if (!userId) return { status: 401, error: "Unauthorized" };
-    // Trace KB → Agent → owner. Pakai getKBVersionHistory yg sudah meng-include
-    // KB target (predecessor + self + successors). Cukup ambil entry yg id-nya cocok.
-    const all = await storage.getKBVersionHistory(kbId);
-    const target = all.find(k => k.id === kbId);
-    if (!target) return { status: 404, error: "Knowledge base not found" };
-    const agent = await storage.getAgent(target.agentId);
-    if (!agent) return { status: 404, error: "Agent not found" };
-    if ((agent as any).userId && (agent as any).userId !== userId) {
-      return { status: 403, error: "Forbidden — bukan pemilik KB" };
-    }
-    return null;
-  }
-
   // KB by taxonomy node — auth wajib, hasil DI-FILTER hanya milik user (ownership lewat agent).
   app.get("/api/taxonomy/:id/knowledge-bases", isAuthenticated, async (req, res) => {
     try {
@@ -2756,8 +2776,10 @@ SKK berlaku 5 tahun. Perpanjangan via: Pengembangan Keprofesian Berkelanjutan (P
 
   app.get("/api/knowledge-base/:id/versions", isAuthenticated, async (req, res) => {
     try {
-      const denial = await assertKBOwnership(req.params.id as string, req);
-      if (denial) return res.status(denial.status).json({ error: denial.error });
+      const verAgent = await getAgentForKB(req.params.id as string);
+      if (!verAgent) return res.status(404).json({ error: "Knowledge base not found" });
+      const verAuth = await assertCanAccessAgentChat(req, verAgent);
+      if (!verAuth.ok) return res.status(verAuth.status).json({ error: verAuth.error });
       const history = await storage.getKBVersionHistory(req.params.id as string);
       res.json(history);
     } catch (error) {
@@ -2770,11 +2792,15 @@ SKK berlaku 5 tahun. Perpanjangan via: Pengembangan Keprofesian Berkelanjutan (P
       const oldId = req.params.id;
       const newId = (req.body?.newKbId ?? "").toString();
       if (!newId) return res.status(400).json({ error: "newKbId is required" });
-      // Cek ownership baik KB lama maupun KB pengganti — keduanya harus milik user.
-      const denialOld = await assertKBOwnership(oldId as string, req);
-      if (denialOld) return res.status(denialOld.status).json({ error: denialOld.error });
-      const denialNew = await assertKBOwnership(newId as string, req);
-      if (denialNew) return res.status(denialNew.status).json({ error: denialNew.error });
+      // Mutasi: hanya owner/editor/admin agen pemilik. Cek KEDUA KB (lama & pengganti).
+      const oldAgent = await getAgentForKB(oldId as string);
+      if (!oldAgent) return res.status(404).json({ error: "Knowledge base not found" });
+      const oldAuth = await assertCanMutateAgent(req, oldAgent);
+      if (!oldAuth.ok) return res.status(oldAuth.status).json({ error: oldAuth.error });
+      const newAgent = await getAgentForKB(newId as string);
+      if (!newAgent) return res.status(404).json({ error: "Knowledge base not found" });
+      const newAuth = await assertCanMutateAgent(req, newAgent);
+      if (!newAuth.ok) return res.status(newAuth.status).json({ error: newAuth.error });
       const updated = await storage.supersedeKnowledgeBase(oldId as string, newId as string);
       if (!updated) return res.status(404).json({ error: "KB not found" });
       res.json(updated);
@@ -16328,6 +16354,20 @@ Return HANYA JSON berikut (tanpa penjelasan lain):
   // Set this URL in app.scalev.id → Settings → Developers → Webhook URL
   app.post("/api/webhooks/scalev", async (req: any, res: any) => {
     try {
+      // Verifikasi shared-secret HANYA bila SCALEV_WEBHOOK_SECRET diset (opsional,
+      // non-breaking). Mencegah pihak luar mengirim order palsu (mis. memicu clone
+      // Premium Privat). Kalau secret belum diset, perilaku lama dipertahankan.
+      const scalevSecret = process.env.SCALEV_WEBHOOK_SECRET;
+      if (scalevSecret) {
+        const provided = (req.headers["x-scalev-secret"] as string)
+          || (req.headers["x-webhook-secret"] as string)
+          || (req.query?.secret as string)
+          || "";
+        if (provided !== scalevSecret) {
+          console.warn("[Scalev Webhook] Invalid/missing secret — rejected");
+          return res.status(401).json({ error: "Invalid secret" });
+        }
+      }
       const payload = req.body;
       console.log("[Scalev Webhook]", JSON.stringify(payload).slice(0, 500));
 
@@ -16419,6 +16459,43 @@ Return HANYA JSON berikut (tanpa penjelasan lain):
 
       if (matchedMapping) {
         if (matchedMapping.type === "chatbot" && matchedMapping.agentId) {
+          // ── Premium Privat: tiap pembeli dapat SALINAN privat sendiri ──────────
+          // Kalau agen master ber-premiumClass "private", jangan beri akses ke bot
+          // bersama — clone untuk pembeli. Kalau pembeli belum punya akun, simpan
+          // sebagai pending delivery yang otomatis di-clone saat mereka mendaftar.
+          let masterAgent: any = null;
+          try { masterAgent = await storage.getAgent(String(matchedMapping.agentId)); } catch {}
+          if (masterAgent && (masterAgent as any).premiumClass === "private") {
+            const buyer = customerEmail ? await storage.getUserByEmail(customerEmail) : undefined;
+            if (buyer) {
+              try {
+                const existing = await storage.getCloneForOwner(matchedMapping.agentId, buyer.id);
+                const clone = existing || await storage.cloneAgentForOwner(matchedMapping.agentId, buyer.id);
+                console.log(`[Scalev] Premium Privat ${existing ? "sudah ada" : "clone"} #${clone.id} untuk ${customerEmail} (user ${buyer.id})`);
+              } catch (cloneErr: any) {
+                // Clone gagal (mis. error DB) — JANGAN hilangkan pembelian. Antrikan
+                // pending agar di-clone otomatis saat pembeli login berikutnya.
+                console.error(`[Scalev] Gagal clone Premium Privat untuk ${customerEmail}, di-antri pending:`, cloneErr?.message);
+                try { await storage.addPendingPremiumDelivery({ masterAgentId: matchedMapping.agentId, email: customerEmail, source: "scalev" }); } catch {}
+              }
+            } else if (customerEmail) {
+              await storage.addPendingPremiumDelivery({ masterAgentId: matchedMapping.agentId, email: customerEmail, source: "scalev" });
+              console.log(`[Scalev] Premium Privat pending (belum daftar) untuk ${customerEmail} → master #${matchedMapping.agentId}`);
+            }
+            // Rekam order untuk audit; lewati grant akses bot bersama.
+            await storage.createStoreOrder({
+              productId: matchedMapping.agentId,
+              customerName: customerName || "Customer",
+              customerEmail: customerEmail,
+              customerPhone: customerPhone,
+              amount: Math.round(grossRevenue),
+              midtransOrderId: `scalev_${orderId}`,
+              accessToken,
+              status: "paid",
+            });
+            return res.status(200).json({ received: true, type: "premium_private" });
+          }
+          // ──────────────────────────────────────────────────────────────────────
           // Create store order for chatbot access (for embed delivery)
           await storage.createStoreOrder({
             productId: matchedMapping.agentId,

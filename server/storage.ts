@@ -168,6 +168,11 @@ export interface IStorage {
   removePendingInvite(agentId: string, email: string): Promise<boolean>;
   applyPendingInvitesForUser(userId: string, email: string): Promise<AppliedInviteGrant[]>;
 
+  // Pending Premium Privat deliveries (buyer paid, no account yet → clone at signup)
+  addPendingPremiumDelivery(data: { masterAgentId: number; email: string; source?: string }): Promise<void>;
+  getCloneForOwner(masterAgentId: number, ownerUserId: string): Promise<Agent | undefined>;
+  applyPendingPremiumDeliveriesForUser(userId: string, email: string): Promise<Agent[]>;
+
   // Notification methods (in-app notices, e.g. agent shared)
   createNotification(data: InsertNotification): Promise<Notification>;
   listNotificationsForUser(userId: string, limit?: number): Promise<Notification[]>;
@@ -1227,6 +1232,19 @@ export class MemStorage implements IStorage {
       });
     }
     return grants;
+  }
+
+  // Pending Premium Privat deliveries — MemStorage stubs (DB-backed in prod).
+  async addPendingPremiumDelivery(_data: { masterAgentId: number; email: string; source?: string }): Promise<void> {
+    return;
+  }
+
+  async getCloneForOwner(_masterAgentId: number, _ownerUserId: string): Promise<Agent | undefined> {
+    return undefined;
+  }
+
+  async applyPendingPremiumDeliveriesForUser(_userId: string, _email: string): Promise<Agent[]> {
+    return [];
   }
 
   // Notification methods

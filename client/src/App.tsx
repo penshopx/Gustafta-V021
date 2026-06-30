@@ -46,6 +46,7 @@ import BlueprintBuilderPage from "@/pages/blueprint-builder";
 import BlueprintSayaPage from "@/pages/blueprint-saya";
 import MulticlawPage from "@/pages/multiclaw";
 import StarterKitPage from "@/pages/starter-kit";
+import PerkuatPengetahuanPage from "@/pages/perkuat-pengetahuan";
 import GustaFtaFrameworkPage from "@/pages/gustafta-framework";
 import IndustriPage from "@/pages/industri";
 import AffiliatePage from "@/pages/affiliate";
@@ -440,6 +441,7 @@ function Router() {
       <Route path="/blueprint-builder" component={BlueprintBuilderPage} />
       <Route path="/blueprint-saya" component={BlueprintSayaPage} />
       <Route path="/starter-kit" component={StarterKitPage} />
+      <Route path="/perkuat-pengetahuan" component={PerkuatPengetahuanPage} />
       <Route path="/framework" component={GustaFtaFrameworkPage} />
       <Route path="/industri" component={IndustriPage} />
       <Route path="/affiliate" component={AffiliatePage} />
