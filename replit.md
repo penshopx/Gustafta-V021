@@ -49,7 +49,7 @@ Gustafta is an AI chatbot builder platform that enables users to create, configu
 - **LexCom Legal AI**: Integrated system with 12 specialized legal agents and a floating "Chaesa Lexbot" widget.
 - **Federation Layer (131 hubs — COMPLETE)**: 131 hub orchestrators with `agenticSubAgents` configured, SYNTHESIS ORCHESTRATOR marker, SCORECARD/WIN PROBABILITY 4-dimension table, T5-HANDOVER, F3-FALLBACK MODE, MASTER STANDAR v2.0 — semua 129/129 complete.
 - **ABD v1.1 Upgrade (934/944 agents — COMPLETE)**: SBU (339) + SKK (53) + ASKOM/LSP (52) + Universal (609). Marker per kategori: `SBU_ABD_v1.1_UPGRADED`, `SKK_ABD_v1.1_UPGRADED`, `ASKOM_ABD_v1.1_UPGRADED`, `ABD_v1.1_UPGRADED`. 10 agen sisa seeded ABD-compliant by design.
-- **Mini Apps (45 types — COMPLETE)**: Registered in schema.ts, mini-apps-panel.tsx, server/routes.ts. Hub cards: violet Kreator, emerald Bekerja, orange Berusaha.
+- **Mini Apps (43 types — COMPLETE)**: Registered in schema.ts (`miniAppTypeSchema`) & mini-apps-panel.tsx (both 43, in sync). 26 tipe AI-powered punya handler di `/api/mini-app/:id/run` (server/routes.ts); 17 tipe "basic" (checklist, calculator, dll.) berfungsi sebagai template data terstruktur tanpa AI-run (by design). Hub cards: violet Kreator, emerald Bekerja, orange Berusaha.
 - **Dynamic Knowledge Base**: Hierarchical classification, versioning, source attribution, multiple upload types.
 - **Chatbot Templates & Gustafta Store**: Public marketplace with payment integration.
 - **Gustafta Apps Feature Access System**: Plan-gated. Tiers: `free`(0) `starter`(1) `profesional`(2) `bisnis`(3) `enterprise`(4). Source: `shared/feature-plans.ts`. Hook: `use-feature-access.ts`. Gate: `feature-gate.tsx`. Admin activates via `POST /api/subscriptions/activate/:id`.
