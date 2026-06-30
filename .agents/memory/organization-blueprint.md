@@ -77,3 +77,8 @@ Tombol per-kartu anggota di bagian instruksi sistem lanjutan: tulis ulang system
 - **Isolasi satu anggota.** `regenerateMember(localId)`: `buildOrg(false)` → kosongkan HANYA `systemPrompt` anggota target di payload → POST `/infer` → `patchMember(localId, { systemPrompt })`. Anggota lain & judul/tugas target TAK disentuh. **Why:** /infer mengembalikan semua anggota; kalau dipakai mempatch banyak, hilang granularitas. **How to apply:** untuk aksi per-anggota, kosongkan field target SAJA di payload + patch hanya target.
 - **Overwrite di sini DISENGAJA** (beda dari "Sempurnakan Detail" yang fill-empties). Aksi eksplisit per-kartu = user minta tulis ulang instruksi anggota itu; boleh menimpa systemPrompt lama. Jangan ubah jadi bulk-overwrite. Label toggle: "Buatkan otomatis" (kosong) vs "Tulis ulang otomatis" (sudah ada isi).
 - Tetap read-only; flow analyze→preview→create utuh.
+
+## Tahap 28 — Bagan Tim / visual org chart (done)
+Blok presentasional MURNI di step review wizard: Ketua Tim di atas → konektor → anggota spesialis/support di bawah. Diturunkan SEPENUHNYA dari state lokal `members` (role+title), tanpa panggilan API/server/engine.
+- **Diturunkan dari `members`, bukan `analysis.plan.wiring`.** Aman SELAMA topologi star (tepat 1 lead, gating wizard menjamin). **Why:** chart hanya pratinjau komposisi draft saat ini; wiring deterministik star. **How to apply:** jika kelak wiring jadi non-star/multi-hop, pindahkan sumber chart ke `analysis.plan.wiring` agar tak drift dari plan teranalisis.
+- testid: `card-org-chart`, `chart-lead`, `chart-node-{localId}`.
