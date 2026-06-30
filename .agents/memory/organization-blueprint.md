@@ -82,3 +82,9 @@ Tombol per-kartu anggota di bagian instruksi sistem lanjutan: tulis ulang system
 Blok presentasional MURNI di step review wizard: Ketua Tim di atas → konektor → anggota spesialis/support di bawah. Diturunkan SEPENUHNYA dari state lokal `members` (role+title), tanpa panggilan API/server/engine.
 - **Diturunkan dari `members`, bukan `analysis.plan.wiring`.** Aman SELAMA topologi star (tepat 1 lead, gating wizard menjamin). **Why:** chart hanya pratinjau komposisi draft saat ini; wiring deterministik star. **How to apply:** jika kelak wiring jadi non-star/multi-hop, pindahkan sumber chart ke `analysis.plan.wiring` agar tak drift dari plan teranalisis.
 - testid: `card-org-chart`, `chart-lead`, `chart-node-{localId}`.
+
+## Tahap 29 — Auto-simpan rancangan tim (draft localStorage) (done)
+Wizard `/organization-builder` menyimpan draft (nama, misi, anggota, maxSpecialists) ke localStorage `gustafta_org_builder_draft_v1`; saat dibuka lagi tawarkan banner "Lanjutkan / Mulai baru". Murni klien.
+- **Pola gating dua-ref untuk auto-save + restore-banner.** `bootRef` (sudah baca storage) + `holdRef` (tahan persist selama menunggu keputusan restore). **Why:** persist effect & mount-load effect jalan di commit yang sama; tanpa `holdRef` yang di-set DI DALAM mount effect (deklarasi SEBELUM persist effect), persist effect (closure restorable=null) akan menghapus draft dari storage sebelum user menekan "Lanjutkan". **How to apply:** mount-load effect HARUS dideklarasikan sebelum persist effect, set `holdRef.current=true` sinkron sebelum `setRestorable`, dan persist effect early-return `if (!bootRef.current || holdRef.current)`. Refs (bukan state) supaya dibaca sinkron tanpa churn re-render.
+- Restore WAJIB sanitasi bentuk anggota dari JSON (role di-whitelist, field string aman, clamp maxSpecialists 1–5) — localStorage bisa rusak/diutak-atik.
+- Draft dihapus saat create sukses & reset(); semua akses localStorage dibungkus try/catch.
