@@ -1847,6 +1847,42 @@ export async function registerRoutes(
     }
   });
 
+  // Kirim "salinan privat" sebuah agen premium ke seorang pembeli (per email).
+  // Hanya admin. Menggandakan agen master + KB-nya, lalu menjadikan pembeli
+  // sebagai pemilik agar ia bisa menyegarkan pengetahuannya sendiri.
+  app.post("/api/admin/agents/:id/deliver-private", requireAdmin, async (req: any, res) => {
+    try {
+      const masterId = parseInt(req.params.id as string);
+      if (Number.isNaN(masterId)) {
+        return res.status(400).json({ error: "ID agen tidak valid" });
+      }
+      const email = String(req.body?.email || "").trim().toLowerCase();
+      if (!email) {
+        return res.status(400).json({ error: "Email pembeli wajib diisi" });
+      }
+      const master = await storage.getAgent(String(masterId));
+      if (!master) {
+        return res.status(404).json({ error: "Agen master tidak ditemukan" });
+      }
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(404).json({
+          error: `Pengguna dengan email ${email} belum terdaftar. Minta mereka mendaftar dulu, lalu ulangi.`,
+        });
+      }
+      const clone = await storage.cloneAgentForOwner(masterId, user.id);
+      console.log(`[deliver-private] Master #${masterId} → salinan privat #${clone.id} untuk ${email} (user ${user.id})`);
+      res.json({
+        success: true,
+        agent: clone,
+        message: `Salinan privat "${clone.name}" telah dikirim ke ${email}. Mereka bisa membukanya di dashboard dan memperkuat pengetahuannya sendiri.`,
+      });
+    } catch (e: any) {
+      console.error("[deliver-private] error:", e?.message);
+      res.status(500).json({ error: e?.message || "Gagal mengirim salinan privat" });
+    }
+  });
+
   // Resolve series name for an agent by walking toolbox -> bigIdea -> series.
   // Dipakai oleh endpoint policy-defaults & policy-preview agar template
   // Kebijakan Agen yang dipakai konsisten dengan kategori series-nya.
