@@ -264,6 +264,8 @@ export function registerBlueprintEngineRoutes(app: Express): void {
         agentId: mode === "update" ? agentId : undefined,
         dryRun,
         mapping: req.body?.mapping,
+        // Mode create: set kepemilikan agen ke user pembuat (agar muncul di dashboard-nya).
+        ownerUserId: mode === "create" ? userId : undefined,
       });
 
       res.json(result);

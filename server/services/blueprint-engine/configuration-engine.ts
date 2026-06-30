@@ -84,6 +84,8 @@ export interface ConfigurationOptions {
   mapping?: MappingOptions;
   /** Kembalikan rencana tanpa menulis (default false). */
   dryRun?: boolean;
+  /** Jika diisi (khusus mode "create"), agen baru di-set kepemilikannya ke user ini. */
+  ownerUserId?: string;
   /** Storage kustom (default: singleton aplikasi). */
   storage?: ConfigStorage;
 }
@@ -140,7 +142,12 @@ export async function applyBlueprintToBuilder(
     }
     let agent: Agent;
     try {
-      agent = await storage.createAgent(parsed.data);
+      // insertAgentSchema tidak punya field userId → safeParse membuangnya.
+      // Suntik kepemilikan agar agen baru muncul di dashboard pemiliknya & bisa di-"update".
+      const toCreate = options.ownerUserId
+        ? ({ ...parsed.data, userId: options.ownerUserId } as InsertAgent)
+        : parsed.data;
+      agent = await storage.createAgent(toCreate);
     } catch (e) {
       warnings.push(`[agent.create] gagal menulis: ${errMsg(e)}`);
       return finalize(false, false, options.mode, undefined, patch, created, warnings);
