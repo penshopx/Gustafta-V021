@@ -47,6 +47,7 @@ export interface CreateSubscriptionResponse {
   planName?: string;
   message?: string;
   waUrl?: string;
+  scalevCheckoutUrl?: string | null;
   itemName?: string;
   accessToken?: string;
 }
