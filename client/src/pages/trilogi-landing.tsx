@@ -9,6 +9,7 @@ import {
   Flame, Check, Star, Lightbulb, Users, Zap, Target, BadgeCheck,
   BookOpen, Brain, GraduationCap, Briefcase, ChevronRight,
 } from "lucide-react";
+import { TRILOGI } from "@/data/pricing";
 import coverFlat from "@assets/Monolog-_cover_1781287565935.jpg";
 import cover3D from "@assets/Buku_3D_1781288556255.png";
 import mockupDevices from "@assets/1781288755_1781288818548.jpg";
@@ -64,7 +65,7 @@ export default function TrilogiLanding() {
   }, []);
 
   const handleBundleClick = () => {
-    trackInitiateCheckout({ content_name: "Trilogi Bundle", value: 499000, currency: "IDR" });
+    trackInitiateCheckout({ content_name: "Trilogi Bundle", value: TRILOGI.bundle.amount, currency: "IDR" });
     trackCustomEvent("WhatsApp_Click", { source: "trilogi-landing" });
   };
 
@@ -360,9 +361,9 @@ export default function TrilogiLanding() {
                 <div className="text-left flex-1">
                   <h3 className="text-xl font-extrabold text-gray-900 mb-1">BUNDLE LENGKAP TRILOGI</h3>
                   <p className="text-gray-500 text-xs mb-4">Buku I + II + III · Belajar → Bekerja → Berkarya</p>
-                  <div className="text-4xl font-extrabold text-orange-600 mb-1">Rp 499.000</div>
+                  <div className="text-4xl font-extrabold text-orange-600 mb-1">{TRILOGI.bundle.price}</div>
                   <div className="text-gray-400 text-sm">
-                    <span className="line-through">Rp 945.000</span>{" "}
+                    <span className="line-through">{TRILOGI.bundle.normal}</span>{" "}
                     <span className="text-orange-500 font-semibold no-underline">Hemat 47%</span>
                   </div>
                 </div>
@@ -398,7 +399,7 @@ export default function TrilogiLanding() {
           <a href={SCALEV_BUKU1} target="_blank" rel="noopener noreferrer"
             className="text-blue-600 hover:text-blue-500 font-semibold underline text-sm"
             data-testid="link-buku1">
-            Ambil Buku I Saja (Early Bird Rp 245.000) →
+            Ambil Buku I Saja (Early Bird {TRILOGI.bukuSatu.price}) →
           </a>
 
           {/* Platform teaser */}
@@ -525,7 +526,7 @@ export default function TrilogiLanding() {
         <a href={SCALEV_BUNDLE} target="_blank" rel="noopener noreferrer" onClick={handleBundleClick}
           className="flex-1 bg-orange-500 hover:bg-orange-400 text-white text-sm font-bold py-3 rounded-xl text-center transition-all active:scale-95"
           data-testid="button-mobile-sticky-buy">
-          🔥 Early Bird Rp 499.000
+          🔥 Early Bird {TRILOGI.bundle.price}
         </a>
         <a href={WA_URL} target="_blank" rel="noopener noreferrer" onClick={() => trackContact()}
           className="px-4 bg-green-500 hover:bg-green-400 text-white text-sm font-bold py-3 rounded-xl transition-all active:scale-95"

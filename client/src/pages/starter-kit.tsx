@@ -2,6 +2,7 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { SharedHeader } from "@/components/shared-header";
 import { useAuth } from "@/hooks/use-auth";
+import { PRICING, formatIDR } from "@/data/pricing";
 import {
   Check, ArrowRight, BookOpen, Zap, Shield, Star,
   MessageCircle, Sparkles, Gift, AlertCircle, TrendingUp,
@@ -62,7 +63,7 @@ export default function StarterKitPage() {
             langkah yang Anda butuhkan untuk memulai.
           </p>
           <div className="flex items-center justify-center gap-6 mb-8 text-white">
-            {[["Rp 245rb", "Sekali Bayar"], ["7 Hari", "Garansi Uang Kembali"], ["2 Minggu", "ke Chatbot Pertama"]].map(([num, label]) => (
+            {[[PRICING.starterKit.short, "Sekali Bayar"], ["7 Hari", "Garansi Uang Kembali"], ["2 Minggu", "ke Chatbot Pertama"]].map(([num, label]) => (
               <div key={label} className="text-center">
                 <div className="text-2xl md:text-3xl font-extrabold">{num}</div>
                 <div className="text-xs text-sky-200">{label}</div>
@@ -72,7 +73,7 @@ export default function StarterKitPage() {
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <a href={CHECKOUT_URL} target="_blank" rel="noopener noreferrer">
               <Button size="lg" className="bg-white text-blue-700 hover:bg-sky-50 font-bold gap-2 px-8 h-12" data-testid="btn-hero-beli-starter">
-                <Zap className="h-5 w-5" /> Ambil Starter Kit — Rp 245.000
+                <Zap className="h-5 w-5" /> Ambil Starter Kit — {PRICING.starterKit.price}
               </Button>
             </a>
             <a href={WA_URL} target="_blank" rel="noopener noreferrer">
@@ -250,9 +251,9 @@ export default function StarterKitPage() {
             {/* Kartu 1: Tanpa Starter Kit */}
             <div className="bg-white dark:bg-card rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 flex flex-col">
               <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Tanpa Starter Kit</div>
-              <div className="text-3xl font-extrabold text-gray-700 dark:text-gray-200 mb-0.5">Rp 498.000</div>
+              <div className="text-3xl font-extrabold text-gray-700 dark:text-gray-200 mb-0.5">{formatIDR(PRICING.license.amount + PRICING.subscription.starter.amount)}</div>
               <div className="text-xs text-gray-400 mb-1">bulan pertama</div>
-              <div className="text-xs text-gray-400 dark:text-gray-500 mb-5">Lisensi Rp 299rb + Langganan Rp 199rb/bln</div>
+              <div className="text-xs text-gray-400 dark:text-gray-500 mb-5">Lisensi {PRICING.license.short} + Langganan {PRICING.subscription.starter.perMonth}</div>
               <ul className="text-sm space-y-2.5 mb-6 text-gray-500 dark:text-muted-foreground flex-1">
                 {[
                   { text: "Lisensi platform (sekali bayar)", ok: true },
@@ -273,13 +274,13 @@ export default function StarterKitPage() {
                   Tanya via WhatsApp →
                 </Button>
               </a>
-              <p className="text-xs text-gray-400 mt-2 text-center">Lanjut Rp 199.000/bulan</p>
+              <p className="text-xs text-gray-400 mt-2 text-center">Lanjut {PRICING.subscription.starter.label}/bulan</p>
             </div>
 
             {/* Kartu 2: Starter Kit saja */}
             <div className="bg-white dark:bg-card rounded-2xl shadow-md border-2 border-sky-400 dark:border-sky-600 p-6 flex flex-col relative">
               <div className="text-xs font-bold text-sky-600 uppercase tracking-widest mb-3">Starter Kit</div>
-              <div className="text-3xl font-extrabold text-sky-600 mb-0.5">Rp 245.000</div>
+              <div className="text-3xl font-extrabold text-sky-600 mb-0.5">{PRICING.starterKit.price}</div>
               <div className="text-xs text-gray-400 line-through mb-1">Harga normal Rp 350.000</div>
               <div className="text-xs text-gray-500 dark:text-gray-400 mb-5">Sekali bayar · lisensi sudah termasuk · trial 7 hari</div>
               <ul className="text-sm space-y-2.5 mb-6 text-gray-700 dark:text-muted-foreground flex-1">

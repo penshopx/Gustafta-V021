@@ -20,10 +20,14 @@ export const PRICING = {
     normal: "Rp 450.000",
     /** Harga lisensi sekali bayar */
     price: "Rp 299.000",
+    /** Bentuk singkat untuk badge/CTA */
+    short: "Rp 299rb",
     amount: 299000,
   },
   starterKit: {
     price: "Rp 245.000",
+    /** Bentuk singkat untuk badge/CTA */
+    short: "Rp 245rb",
     amount: 245000,
     trialDays: 7,
   },
@@ -35,6 +39,23 @@ export const PRICING = {
     starter: { label: "Rp 199.000", perMonth: "Rp 199rb/bln", amount: 199000 },
     profesional: { label: "Rp 499.000", perMonth: "Rp 499rb/bln", amount: 499000 },
     bisnis: { label: "Rp 999.000", perMonth: "Rp 999rb/bln", amount: 999000 },
+  },
+} as const;
+
+// ─── Trilogi GUSTAFTA (produk buku/ebook — sumber tunggal harga Trilogi) ──────────
+// Dipakai di /trilogi (landing) & /konstruksi. JANGAN tulis ulang angka di halaman.
+export const TRILOGI = {
+  bundle: {
+    /** Harga bundle 3 buku (Early Bird) */
+    price: "Rp 499.000",
+    /** Harga coret (anchor) bundle */
+    normal: "Rp 945.000",
+    amount: 499000,
+  },
+  bukuSatu: {
+    /** Harga Buku I saja (Early Bird) */
+    price: "Rp 245.000",
+    amount: 245000,
   },
 } as const;
 

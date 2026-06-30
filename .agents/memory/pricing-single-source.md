@@ -25,3 +25,20 @@ business rules still hold (see `gustafta-pricing-model.md`): chatbot product = l
 only (no mandatory setup), jasa/modul = has setup fee, no permanent free tier
 (free = 7-day trial), and jasa uses the 4 canonical SERVICE_TIERS (Tier 1–4:
 1.499 / 2.499 / 4.900 / 7.490 rb).
+
+**Easily-missed drift surfaces (not just visible JSX):**
+- **Analytics payloads** — Meta Pixel `trackInitiateCheckout({ value: ... })` etc.
+  must use `*.amount` from the source, never a raw number. A hardcoded `value: 499000`
+  silently drifts from the UI price.
+- **Computed combos** — e.g. "first month = license + subscription" must be
+  `formatIDR(PRICING.license.amount + PRICING.subscription.starter.amount)`, not a
+  pre-computed string like `"Rp 498.000"`.
+- **Distinct products at the same nominal price** — Trilogi Buku I and Starter Kit are
+  both Rp245k but are SEPARATE products: Buku I → `TRILOGI.bukuSatu`, Starter Kit →
+  `PRICING.starterKit`. Never merge two products just because the number matches.
+- **Intentionally local (do NOT centralize):** page-specific marketing anchors
+  (coret prices like "Harga normal Rp 350.000"), illustrative affiliate sample
+  earnings, and DB-sourced Store catalog prices (admin-editable).
+- **Short vs full form:** `PRICING.{license,starterKit}.short` ("Rp 245rb") for
+  badges/CTAs; `.price` ("Rp 245.000") for full display. Trilogi constant: `TRILOGI`
+  (bundle.price / bundle.normal / bundle.amount, bukuSatu.price / .amount).
