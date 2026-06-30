@@ -36,8 +36,16 @@ function routeBlock(registrationLiteral: string): string {
   return src.slice(start, end);
 }
 
-// ── 1. Helper assertCanMutateAgent: 4 cabang otorisasi harus utuh ──
-test("assertCanMutateAgent punya 4 cabang otorisasi (401 / admin-ok / agen-sistem 403 / non-owner 403)", () => {
+// ── 1. Helper assertCanMutateAgent: mendelegasikan keputusan ke fungsi murni ──
+// Cabang otorisasi (401/admin/agen-sistem 403/non-owner 403) diuji menyeluruh
+// di tests/agent-authz-decision.test.ts (mengimpor decideAgentMutation langsung).
+// Di sini cukup memastikan helper masih ada & masih memakai fungsi murni itu.
+test("assertCanMutateAgent mendelegasikan keputusan ke decideAgentMutation (logika authz murni & teruji)", () => {
+  assert.match(
+    src,
+    /import\s*\{[^}]*decideAgentMutation[^}]*\}\s*from\s*["']\.\/lib\/agent-authz["']/,
+    "routes.ts harus mengimpor decideAgentMutation dari ./lib/agent-authz.",
+  );
   const defIdx = src.indexOf("async function assertCanMutateAgent(");
   assert.ok(
     defIdx !== -1,
@@ -46,26 +54,15 @@ test("assertCanMutateAgent punya 4 cabang otorisasi (401 / admin-ok / agen-siste
   const nextIdx = src.indexOf("\n  app.", defIdx);
   const body = src.slice(defIdx, nextIdx === -1 ? defIdx + 2000 : nextIdx);
 
-  assert.match(body, /status:\s*401/, "Harus tolak 401 saat belum login (tak ada userId).");
   assert.match(
     body,
     /getDbRole|ADMIN_USER_IDS/,
-    "Status admin harus ditentukan via DB role dan/atau ADMIN_USER_IDS.",
+    "Status admin tetap ditentukan via DB role dan/atau ADMIN_USER_IDS.",
   );
   assert.match(
     body,
-    /if\s*\(\s*isAdmin\s*\)\s*return\s*\{\s*ok:\s*true/,
-    "Admin harus lolos (return { ok: true }).",
-  );
-  assert.match(
-    body,
-    /!ownerId[\s\S]*status:\s*403/,
-    "Agen sistem (tanpa userId) harus 403 — admin-only.",
-  );
-  assert.match(
-    body,
-    /ownerId\s*!==\s*userId[\s\S]*status:\s*403/,
-    "Bukan pemilik agen harus 403.",
+    /decideAgentMutation\s*\(/,
+    "assertCanMutateAgent harus menyerahkan keputusan akhir ke decideAgentMutation.",
   );
 });
 
