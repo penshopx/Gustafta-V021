@@ -247,6 +247,63 @@ const sanitizeDraft = (raw: any): OrgDraft => {
   };
 };
 
+/* Template tim siap-pakai (Tahap 35) — susunan contoh dari panduan KOLABORASI (Buku II).
+   Tiap template sudah lengkap dgn peran sempit + Gerbang Manusia (◆). systemPrompt sengaja
+   dikosongkan agar di-generate otomatis saat buildOrg/"Sempurnakan Detail". */
+const TEAM_TEMPLATES: { key: string; emoji: string; label: string; desc: string; draft: OrgDraft }[] = [
+  {
+    key: "asisten-domain",
+    emoji: "📚",
+    label: "Asisten Domain Pribadi",
+    desc: "Untuk profesional (dokter, pengacara, insinyur): tim yang merawat pengetahuan & pertimbangan Anda.",
+    draft: {
+      orgName: "Asisten Domain Pribadi",
+      mission: "Membantu seorang profesional merawat pengetahuan terbaru di bidangnya, menantang asumsi, dan menerjemahkan hasil kerja ke bahasa klien — tanpa mengambil alih keputusan profesional.",
+      maxSpecialists: 4,
+      members: [
+        { localId: "m1", role: "orchestrator", title: "Koordinator Asisten Domain", responsibility: "Menerima permintaan profesional, membagi ke spesialis yang tepat, lalu merangkum jawaban menjadi satu. Memastikan setiap output melewati pertimbangan manusia.", systemPrompt: "", gates: ["Nasihat atau keputusan final untuk klien/pasien (diagnosis, langkah berisiko, hal menyangkut keselamatan, hukum, atau keuangan besar) — selalu di tangan profesional manusia."] },
+        { localId: "m2", role: "specialist", title: "Kurator Pengetahuan 📚", responsibility: "Mengumpulkan & merangkum perkembangan terbaru di bidang ini dari sumber terkurasi; tandai yang penting, saring yang bising.", systemPrompt: "" },
+        { localId: "m3", role: "specialist", title: "Penjaga Standar 📖", responsibility: "Menjelaskan perubahan pedoman/regulasi sebagai 'apa yang berubah dibanding sebelumnya' (diff yang mudah dibaca), bukan dokumen mentah.", systemPrompt: "" },
+        { localId: "m4", role: "specialist", title: "Si Skeptis 🤔", responsibility: "Jadi penantang (devil's advocate): tunjukkan yang terlewat, risiko, dan asumsi lemah sebelum profesional mengambil langkah.", systemPrompt: "" },
+        { localId: "m5", role: "specialist", title: "Penerjemah 🌿", responsibility: "Mengubah output teknis profesional menjadi bahasa yang mudah dipahami klien/pasien, tanpa menghilangkan akurasi.", systemPrompt: "" },
+      ],
+    },
+  },
+  {
+    key: "umkm-wa",
+    emoji: "🛍️",
+    label: "Tim UMKM WhatsApp",
+    desc: "Untuk pemilik usaha kecil: tiga agen yang hidup di WhatsApp dengan gaya ramah, bukan korporat.",
+    draft: {
+      orgName: "Tim UMKM WhatsApp",
+      mission: "Membantu pemilik usaha kecil melayani pelanggan, memantau stok, dan merapikan pembukuan langsung dari WhatsApp, dengan gaya ramah khas pemilik.",
+      maxSpecialists: 3,
+      members: [
+        { localId: "m1", role: "orchestrator", title: "Koordinator Layanan UMKM", responsibility: "Menerima pesan pelanggan, mengarahkan ke agen yang tepat (pelanggan/stok/pembukuan), dan menjawab dengan gaya ramah khas pemilik.", systemPrompt: "" },
+        { localId: "m2", role: "specialist", title: "Agen Pelanggan", responsibility: "Menjawab pertanyaan produk, harga, dan pesanan dengan ramah dan gaya keluarga, bukan korporat.", systemPrompt: "", gates: ["Komplain pelanggan, pesanan tidak wajar, dan perubahan harga/menu — diputuskan pemilik manusia."] },
+        { localId: "m3", role: "specialist", title: "Agen Stok", responsibility: "Memantau ketersediaan barang, mengingatkan saat stok menipis, dan mencatat barang masuk/keluar.", systemPrompt: "" },
+        { localId: "m4", role: "specialist", title: "Agen Pembukuan", responsibility: "Mencatat pemasukan & pengeluaran harian dan membuat ringkasan sederhana yang mudah dibaca pemilik.", systemPrompt: "" },
+      ],
+    },
+  },
+  {
+    key: "bimbel-tutor",
+    emoji: "🎓",
+    label: "Tim Bimbel / Tutor",
+    desc: "Untuk pendidik: tutor metode Socratic + perangkum sesi, keputusan tentang anak tetap di guru.",
+    draft: {
+      orgName: "Tim Bimbingan Belajar",
+      mission: "Membantu lembaga bimbel/guru membimbing siswa dengan metode bertanya (Socratic) dan merangkum tiap sesi untuk guru, tanpa mengambil alih keputusan tentang siswa.",
+      maxSpecialists: 3,
+      members: [
+        { localId: "m1", role: "orchestrator", title: "Koordinator Bimbingan Belajar", responsibility: "Mengatur sesi belajar, mengarahkan siswa ke tutor yang tepat, dan menjaga semua keputusan tentang siswa tetap di tangan guru/orang tua.", systemPrompt: "", gates: ["Keputusan tentang siswa (penilaian akhir, kenaikan kelas, masalah pribadi/keluarga, atau hal sensitif) — selalu di guru atau orang tua manusia."] },
+        { localId: "m2", role: "specialist", title: "Tutor Mata Pelajaran", responsibility: "Membimbing siswa dengan metode Socratic — bertanya menuntun, JANGAN langsung memberi jawaban; bangun pemahaman, bukan sekadar hasil akhir.", systemPrompt: "" },
+        { localId: "m3", role: "specialist", title: "Perangkum Sesi", responsibility: "Membuat catatan & ringkasan tiap sesi belajar yang dibaca guru keesokan paginya, agar guru tahu kemajuan & kesulitan siswa.", systemPrompt: "" },
+      ],
+    },
+  },
+];
+
 /* ── Component ─────────────────────────────────────────────────────────────── */
 export default function OrganizationBuilderPage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
@@ -303,6 +360,18 @@ export default function OrganizationBuilderPage() {
     setMission(d.mission);
     setMembers(d.members);
     setMaxSpecialists(d.maxSpecialists);
+  };
+
+  /* Tahap 35: muat template siap-pakai → langsung ke step anggota untuk ditinjau. */
+  const applyTemplate = (tpl: { label: string; draft: OrgDraft }) => {
+    applyDraft(tpl.draft);
+    holdRef.current = false;
+    setRestorable(null);
+    setComposedDomain(null);
+    setReadiness(null);
+    setAnalysis(null); setPreview(null); setCreated(null); setCreateError(null);
+    setStep("members");
+    toast({ title: `Template dimuat: ${tpl.label}`, description: `${tpl.draft.members.length} anggota siap ditinjau. Sesuaikan sebelum tim dibuat.` });
   };
 
   const restoreDraft = () => {
@@ -739,6 +808,31 @@ export default function OrganizationBuilderPage() {
             <div className="space-y-1.5">
               <Label className="text-sm font-medium text-gray-900 dark:text-white">Misi / Tujuan Tim</Label>
               <Textarea value={mission} onChange={(e) => setMission(e.target.value)} placeholder="Contoh: Membantu pemilik UMKM konstruksi mengurus perizinan, tender, dan kepatuhan K3." className="min-h-24" data-testid="input-mission" />
+            </div>
+            <div className="rounded-xl border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-950/20 p-4" data-testid="card-templates">
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <Sparkles className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                <span className="text-sm font-bold text-gray-900 dark:text-white">Mulai dari template siap-pakai</span>
+                <Badge variant="outline" className="text-[10px]">Baru</Badge>
+              </div>
+              <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+                Pilih susunan tim contoh dari panduan KOLABORASI — sudah lengkap dengan peran & Gerbang Manusia (◆). Anda tetap meninjau & menyesuaikan sebelum tim dibuat.
+              </p>
+              <div className="grid gap-2 sm:grid-cols-3">
+                {TEAM_TEMPLATES.map((t) => (
+                  <button
+                    key={t.key}
+                    type="button"
+                    onClick={() => applyTemplate(t)}
+                    className="text-left rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-card p-3 transition hover:border-emerald-400 dark:hover:border-emerald-500 hover:shadow-sm"
+                    data-testid={`btn-template-${t.key}`}
+                  >
+                    <div className="text-lg leading-none mb-1.5" aria-hidden="true">{t.emoji}</div>
+                    <div className="text-sm font-semibold text-gray-900 dark:text-white">{t.label}</div>
+                    <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{t.desc}</div>
+                  </button>
+                ))}
+              </div>
             </div>
             <div className="rounded-xl border border-violet-200 dark:border-violet-500/30 bg-violet-50 dark:bg-violet-950/20 p-4">
               <div className="flex items-center gap-2 mb-1">
