@@ -1093,6 +1093,18 @@ export default function Dashboard() {
                     <ArrowRight className="w-4 h-4 text-indigo-500 shrink-0" />
                   </div>
                 </Link>
+                <Link href="/organization-builder" className="sm:col-span-2">
+                  <div className="flex items-center gap-3 p-3 rounded-lg border border-violet-500/30 bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10 hover:border-violet-500 hover:from-violet-500/15 hover:to-fuchsia-500/15 transition-colors text-left cursor-pointer" data-testid="card-organization-builder">
+                    <div className="w-8 h-8 rounded-md bg-violet-500/15 flex items-center justify-center shrink-0">
+                      <Users className="w-4 h-4 text-violet-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium">Rakit Tim AI (Pembuat Tim)</p>
+                      <p className="text-xs text-muted-foreground">Buat beberapa agen sekaligus: ketua tim + anggota yang saling terhubung</p>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-violet-500 shrink-0" />
+                  </div>
+                </Link>
                 <button
                   onClick={() => setBigIdeaDialogOpen(true)}
                   className="flex items-center gap-3 p-3 rounded-lg border border-dashed hover:border-primary hover:bg-primary/5 transition-colors text-left"
