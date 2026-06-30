@@ -62,6 +62,19 @@ async function upsertUser(claims: any) {
     lastName: claims["last_name"],
     profileImageUrl: claims["profile_image_url"],
   });
+
+  // Apply any pending agent-share invites addressed to this email — non-blocking.
+  // Lets an owner invite-by-email before the recipient ever signed in via Replit.
+  try {
+    const email = claims["email"];
+    if (email) {
+      const { storage } = await import("../../storage");
+      const applied = await storage.applyPendingInvitesForUser(claims["sub"], email);
+      if (applied > 0) console.log(`[ReplitAuth] Applied ${applied} pending agent invite(s) for ${email}`);
+    }
+  } catch (inviteErr) {
+    console.error("[ReplitAuth] Failed to apply pending invites:", inviteErr);
+  }
 }
 
 export async function setupAuth(app: Express) {

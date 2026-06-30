@@ -419,6 +419,26 @@ export const insertAgentCollaboratorSchema = createInsertSchema(agentCollaborato
 export type InsertAgentCollaborator = z.infer<typeof insertAgentCollaboratorSchema>;
 export type AgentCollaborator = typeof agentCollaborators.$inferSelect;
 
+// Pending agent invites — owner invites an email that has no Gustafta account yet.
+// On successful registration with that email, the pending grant becomes a real
+// collaborator row (see applyPendingInvitesForUser). Listed/revoked by the owner.
+export const pendingAgentInvites = pgTable("pending_agent_invites", {
+  id: serial("id").primaryKey(),
+  agentId: integer("agent_id").notNull(),
+  email: varchar("email", { length: 255 }).notNull(),
+  role: varchar("role", { length: 20 }).notNull().default("viewer"),
+  invitedBy: varchar("invited_by", { length: 255 }).notNull().default(""),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("pending_agent_invites_agent_email_unique").on(table.agentId, table.email),
+]);
+
+export const insertPendingAgentInviteSchema = createInsertSchema(pendingAgentInvites)
+  .omit({ id: true, createdAt: true })
+  .extend({ role: collaboratorRoleSchema });
+export type InsertPendingAgentInvite = z.infer<typeof insertPendingAgentInviteSchema>;
+export type PendingAgentInvite = typeof pendingAgentInvites.$inferSelect;
+
 // Affiliates/Partners Table — MLM 3-Level (Pusat L1 / Provinsi L2 / Kab-Kota L3)
 export const affiliates = pgTable("affiliates", {
   id: serial("id").primaryKey(),

@@ -44,6 +44,7 @@ import {
   agenticDeliverables,
   blueprints,
   agentCollaborators,
+  pendingAgentInvites,
 } from "@shared/schema";
 import { users } from "@shared/models/auth";
 import type {
@@ -66,7 +67,7 @@ import type {
 } from "@shared/schema";
 import { applyDefaultPolicies } from "./lib/agent-policies";
 import type { IStorage, CollaboratorView } from "./storage";
-import type { AgentCollaborator, CollaboratorRole } from "@shared/schema";
+import type { AgentCollaborator, CollaboratorRole, PendingAgentInvite } from "@shared/schema";
 import type {
   Agent,
   InsertAgent,
@@ -1202,6 +1203,63 @@ export class DatabaseStorage implements IStorage {
     if (numericIds.length === 0) return [];
     const result = await db.select().from(agents).where(inArray(agents.id, numericIds));
     return result.map((row) => this.mapAgentRow(row));
+  }
+
+  // ─── Pending agent invites (email tanpa akun) ─────────────────────────────
+  async addOrUpdatePendingInvite(data: { agentId: string; email: string; role: CollaboratorRole; invitedBy: string }): Promise<PendingAgentInvite> {
+    const aId = parseInt(data.agentId);
+    const email = (data.email || "").trim().toLowerCase();
+    const result = await db.insert(pendingAgentInvites)
+      .values({ agentId: aId, email, role: data.role, invitedBy: data.invitedBy })
+      .onConflictDoUpdate({
+        target: [pendingAgentInvites.agentId, pendingAgentInvites.email],
+        set: { role: data.role, invitedBy: data.invitedBy },
+      })
+      .returning();
+    return result[0] as PendingAgentInvite;
+  }
+
+  async listPendingInvitesForAgent(agentId: string): Promise<PendingAgentInvite[]> {
+    const aId = parseInt(agentId);
+    if (Number.isNaN(aId)) return [];
+    const rows = await db.select()
+      .from(pendingAgentInvites)
+      .where(eq(pendingAgentInvites.agentId, aId))
+      .orderBy(desc(pendingAgentInvites.createdAt));
+    return rows as PendingAgentInvite[];
+  }
+
+  async removePendingInvite(agentId: string, email: string): Promise<boolean> {
+    const aId = parseInt(agentId);
+    const normalized = (email || "").trim().toLowerCase();
+    if (Number.isNaN(aId) || !normalized) return false;
+    const result = await db.delete(pendingAgentInvites)
+      .where(and(eq(pendingAgentInvites.agentId, aId), eq(pendingAgentInvites.email, normalized)))
+      .returning();
+    return result.length > 0;
+  }
+
+  async applyPendingInvitesForUser(userId: string, email: string): Promise<number> {
+    const normalized = (email || "").trim().toLowerCase();
+    if (!userId || !normalized) return 0;
+    const invites = await db.select()
+      .from(pendingAgentInvites)
+      .where(eq(pendingAgentInvites.email, normalized));
+    if (invites.length === 0) return 0;
+    let applied = 0;
+    for (const inv of invites) {
+      const role = inv.role === "editor" || inv.role === "viewer" ? inv.role : "viewer";
+      await db.insert(agentCollaborators)
+        .values({ agentId: inv.agentId, userId, role, invitedBy: inv.invitedBy })
+        .onConflictDoUpdate({
+          target: [agentCollaborators.agentId, agentCollaborators.userId],
+          set: { role, invitedBy: inv.invitedBy },
+        });
+      applied++;
+    }
+    await db.delete(pendingAgentInvites).where(eq(pendingAgentInvites.email, normalized));
+    agentListCache.clear();
+    return applied;
   }
 
   private parseJsonArray(value: unknown): unknown[] {
