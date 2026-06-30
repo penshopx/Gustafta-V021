@@ -143,3 +143,15 @@ id = "LM5YlEmwsrV3FbXRKUTxn"
 uri = "file://docs/blueprint-engine/00-roadmap.md"
 type = "text"
 title = "Roadmap — AI Organization Builder (9 tahap)"
+
+[[outputs]]
+id = "o0JpwS_kzLOv7COw4IAWQ"
+uri = "file://attached_assets/generated_audio/music_gustafta_explainer_bed.mp3"
+type = "audio"
+title = "gustafta_explainer_bed"
+
+[[outputs]]
+id = "YDGbRlaDcaCXailVQgdks"
+uri = "file://attached_assets/generated_videos/gustafta_explainer.mp4"
+type = "video"
+title = "Gustafta — Video Penjelasan Produk (30 detik)"
