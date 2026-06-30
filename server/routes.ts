@@ -1536,14 +1536,32 @@ export async function registerRoutes(
         invitedBy: inviterId,
       });
 
+      const recipientName = [targetUser.firstName, targetUser.lastName].filter(Boolean).join(" ").trim();
+      const agentName = (agent as any).name || "Agen AI";
+      const roleLabel = parsed.data.role === "editor" ? "editor" : "viewer";
+
+      // In-app notification: email-independent so the recipient reliably discovers
+      // the share even when BREVO_API_KEY is absent. Fire-and-forget.
+      try {
+        await storage.createNotification({
+          userId: targetUser.id,
+          type: "agent_shared",
+          title: `${inviterName || "Seseorang"} membagikan agen "${agentName}"`,
+          message: `Anda kini punya akses ${roleLabel} ke agen "${agentName}".`,
+          link: "/dashboard",
+          agentId: Number((agent as any).id) || null,
+        });
+      } catch (notifyErr) {
+        console.error("[collaborators] failed to create in-app notification:", notifyErr);
+      }
+
       // Notify the invited user by email. Fire-and-forget: a send failure must
       // never break the share itself (gracefully degrades if BREVO_API_KEY absent).
       try {
-        const recipientName = [targetUser.firstName, targetUser.lastName].filter(Boolean).join(" ").trim();
         void sendAgentShareNotification({
           to: targetUser.email,
           recipientName: recipientName || null,
-          agentName: (agent as any).name || "Agen AI",
+          agentName,
           role: parsed.data.role,
           inviterName,
         }).catch((err) => console.error("[collaborators] share notification error:", err));
@@ -1633,6 +1651,48 @@ export async function registerRoutes(
     } catch (error) {
       console.error("remove pending invite error:", error);
       res.status(500).json({ error: "Failed to remove pending invite" });
+    }
+  });
+
+  // ─── In-app notifications ──────────────────────────────────────────────────
+  app.get("/api/notifications", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.claims?.sub || (req.user as any)?.id || "";
+      if (!userId) return res.status(401).json({ error: "Unauthorized" });
+      const [items, unread] = await Promise.all([
+        storage.listNotificationsForUser(userId, 30),
+        storage.getUnreadNotificationCount(userId),
+      ]);
+      res.json({ items, unread });
+    } catch (error) {
+      console.error("list notifications error:", error);
+      res.status(500).json({ error: "Failed to list notifications" });
+    }
+  });
+
+  app.post("/api/notifications/:id/read", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.claims?.sub || (req.user as any)?.id || "";
+      if (!userId) return res.status(401).json({ error: "Unauthorized" });
+      const id = parseInt(req.params.id as string);
+      const ok = await storage.markNotificationRead(id, userId);
+      if (!ok) return res.status(404).json({ error: "Notifikasi tidak ditemukan" });
+      res.json({ success: true });
+    } catch (error) {
+      console.error("mark notification read error:", error);
+      res.status(500).json({ error: "Failed to mark notification read" });
+    }
+  });
+
+  app.post("/api/notifications/read-all", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.claims?.sub || (req.user as any)?.id || "";
+      if (!userId) return res.status(401).json({ error: "Unauthorized" });
+      const count = await storage.markAllNotificationsRead(userId);
+      res.json({ success: true, count });
+    } catch (error) {
+      console.error("mark all notifications read error:", error);
+      res.status(500).json({ error: "Failed to mark notifications read" });
     }
   });
 

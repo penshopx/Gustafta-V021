@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { pgTable, text, boolean, timestamp, real, integer, jsonb, varchar, serial, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, boolean, timestamp, real, integer, jsonb, varchar, serial, uniqueIndex, index } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 
@@ -438,6 +438,27 @@ export const insertPendingAgentInviteSchema = createInsertSchema(pendingAgentInv
   .extend({ role: collaboratorRoleSchema });
 export type InsertPendingAgentInvite = z.infer<typeof insertPendingAgentInviteSchema>;
 export type PendingAgentInvite = typeof pendingAgentInvites.$inferSelect;
+
+// In-app notifications (e.g. agent shared with you). Email-independent so
+// collaborators reliably discover shares even when BREVO_API_KEY is absent.
+export const notifications = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id", { length: 255 }).notNull(),
+  type: varchar("type", { length: 40 }).notNull().default("agent_shared"),
+  title: text("title").notNull(),
+  message: text("message").notNull().default(""),
+  link: text("link"),
+  agentId: integer("agent_id"),
+  read: boolean("read").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("notifications_user_created_idx").on(table.userId, table.createdAt),
+]);
+
+export const insertNotificationSchema = createInsertSchema(notifications)
+  .omit({ id: true, createdAt: true, read: true });
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type Notification = typeof notifications.$inferSelect;
 
 // Affiliates/Partners Table — MLM 3-Level (Pusat L1 / Provinsi L2 / Kab-Kota L3)
 export const affiliates = pgTable("affiliates", {
