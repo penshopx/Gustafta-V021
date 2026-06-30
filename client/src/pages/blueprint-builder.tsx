@@ -76,11 +76,41 @@ interface ConfigureResult {
   mode: "create" | "update";
   agentId?: string;
   agentPatchKeys: string[];
+  agentPatchPreview?: Record<string, string>;
   created: { knowledgeBases: number; miniApps: number; integrations: number; projectBrainTemplates: number };
   warnings: string[];
 }
 
 type Step = "intro" | "dialogue" | "analyze" | "done";
+
+/* Label ramah untuk field agen yang ditampilkan di pratinjau (fallback: nama key). */
+const FIELD_LABELS: Record<string, string> = {
+  name: "Nama agen",
+  description: "Deskripsi",
+  category: "Kategori",
+  subcategory: "Subkategori",
+  aiModel: "Model AI",
+  toneOfVoice: "Nada bicara",
+  personality: "Kepribadian",
+  communicationStyle: "Gaya komunikasi",
+  chatStyle: "Gaya chat",
+  language: "Bahasa",
+  greetingMessage: "Pesan sambutan",
+  systemPrompt: "Instruksi sistem",
+  philosophy: "Filosofi",
+  tagline: "Tagline",
+  temperature: "Temperature",
+  maxTokens: "Maks token",
+  avatar: "Avatar",
+  responseFormat: "Format respons",
+  responseStyle: "Gaya respons",
+  behaviorPreset: "Preset perilaku",
+  autonomyLevel: "Level otonomi",
+  responseDepth: "Kedalaman respons",
+  outputFormat: "Format keluaran",
+  interactionStyle: "Gaya interaksi",
+  contextualEmpathy: "Empati kontekstual",
+};
 
 const pct = (n: number) => Math.round((n || 0) * 100);
 
@@ -394,7 +424,17 @@ export default function BlueprintBuilderPage() {
                   <div className="rounded-xl bg-white dark:bg-card border p-4 mb-3 text-xs space-y-1.5" data-testid="preview-result">
                     <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-semibold"><Check className="h-3.5 w-3.5" /> Pratinjau berhasil (belum disimpan)</div>
                     <p className="text-gray-600 dark:text-gray-400">Field agen yang akan diisi: <span className="font-semibold text-gray-900 dark:text-white">{preview.agentPatchKeys.length}</span></p>
-                    <p className="text-gray-600 dark:text-gray-400">Akan dibuat: {preview.created.knowledgeBases} basis pengetahuan · {preview.created.miniApps} mini app · {preview.created.integrations} integrasi</p>
+                    {preview.agentPatchPreview && Object.keys(preview.agentPatchPreview).length > 0 && (
+                      <dl className="mt-1 border-t pt-2 space-y-1" data-testid="preview-values">
+                        {Object.entries(preview.agentPatchPreview).map(([key, value]) => (
+                          <div key={key} className="flex gap-2" data-testid={`preview-field-${key}`}>
+                            <dt className="shrink-0 w-32 text-gray-500 dark:text-gray-400">{FIELD_LABELS[key] || key}</dt>
+                            <dd className="flex-1 font-medium text-gray-900 dark:text-white break-words">{value}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    )}
+                    <p className="text-gray-600 dark:text-gray-400 border-t pt-2">Akan dibuat: {preview.created.knowledgeBases} basis pengetahuan · {preview.created.miniApps} mini app · {preview.created.integrations} integrasi</p>
                     {preview.warnings.length > 0 && (
                       <div className="text-amber-600 dark:text-amber-400 pt-1">⚠ {preview.warnings.slice(0, 3).join(" · ")}</div>
                     )}

@@ -32,6 +32,12 @@ The Tahap 1–9 engines (`server/services/blueprint-engine/*`) are pure/stateles
 - **Read-export nuance:** "rendered" exports (`export/ebook`, `export/docgen`, `export/ecourse`) intentionally stay broad — they allow **shared system agents (empty userId)** and **public agents (`isPublic`)**, hiding `systemPrompt` for non-owners. The leak that had to be closed was returning *KB content of a private, owned-by-someone-else agent*; gate: `if (!owner && !admin && agent.userId && !agent.isPublic) return 403`. `export/chaesa`/`aspekindo-llm` already gated via `assertCanPreviewAgentPrompt`.
 - **Why:** `assertCanPreviewAgentPrompt` only knows env-var admins (`ADMIN_USER_IDS`), so DB-role admins get wrongly blocked — prefer `assertCanMutateAgent` for write/cost paths. **How to apply:** any NEW `/api/agents/:id/*` route that writes the agent or triggers a model MUST call `assertCanMutateAgent` right after the 404 check; for new doc-export routes, copy the `owner || admin || isPublic || system-agent` read gate.
 
+## `/configure` dryRun preview must be default-DENY (allowlist), never denylist
+- The dryRun response surfaces a `agentPatchPreview` (field→value) so the wizard can show *what* will be written before create. The patch keys are dynamic (mapping engine builds them per blueprint module).
+- Build it from an explicit **ALLOWLIST** of presentational/persona/model fields only (`buildPatchPreview` in `configuration-engine.ts`). Unknown keys are dropped by default.
+- **Why:** the `agents` table holds credential/endpoint columns (`customApiKey`, `customBaseUrl`, `customModelName`, `accessToken`). A substring denylist (apikey/secret/token…) was reviewed and rejected — it leaks non-matching sensitive fields like `customBaseUrl` (can embed creds/internal host) and any future sensitive column.
+- **How to apply:** to expose a new field in the preview, add it to `PREVIEW_ALLOWLIST` deliberately; treat any allowlist addition as a security review. Keep it primitive-only + truncate long strings.
+
 ## Dialogue UI: boolean answer submission (Tahap 11)
 - `/answer` treats any present key in `answers` as a real user-sourced answer (updates source/confidence). For boolean dialogue questions, **only submit the key if the user actually toggled it** — never default untouched booleans to `false`, or you silently write wrong answers and skew confidence/progression.
 - `multiselect` inputType must send an **array** (not a single Select string). Skip empty arrays before submitting.
