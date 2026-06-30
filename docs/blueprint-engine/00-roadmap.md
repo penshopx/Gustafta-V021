@@ -37,6 +37,18 @@ Trilogi Gustafta = framework berpikir di baliknya: **Dialog → Kolaborasi → K
 | **16** | **Regression Tests (authz)** — kunci hasil Tahap 14–15 agar guard tak terhapus diam-diam saat refactor | Ya (test baru saja; kode app tak diubah) | ✅ SELESAI — `tests/agent-authz-guard.test.ts` (`node:test` + `tsx --test`, statis baca source). Cek: helper delegasi ke `decideAgentMutation`, 14 endpoint mutasi/exfiltrasi/cost wajib panggil guard, `export/ebook`+`docgen` gate `isPublic`+403, dan `activate` cek authz SEBELUM `setActiveAgent`. |
 | **17** | **Authz decision unit tests** — validasi SEMANTIK runtime keputusan otorisasi (bukan sekadar keberadaan guard di source) | Ya (refactor kecil + test) | ✅ SELESAI — logika keputusan diekstrak ke fungsi murni `server/lib/agent-authz.ts` (`decideAgentMutation`); `assertCanMutateAgent` menghitung `userId`/`isAdmin` (DB role) lalu mendelegasi. `tests/agent-authz-decision.test.ts` menguji matriks aktor: anonim→401, admin→boleh (termasuk agen sistem/orang lain), pemilik→boleh, non-admin atas agen sistem→403, non-pemilik→403, + defense-in-depth (userId kosong tetap 401 walau isAdmin). |
 
+## Fase 3 — AI Organization (Dialog → Blueprint → Konfigurasi melahirkan TIM agen)
+> Prinsip sama: aditif, bertahap, berhenti & review. Pengguna tetap no-code
+> (Dialog–Blueprint–Konfigurasi); yang bertambah = alur itu bisa merancang satu
+> *organisasi* agen, bukan cuma satu chatbot.
+
+| Tahap | Engine / Deliverable | Sentuh kode app? | Status |
+|------|----------------------|------------------|--------|
+| **18** | **Organization Blueprint Schema** — model data JSON untuk organisasi AI (banyak anggota memakai ulang single-agent Blueprint + struktur kolaborasi `localId`) | Tidak (tipe/skema baru, belum disambung) | ✅ SELESAI — `shared/blueprint/organization-blueprint-schema.ts` + `18-organization-blueprint-schema.md` + `tests/organization-blueprint-schema.test.ts` |
+| 19 | **Organization Mapping Engine** — `OrganizationBlueprint` → rencana N agen + wiring `agenticSubAgents` (pure) | Ya (fungsi murni, belum disambung) | ⏳ BELUM |
+| 20 | **Organization Configuration Engine** — materialisasi tim secara atomik, resolve `localId → agentId`, safe-by-default `dryRun` | Ya (engine baru) | ⏳ BELUM |
+| 21+ | **Dialogue/Inference org + API wiring + UI wizard** | Ya | ⏳ BELUM |
+
 ## Tahap 10 — catatan penyambungan API
 - **Stateless:** tak ada tabel DB untuk Blueprint in-progress; klien mengirim seluruh Blueprint JSON tiap request. Validasi via `blueprintSchema`.
 - **`/configure` = satu-satunya jalur tulis** dan **aman secara default**: `dryRun` dianggap `true` kecuali klien kirim `dryRun:false` eksplisit.
