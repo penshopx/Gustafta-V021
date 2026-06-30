@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import {
   Users, Sparkles, ArrowRight, ArrowLeft, Loader2, Lock, Check, AlertTriangle,
-  Plus, Trash2, Crown, Rocket, RotateCcw, Info, Network, ClipboardList,
+  Plus, Trash2, Crown, Rocket, RotateCcw, Info, Network, ClipboardList, Wand2,
 } from "lucide-react";
 import {
   createEmptyOrganizationBlueprint,
@@ -38,6 +38,10 @@ interface ConfigureMember {
   localId: string; role: OrgMemberRole; title?: string; agentId?: string;
   agentPatchKeys: string[]; agentPatchPreview: Record<string, string>;
 }
+interface SuggestMember {
+  localId: string; role: OrgMemberRole; title: string; responsibility: string;
+}
+interface SuggestResponse { domain: string; members: SuggestMember[] }
 interface ConfigureResult {
   applied: boolean;
   dryRun: boolean;
@@ -184,6 +188,35 @@ export default function OrganizationBuilderPage() {
           : "";
 
   /* ── API ── */
+  /* Susun otomatis dari misi (Tahap 23 engine via /api/organization/suggest). */
+  const composeFromMission = async () => {
+    if (!mission.trim()) {
+      toast({ title: "Isi misi tim dulu", description: "Tuliskan misi/tujuan tim agar bisa disusun otomatis.", variant: "destructive" });
+      return;
+    }
+    setBusy(true);
+    try {
+      const data: SuggestResponse = await apiRequest("POST", "/api/organization/suggest", { mission: mission.trim() });
+      const suggested: MemberDraft[] = (data.members || []).map((m) => ({
+        localId: m.localId,
+        role: m.role,
+        title: m.title || "",
+        responsibility: m.responsibility || "",
+        systemPrompt: "",
+      }));
+      if (suggested.length === 0) {
+        toast({ title: "Belum ada usulan", description: "Coba tuliskan misi lebih spesifik.", variant: "destructive" });
+        return;
+      }
+      setMembers(suggested);
+      setAnalysis(null); setPreview(null); setCreated(null); setCreateError(null);
+      setStep("members");
+      toast({ title: `Tim disusun otomatis (${data.domain})`, description: `${suggested.length} anggota diusulkan. Tinjau & sesuaikan sebelum dibuat.` });
+    } catch (e: any) {
+      toast({ title: "Gagal menyusun otomatis", description: e?.message || "Coba lagi.", variant: "destructive" });
+    } finally { setBusy(false); }
+  };
+
   const runAnalyze = async () => {
     setBusy(true);
     try {
@@ -299,13 +332,44 @@ export default function OrganizationBuilderPage() {
               <Label className="text-sm font-medium text-gray-900 dark:text-white">Misi / Tujuan Tim</Label>
               <Textarea value={mission} onChange={(e) => setMission(e.target.value)} placeholder="Contoh: Membantu pemilik UMKM konstruksi mengurus perizinan, tender, dan kepatuhan K3." className="min-h-24" data-testid="input-mission" />
             </div>
+            <div className="rounded-xl border border-violet-200 dark:border-violet-500/30 bg-violet-50 dark:bg-violet-950/20 p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <Wand2 className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                <span className="text-sm font-bold text-gray-900 dark:text-white">Susun otomatis dari misi</span>
+                <Badge variant="outline" className="text-[10px]">Baru</Badge>
+              </div>
+              <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+                Biarkan sistem mengusulkan susunan anggota (Ketua Tim + Spesialis) dari misi Anda. Anda tetap bisa meninjau & menyesuaikan sebelum tim dibuat.
+              </p>
+              <Button
+                onClick={composeFromMission}
+                disabled={busy || !mission.trim()}
+                className="bg-violet-600 hover:bg-violet-500 text-white gap-2"
+                data-testid="btn-compose-auto"
+              >
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />} Susun Otomatis
+              </Button>
+              {!mission.trim() && (
+                <span className="text-xs text-amber-600 dark:text-amber-400 ml-3" data-testid="hint-compose-needs-mission">
+                  Isi misi tim dulu untuk memakai fitur ini.
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-3 pt-1">
+              <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
+              <span className="text-[11px] text-gray-400 uppercase tracking-wide">atau susun manual</span>
+              <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
+            </div>
+
             <Button
               onClick={() => setStep("members")}
               disabled={!orgName.trim()}
-              className="bg-violet-600 hover:bg-violet-500 text-white gap-2"
+              variant="outline"
+              className="gap-2"
               data-testid="btn-to-members"
             >
-              Lanjut: Susun Anggota <ArrowRight className="h-4 w-4" />
+              Susun Anggota Sendiri <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
         )}

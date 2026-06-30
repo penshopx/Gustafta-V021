@@ -28,6 +28,7 @@ import {
 } from "@shared/blueprint/organization-blueprint-schema";
 import { mapOrganizationToBuilder } from "./services/blueprint-engine/organization-mapping-engine";
 import { applyOrganizationToBuilder } from "./services/blueprint-engine/organization-configuration-engine";
+import { suggestTeamComposition } from "./services/blueprint-engine/organization-dialogue-engine";
 
 /* ===========================================================================
  * Helper
@@ -134,6 +135,29 @@ export function registerOrganizationEngineRoutes(app: Express): void {
       });
 
       res.json(result);
+    }),
+  );
+
+  /**
+   * POST /api/organization/suggest  (read-only)
+   * Body: { mission, maxSpecialists? }
+   * → Saran komposisi tim deterministik dari teks misi (Tahap 23 engine).
+   *   Mengembalikan { domain, members } untuk diisi ke wizard — TIDAK menulis
+   *   apa pun & tidak membangun OrganizationBlueprint penuh (klien yang merakit).
+   */
+  app.post(
+    "/api/organization/suggest",
+    isAuthenticated,
+    handler(async (req, res) => {
+      const mission = typeof req.body?.mission === "string" ? req.body.mission : "";
+      if (!mission.trim()) throw new HttpError(400, "Misi tim belum diisi.");
+
+      const raw = Number(req.body?.maxSpecialists);
+      const maxSpecialists = Number.isFinite(raw)
+        ? Math.max(1, Math.min(5, Math.floor(raw)))
+        : 3;
+
+      res.json(suggestTeamComposition(mission, { maxSpecialists }));
     }),
   );
 }
