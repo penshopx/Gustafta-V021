@@ -1507,6 +1507,12 @@ export async function registerRoutes(
       if (!req.body || Object.keys(req.body).length === 0) {
         return res.status(400).json({ error: "No update data provided" });
       }
+      const existingForUpdate = await storage.getAgent(req.params.id as string);
+      if (!existingForUpdate) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+      const authUpd = await assertCanMutateAgent(req, existingForUpdate);
+      if (!authUpd.ok) return res.status(authUpd.status).json({ error: authUpd.error });
       const agent = await storage.updateAgent(req.params.id as string, req.body);
       if (!agent) {
         return res.status(404).json({ error: "Agent not found" });
@@ -1609,6 +1615,26 @@ export async function registerRoutes(
     return { ok: true };
   }
 
+  // Otorisasi MUTASI agen (edit/toggle/archive/folder/delete). Sama seperti
+  // preview tetapi memakai admin check lengkap (DB role + ADMIN_USER_IDS).
+  // Pola WAJIB: fetch agen → assert → baru mutasi. Agen sistem (userId kosong)
+  // hanya boleh diubah admin agar tidak ada bypass.
+  async function assertCanMutateAgent(
+    req: any,
+    agent: any,
+  ): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
+    const userId = (req.user as any)?.claims?.sub || (req.user as any)?.id || "";
+    if (!userId) return { ok: false, status: 401, error: "Unauthorized" };
+    const adminIds = (process.env.ADMIN_USER_IDS || "").split(",").map((s: string) => s.trim()).filter(Boolean);
+    const dbRole = await getDbRole(req);
+    const isAdmin = dbRole === "admin" || dbRole === "superadmin" || adminIds.includes(userId);
+    if (isAdmin) return { ok: true };
+    const ownerId = (agent && agent.userId) || "";
+    if (!ownerId) return { ok: false, status: 403, error: "Forbidden: agen sistem hanya bisa diubah admin" };
+    if (ownerId !== userId) return { ok: false, status: 403, error: "Forbidden: bukan pemilik agen" };
+    return { ok: true };
+  }
+
   // Preview hasil perakitan PERSONA + 7 field Kebijakan Agen menjadi
   // system prompt FINAL (tanpa Knowledge Base / Project Brain / memori,
   // yang ditambahkan saat runtime chat). Builder pakai untuk memastikan
@@ -1687,6 +1713,8 @@ export async function registerRoutes(
     try {
       const agent = await storage.getAgent(req.params.id as string);
       if (!agent) return res.status(404).json({ error: "Agent not found" });
+      const authTE = await assertCanMutateAgent(req, agent);
+      if (!authTE.ok) return res.status(authTE.status).json({ error: authTE.error });
       const newEnabled = !(agent.isEnabled !== false);
       const updated = await storage.updateAgent(req.params.id as string, { isEnabled: newEnabled } as any);
       const _rTE = await getDbRole(req); const _uTE = (req.user as any)?.claims?.sub || (req.user as any)?.id || ""; const _aTE = (process.env.ADMIN_USER_IDS || "").split(",").map((s: string) => s.trim()).filter(Boolean); const _iATE = _rTE === "admin" || _rTE === "superadmin" || _aTE.includes(_uTE);
@@ -1702,6 +1730,8 @@ export async function registerRoutes(
     try {
       const agent = await storage.getAgent(req.params.id as string);
       if (!agent) return res.status(404).json({ error: "Agent not found" });
+      const authAR = await assertCanMutateAgent(req, agent);
+      if (!authAR.ok) return res.status(authAR.status).json({ error: authAR.error });
       const nowArchived = !(agent as any).archived;
       const updated = await storage.updateAgent(req.params.id as string, {
         archived: nowArchived,
@@ -1717,6 +1747,10 @@ export async function registerRoutes(
   app.patch("/api/agents/:id/folder", isAuthenticated, async (req, res) => {
     try {
       const { folderName } = req.body;
+      const existingForFolder = await storage.getAgent(req.params.id as string);
+      if (!existingForFolder) return res.status(404).json({ error: "Agent not found" });
+      const authFO = await assertCanMutateAgent(req, existingForFolder);
+      if (!authFO.ok) return res.status(authFO.status).json({ error: authFO.error });
       const updated = await storage.updateAgent(req.params.id as string, { folderName: folderName || null } as any);
       if (!updated) return res.status(404).json({ error: "Agent not found" });
       const _rFO = await getDbRole(req); const _uFO = (req.user as any)?.claims?.sub || (req.user as any)?.id || ""; const _aFO = (process.env.ADMIN_USER_IDS || "").split(",").map((s: string) => s.trim()).filter(Boolean); const _iAFO = _rFO === "admin" || _rFO === "superadmin" || _aFO.includes(_uFO);
@@ -1741,6 +1775,12 @@ export async function registerRoutes(
   // Delete agent
   app.delete("/api/agents/:id", isAuthenticated, async (req, res) => {
     try {
+      const existingForDelete = await storage.getAgent(req.params.id as string);
+      if (!existingForDelete) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+      const authDel = await assertCanMutateAgent(req, existingForDelete);
+      if (!authDel.ok) return res.status(authDel.status).json({ error: authDel.error });
       const deleted = await storage.deleteAgent(req.params.id as string);
       if (!deleted) {
         return res.status(404).json({ error: "Agent not found" });
@@ -6797,6 +6837,11 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
         return res.status(404).json({ error: "Agent not found" });
       }
 
+      // Ekspor JSON mentah memuat systemPrompt + integrasi (bisa berisi kredensial)
+      // → batasi hanya untuk pemilik/admin.
+      const authExp = await assertCanMutateAgent(req, agent);
+      if (!authExp.ok) return res.status(authExp.status).json({ error: authExp.error });
+
       const knowledgeBases = await storage.getKnowledgeBases(req.params.id as string);
       const integrations = await storage.getIntegrations(req.params.id as string);
 
@@ -7022,7 +7067,7 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
       const existing = await storage.getAgent(agentId);
       if (!existing) return res.status(404).json({ error: "Agent not found" });
 
-      const auth = assertCanPreviewAgentPrompt(req, existing);
+      const auth = await assertCanMutateAgent(req, existing);
       if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
 
       const patch = mergeProposalIntoAgent(existing, proposal || {}, applyMode);
@@ -7096,6 +7141,11 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
       const isOwner = agentOwnerId && agentOwnerId === userId;
       const isSharedSystemAgent = !agentOwnerId; // seeded, no userId
       const canSeePrompt = isAdmin || isOwner || isSharedSystemAgent;
+      // Lindungi KB & konfigurasi agen PRIVAT milik pengguna lain: tolak akses
+      // kecuali pemilik/admin, agen sistem bersama (tanpa userId), atau agen publik.
+      if (!isOwner && !isAdmin && agentOwnerId && !(agentRaw as any).isPublic) {
+        return res.status(403).json({ error: "Forbidden: agen privat milik pengguna lain" });
+      }
       const agent = canSeePrompt
         ? agentRaw
         : { ...agentRaw, systemPrompt: "" };
@@ -7436,6 +7486,12 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
 
       const auth = assertCanPreviewAgentPrompt(req, agent);
       const isOwnerOrAdmin = auth.ok;
+
+      // Tolak akses KB agen privat milik pengguna lain (samakan dgn eCourse).
+      if (!isOwnerOrAdmin && (agent as any).userId && !(agent as any).isPublic) {
+        return res.status(403).json({ error: "Forbidden: agen ini tidak publik" });
+      }
+
       const safeAgent = isOwnerOrAdmin ? agent : { ...agent, systemPrompt: "" };
 
       const knowledgeBases = await storage.getKnowledgeBases(agentId);
@@ -7467,6 +7523,9 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
     try {
       const agent = await storage.getAgent(req.params.id);
       if (!agent) return res.status(404).json({ error: "Agent tidak ditemukan" });
+
+      const authGen = await assertCanMutateAgent(req, agent);
+      if (!authGen.ok) return res.status(authGen.status).json({ error: authGen.error });
 
       const { tool, platform, tone, duration } = req.body as { tool: string; platform?: string; tone?: string; duration?: string };
 
@@ -7997,6 +8056,9 @@ Post 5 — Produk Baru: Judul | Deskripsi produk | Harga | Link
       const agent = await storage.getAgent(req.params.id);
       if (!agent) return res.status(404).json({ error: "Agent tidak ditemukan" });
 
+      const authGen = await assertCanMutateAgent(req, agent);
+      if (!authGen.ok) return res.status(authGen.status).json({ error: authGen.error });
+
       const { product, framework } = req.body as { product: string; framework: string };
 
       const name = agent.name || "AI Chatbot";
@@ -8181,6 +8243,9 @@ Akhiri dengan 2-3 poin key takeaway untuk pembaca lain.`;
       const agent = await storage.getAgent(req.params.id);
       if (!agent) return res.status(404).json({ error: "Agent tidak ditemukan" });
 
+      const authGen = await assertCanMutateAgent(req, agent);
+      if (!authGen.ok) return res.status(authGen.status).json({ error: authGen.error });
+
       const { style = "modern", colorScheme = "blue", language = "id" } = req.body as { style?: string; colorScheme?: string; language?: string };
 
       const name = agent.name || "AI Chatbot";
@@ -8279,6 +8344,9 @@ Output: HANYA kode HTML, mulai dari <!DOCTYPE html>, tanpa markdown fence atau p
     try {
       const agent = await storage.getAgent(req.params.id);
       if (!agent) return res.status(404).json({ error: "Agent tidak ditemukan" });
+
+      const authGen = await assertCanMutateAgent(req, agent);
+      if (!authGen.ok) return res.status(authGen.status).json({ error: authGen.error });
 
       const name = agent.name || "AI Chatbot";
       const tagline = (agent as any).tagline || "";
@@ -14462,6 +14530,11 @@ Jika informasi tidak ditemukan, isi dengan string kosong "".
 
   app.post("/api/agents/:id/generate-ad-copy", isAuthenticated, async (req, res) => {
     try {
+      const adAgent = await storage.getAgent(req.params.id as string);
+      if (!adAgent) return res.status(404).json({ error: "Agent not found" });
+      const authAd = await assertCanMutateAgent(req, adAgent);
+      if (!authAd.ok) return res.status(authAd.status).json({ error: authAd.error });
+
       const { platform, agentName, agentDescription, agentTagline, productFeatures, landingBenefits } = req.body;
       
       const platformSpecs: Record<string, string> = {
@@ -14516,6 +14589,11 @@ Return JSON format:
 
   app.post("/api/agents/:id/generate-creative-prompts", isAuthenticated, async (req, res) => {
     try {
+      const cpAgent = await storage.getAgent(req.params.id as string);
+      if (!cpAgent) return res.status(404).json({ error: "Agent not found" });
+      const authCp = await assertCanMutateAgent(req, cpAgent);
+      if (!authCp.ok) return res.status(authCp.status).json({ error: authCp.error });
+
       const { type, agentName, agentDescription, agentTagline } = req.body;
 
       const promptInstruction = type === "image"
@@ -17186,6 +17264,10 @@ Min 300 kata. Bahasa Indonesia profesional. Sitasi regulasi spesifik domain ini.
     try {
       const agent = await storage.getAgent(req.params.id as string);
       if (!agent) return res.status(404).json({ error: "Agent tidak ditemukan" });
+      // Hanya pemilik agen / admin yang boleh mempublikasikan template — jika
+      // tidak, konfigurasi rahasia (systemPrompt + isi KB) bisa diekspor user lain.
+      const authPT = await assertCanMutateAgent(req, agent);
+      if (!authPT.ok) return res.status(authPT.status).json({ error: authPT.error });
       const userId = req.user?.claims?.sub || "";
       const { category, description, thumbnailColor, tags } = req.body;
 
