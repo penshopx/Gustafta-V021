@@ -61,6 +61,7 @@ SMTP_HOST = "smtp-relay.brevo.com"
 SMTP_PORT = "587"
 BREVO_SENDER_EMAIL = "noreply@gustafta.my.id"
 SCALEV_API_KEY = "REDACTED_SCALEV_KEY"
+BREVO_API_KEY = "REDACTED_BREVO_KEY"
 
 [postMerge]
 path = "scripts/post-merge.sh"
