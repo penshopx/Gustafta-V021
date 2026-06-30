@@ -92,6 +92,7 @@ export function chatAgentIdRateLimiter(
   return next();
 }
 
+// .unref(): timer pembersih tak boleh menahan event loop tetap hidup.
 setInterval(
   () => {
     const now = Date.now();
@@ -100,4 +101,4 @@ setInterval(
     }
   },
   10 * 60 * 1000
-);
+).unref();

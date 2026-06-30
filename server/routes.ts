@@ -184,13 +184,16 @@ function incrementGuestUsage(fingerprint: string): number {
   return entry.count;
 }
 
+// .unref(): timer pembersih ini tak boleh menahan event loop tetap hidup.
+// Server HTTP yang menjaga proses tetap jalan di produksi; di test/skrip
+// pendek, proses bisa exit bersih setelah server ditutup.
 setInterval(() => {
   const today = new Date().toISOString().split("T")[0];
   const entries = Array.from(guestMessageTracker.entries());
   for (const [key, val] of entries) {
     if (val.lastReset !== today) guestMessageTracker.delete(key);
   }
-}, 60 * 60 * 1000);
+}, 60 * 60 * 1000).unref();
 
 const KNOWN_PROJECT_BRAIN_KEYS = [
   "project_name", "project_type", "project_stage", "location", "owner_client",
@@ -561,6 +564,7 @@ export async function registerRoutes(
       customModelName: _cmn,
       orchestratorConfig: _oc,
       agenticConfig: _ac,
+      userId: _uid,
       ...safe
     } = agent;
     return safe;
