@@ -43,6 +43,7 @@ import {
   scalevMappings,
   agenticDeliverables,
   blueprints,
+  organizationDrafts,
   agentCollaborators,
   pendingAgentInvites,
   pendingPremiumDeliveries,
@@ -66,6 +67,8 @@ import type {
   InsertAgenticDeliverable,
   BlueprintRecord,
   InsertBlueprint,
+  OrganizationDraftRecord,
+  InsertOrganizationDraft,
 } from "@shared/schema";
 import { applyDefaultPolicies } from "./lib/agent-policies";
 import type { IStorage, CollaboratorView } from "./storage";
@@ -4129,6 +4132,38 @@ export class DatabaseStorage implements IStorage {
   async deleteBlueprintForUser(id: number, userId: string): Promise<boolean> {
     const result = await db.delete(blueprints)
       .where(and(eq(blueprints.id, id), eq(blueprints.userId, userId)));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  // Organization Draft methods (saved team designs — owner-scoped)
+  async listOrganizationDraftsForUser(userId: string): Promise<OrganizationDraftRecord[]> {
+    return await db.select().from(organizationDrafts)
+      .where(eq(organizationDrafts.userId, userId))
+      .orderBy(desc(organizationDrafts.updatedAt));
+  }
+
+  async getOrganizationDraftForUser(id: number, userId: string): Promise<OrganizationDraftRecord | undefined> {
+    const result = await db.select().from(organizationDrafts)
+      .where(and(eq(organizationDrafts.id, id), eq(organizationDrafts.userId, userId))).limit(1);
+    return result[0];
+  }
+
+  async createOrganizationDraft(data: InsertOrganizationDraft): Promise<OrganizationDraftRecord> {
+    const [created] = await db.insert(organizationDrafts).values(data).returning();
+    return created;
+  }
+
+  async updateOrganizationDraftForUser(id: number, userId: string, data: Partial<InsertOrganizationDraft>): Promise<OrganizationDraftRecord | undefined> {
+    const [updated] = await db.update(organizationDrafts)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(organizationDrafts.id, id), eq(organizationDrafts.userId, userId)))
+      .returning();
+    return updated;
+  }
+
+  async deleteOrganizationDraftForUser(id: number, userId: string): Promise<boolean> {
+    const result = await db.delete(organizationDrafts)
+      .where(and(eq(organizationDrafts.id, id), eq(organizationDrafts.userId, userId)));
     return (result.rowCount ?? 0) > 0;
   }
 }

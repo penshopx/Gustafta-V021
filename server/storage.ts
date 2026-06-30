@@ -82,6 +82,8 @@ import type {
   InsertTenderAlertProfile,
   BlueprintRecord,
   InsertBlueprint,
+  OrganizationDraftRecord,
+  InsertOrganizationDraft,
   AgentCollaborator,
   CollaboratorRole,
   PendingAgentInvite,
@@ -190,6 +192,13 @@ export interface IStorage {
   getBlueprintForUser(id: number, userId: string): Promise<BlueprintRecord | undefined>;
   updateBlueprintForUser(id: number, userId: string, data: Partial<InsertBlueprint>): Promise<BlueprintRecord | undefined>;
   deleteBlueprintForUser(id: number, userId: string): Promise<boolean>;
+
+  // Organization Draft methods (saved team designs — STRICTLY owner-scoped, no global getById)
+  listOrganizationDraftsForUser(userId: string): Promise<OrganizationDraftRecord[]>;
+  getOrganizationDraftForUser(id: number, userId: string): Promise<OrganizationDraftRecord | undefined>;
+  createOrganizationDraft(data: InsertOrganizationDraft): Promise<OrganizationDraftRecord>;
+  updateOrganizationDraftForUser(id: number, userId: string, data: Partial<InsertOrganizationDraft>): Promise<OrganizationDraftRecord | undefined>;
+  deleteOrganizationDraftForUser(id: number, userId: string): Promise<boolean>;
 
   // Knowledge Base methods
   getKnowledgeBases(agentId: string): Promise<KnowledgeBase[]>;
@@ -2476,6 +2485,50 @@ export class MemStorage implements IStorage {
     const existing = this.blueprintsMem.get(id);
     if (!existing || existing.userId !== userId) return false;
     return this.blueprintsMem.delete(id);
+  }
+
+  // Organization Draft methods (MemStorage — in-memory, owner-scoped)
+  private orgDraftsMem: Map<number, OrganizationDraftRecord> = new Map();
+  private orgDraftSeq = 1;
+
+  async listOrganizationDraftsForUser(userId: string): Promise<OrganizationDraftRecord[]> {
+    return Array.from(this.orgDraftsMem.values())
+      .filter((d) => d.userId === userId)
+      .sort((a, b) => (b.updatedAt?.getTime?.() ?? 0) - (a.updatedAt?.getTime?.() ?? 0));
+  }
+
+  async getOrganizationDraftForUser(id: number, userId: string): Promise<OrganizationDraftRecord | undefined> {
+    const rec = this.orgDraftsMem.get(id);
+    return rec && rec.userId === userId ? rec : undefined;
+  }
+
+  async createOrganizationDraft(data: InsertOrganizationDraft): Promise<OrganizationDraftRecord> {
+    const now = new Date();
+    const rec = {
+      id: this.orgDraftSeq++,
+      userId: data.userId ?? "",
+      name: data.name ?? "Tim Tanpa Judul",
+      mission: data.mission ?? "",
+      data: data.data,
+      createdAt: now,
+      updatedAt: now,
+    } as OrganizationDraftRecord;
+    this.orgDraftsMem.set(rec.id, rec);
+    return rec;
+  }
+
+  async updateOrganizationDraftForUser(id: number, userId: string, data: Partial<InsertOrganizationDraft>): Promise<OrganizationDraftRecord | undefined> {
+    const existing = this.orgDraftsMem.get(id);
+    if (!existing || existing.userId !== userId) return undefined;
+    const updated = { ...existing, ...data, userId, updatedAt: new Date() } as OrganizationDraftRecord;
+    this.orgDraftsMem.set(id, updated);
+    return updated;
+  }
+
+  async deleteOrganizationDraftForUser(id: number, userId: string): Promise<boolean> {
+    const existing = this.orgDraftsMem.get(id);
+    if (!existing || existing.userId !== userId) return false;
+    return this.orgDraftsMem.delete(id);
   }
 
   async cloneAgentForOwner(_masterAgentId: number, _ownerUserId: string): Promise<Agent> {

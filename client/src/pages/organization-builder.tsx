@@ -15,7 +15,7 @@ import {
 import {
   Users, Sparkles, ArrowRight, ArrowLeft, Loader2, Lock, Check, AlertTriangle,
   Plus, Trash2, Crown, Rocket, RotateCcw, Info, Network, ClipboardList, Wand2,
-  Download, Upload, Copy, X,
+  Download, Upload, Copy, X, Save, FolderOpen,
 } from "lucide-react";
 import {
   createEmptyOrganizationBlueprint,
@@ -210,6 +210,7 @@ const pct = (n: number) => Math.round((n || 0) * 100);
 /* ── Draft auto-save (localStorage) ── */
 const DRAFT_KEY = "gustafta_org_builder_draft_v1";
 interface OrgDraft { orgName: string; mission: string; members: MemberDraft[]; maxSpecialists: number }
+interface SavedDraftSummary { id: number; name: string; mission: string; memberCount: number; updatedAt: string }
 const hasMeaningfulDraft = (d: Partial<OrgDraft>): boolean =>
   !!(d.orgName?.trim() || d.mission?.trim() ||
     (Array.isArray(d.members) && (d.members.length > 1 ||
@@ -351,6 +352,9 @@ export default function OrganizationBuilderPage() {
   const [composedDomain, setComposedDomain] = useState<string | null>(null);
   const [readiness, setReadiness] = useState<number | null>(null);
   const [restorable, setRestorable] = useState<OrgDraft | null>(null);
+  const [savedDrafts, setSavedDrafts] = useState<SavedDraftSummary[]>([]);
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [loadingDraftId, setLoadingDraftId] = useState<number | null>(null);
   const bootRef = useRef(false);
   const holdRef = useRef(false);
 
@@ -387,6 +391,68 @@ export default function OrganizationBuilderPage() {
     setMission(d.mission);
     setMembers(d.members);
     setMaxSpecialists(d.maxSpecialists);
+  };
+
+  /* ── Tahap 37: Rancangan tim tersimpan di akun (server-side, owner-scoped) ── */
+  const loadSavedDrafts = async () => {
+    try {
+      const data = await apiRequest("GET", "/api/organization/drafts");
+      setSavedDrafts(Array.isArray(data?.drafts) ? data.drafts : []);
+    } catch { /* tak fatal — daftar tersimpan opsional */ }
+  };
+
+  useEffect(() => {
+    if (isAuthenticated) loadSavedDrafts();
+  }, [isAuthenticated]);
+
+  const saveToAccount = async () => {
+    if (!hasMeaningfulDraft({ orgName, mission, members, maxSpecialists })) return;
+    setSavingDraft(true);
+    try {
+      const data: OrgDraft = { orgName, mission, members, maxSpecialists };
+      await apiRequest("POST", "/api/organization/drafts", {
+        name: orgName.trim() || "Tim Tanpa Judul",
+        mission,
+        data,
+      });
+      await loadSavedDrafts();
+      toast({ title: "Rancangan disimpan", description: "Tim tersimpan di akun Anda — bisa dibuka lagi kapan saja." });
+    } catch (e) {
+      toast({ title: "Gagal menyimpan", description: e instanceof Error ? e.message : "Coba lagi.", variant: "destructive" });
+    } finally {
+      setSavingDraft(false);
+    }
+  };
+
+  const loadSavedDraft = async (id: number) => {
+    setLoadingDraftId(id);
+    try {
+      const data = await apiRequest("GET", `/api/organization/drafts/${id}`);
+      const payload = data?.draft?.data;
+      if (!payload || !Array.isArray(payload.members)) throw new Error("Rancangan kosong / rusak.");
+      applyDraft(payload); // WAJIB lewat applyDraft → sanitizeDraft (jaga invariant)
+      holdRef.current = false;
+      setRestorable(null);
+      setComposedDomain(null);
+      setReadiness(null);
+      setAnalysis(null); setPreview(null); setCreated(null); setCreateError(null);
+      setStep("members");
+      toast({ title: "Rancangan dimuat", description: `${payload.members.length} anggota siap ditinjau.` });
+    } catch (e) {
+      toast({ title: "Gagal memuat", description: e instanceof Error ? e.message : "Coba lagi.", variant: "destructive" });
+    } finally {
+      setLoadingDraftId(null);
+    }
+  };
+
+  const deleteSavedDraft = async (id: number) => {
+    try {
+      await apiRequest("DELETE", `/api/organization/drafts/${id}`);
+      setSavedDrafts((prev) => prev.filter((d) => d.id !== id));
+      toast({ title: "Rancangan dihapus" });
+    } catch (e) {
+      toast({ title: "Gagal menghapus", description: e instanceof Error ? e.message : "Coba lagi.", variant: "destructive" });
+    }
   };
 
   /* Tahap 35: muat template siap-pakai → langsung ke step anggota untuk ditinjau. */
@@ -828,6 +894,17 @@ export default function OrganizationBuilderPage() {
             >
               <Upload className="h-3.5 w-3.5" /> Muat dari file
             </Button>
+            {isAuthenticated && (
+              <Button
+                size="sm"
+                onClick={saveToAccount}
+                disabled={savingDraft || !hasMeaningfulDraft({ orgName, mission, members, maxSpecialists })}
+                className="gap-1.5 bg-violet-600 hover:bg-violet-500 text-white"
+                data-testid="btn-save-draft-account"
+              >
+                {savingDraft ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />} Simpan ke akun
+              </Button>
+            )}
           </div>
         )}
 
@@ -871,6 +948,57 @@ export default function OrganizationBuilderPage() {
                 ))}
               </div>
             </div>
+
+            {/* Rancangan tim tersimpan (Tahap 37) */}
+            {isAuthenticated && savedDrafts.length > 0 && (
+              <div className="rounded-xl border border-blue-200 dark:border-blue-500/30 bg-blue-50 dark:bg-blue-950/20 p-4" data-testid="card-saved-drafts">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <FolderOpen className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  <span className="text-sm font-bold text-gray-900 dark:text-white">Rancangan tim tersimpan</span>
+                  <Badge variant="outline" className="text-[10px]">{savedDrafts.length}</Badge>
+                </div>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+                  Tim yang Anda simpan ke akun. Buka kembali untuk meninjau & menyesuaikan, lalu buat timnya.
+                </p>
+                <div className="space-y-2">
+                  {savedDrafts.map((d) => (
+                    <div
+                      key={d.id}
+                      className="flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-card p-3"
+                      data-testid={`saved-draft-${d.id}`}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold text-gray-900 dark:text-white truncate">{d.name}</div>
+                        <div className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
+                          {d.memberCount} anggota{d.mission?.trim() ? ` · ${d.mission.trim()}` : ""}
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => loadSavedDraft(d.id)}
+                        disabled={loadingDraftId === d.id}
+                        className="gap-1.5 shrink-0"
+                        data-testid={`btn-load-draft-${d.id}`}
+                      >
+                        {loadingDraftId === d.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ArrowRight className="h-3.5 w-3.5" />} Buka
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => deleteSavedDraft(d.id)}
+                        className="shrink-0 h-8 w-8 text-gray-400 hover:text-rose-500"
+                        data-testid={`btn-delete-draft-${d.id}`}
+                        aria-label={`Hapus rancangan ${d.name}`}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="rounded-xl border border-violet-200 dark:border-violet-500/30 bg-violet-50 dark:bg-violet-950/20 p-4">
               <div className="flex items-center gap-2 mb-1">
                 <Wand2 className="h-4 w-4 text-violet-600 dark:text-violet-400" />

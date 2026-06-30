@@ -21,6 +21,7 @@
 
 import type { Express, Request, Response } from "express";
 import { isAuthenticated } from "./replit_integrations/auth";
+import { storage } from "./storage";
 import {
   organizationBlueprintSchema,
   lintOrganizationBlueprint,
@@ -200,6 +201,114 @@ export function registerOrganizationEngineRoutes(app: Express): void {
         warnings: result.warnings,
         members,
       });
+    }),
+  );
+
+  /* =========================================================================
+   * Rancangan Tim Tersimpan (Tahap 37) — simpan/kelola desain tim di akun.
+   *
+   * KEAMANAN: SEMUA endpoint STRICTLY owner-scoped — id selalu dipasangkan
+   * dengan userId sesi di lapisan storage (no global getById), jadi tidak ada
+   * jalur IDOR untuk membaca/ubah/hapus rancangan milik user lain. Murni
+   * penyimpanan desain (JSON wizard) — TIDAK pernah membuat agen (itu tetap
+   * lewat /configure).
+   * ====================================================================== */
+
+  /** Validasi body simpan/perbarui rancangan → { name, mission, data }. */
+  function parseDraftBody(raw: any): { name: string; mission: string; data: any } {
+    const data = raw?.data;
+    if (!data || typeof data !== "object" || Array.isArray(data)) {
+      throw new HttpError(400, "Rancangan tidak valid: 'data' harus objek.");
+    }
+    if (!Array.isArray((data as any).members)) {
+      throw new HttpError(400, "Rancangan tidak valid: 'data.members' harus array.");
+    }
+    const rawName = typeof raw?.name === "string" ? raw.name.trim() : "";
+    const name = (rawName || "Tim Tanpa Judul").slice(0, 120);
+    const mission = (typeof raw?.mission === "string" ? raw.mission : "").slice(0, 2000);
+    return { name, mission, data };
+  }
+
+  /** Ringkasan ringan untuk daftar (tanpa payload penuh). */
+  function summarizeDraft(d: { id: number; name: string; mission: string | null; data: any; updatedAt: Date }) {
+    const members = Array.isArray(d.data?.members) ? d.data.members : [];
+    return {
+      id: d.id,
+      name: d.name,
+      mission: d.mission ?? "",
+      memberCount: members.length,
+      updatedAt: d.updatedAt,
+    };
+  }
+
+  // GET /api/organization/drafts → daftar ringkas milik user sesi.
+  app.get(
+    "/api/organization/drafts",
+    isAuthenticated,
+    handler(async (req, res) => {
+      const userId = sessionUserId(req);
+      if (!userId) throw new HttpError(401, "Sesi tidak valid.");
+      const rows = await storage.listOrganizationDraftsForUser(userId);
+      res.json({ drafts: rows.map(summarizeDraft) });
+    }),
+  );
+
+  // GET /api/organization/drafts/:id → rancangan penuh (owner saja).
+  app.get(
+    "/api/organization/drafts/:id",
+    isAuthenticated,
+    handler(async (req, res) => {
+      const userId = sessionUserId(req);
+      if (!userId) throw new HttpError(401, "Sesi tidak valid.");
+      const id = Number(req.params.id);
+      if (!Number.isInteger(id)) throw new HttpError(400, "ID tidak valid.");
+      const row = await storage.getOrganizationDraftForUser(id, userId);
+      if (!row) throw new HttpError(404, "Rancangan tidak ditemukan.");
+      res.json({ draft: row });
+    }),
+  );
+
+  // POST /api/organization/drafts → simpan rancangan baru (di-stamp owner sesi).
+  app.post(
+    "/api/organization/drafts",
+    isAuthenticated,
+    handler(async (req, res) => {
+      const userId = sessionUserId(req);
+      if (!userId) throw new HttpError(401, "Sesi tidak valid.");
+      const { name, mission, data } = parseDraftBody(req.body);
+      const created = await storage.createOrganizationDraft({ userId, name, mission, data });
+      res.json({ draft: created });
+    }),
+  );
+
+  // PUT /api/organization/drafts/:id → perbarui rancangan (owner saja).
+  app.put(
+    "/api/organization/drafts/:id",
+    isAuthenticated,
+    handler(async (req, res) => {
+      const userId = sessionUserId(req);
+      if (!userId) throw new HttpError(401, "Sesi tidak valid.");
+      const id = Number(req.params.id);
+      if (!Number.isInteger(id)) throw new HttpError(400, "ID tidak valid.");
+      const { name, mission, data } = parseDraftBody(req.body);
+      const updated = await storage.updateOrganizationDraftForUser(id, userId, { name, mission, data });
+      if (!updated) throw new HttpError(404, "Rancangan tidak ditemukan.");
+      res.json({ draft: updated });
+    }),
+  );
+
+  // DELETE /api/organization/drafts/:id → hapus rancangan (owner saja).
+  app.delete(
+    "/api/organization/drafts/:id",
+    isAuthenticated,
+    handler(async (req, res) => {
+      const userId = sessionUserId(req);
+      if (!userId) throw new HttpError(401, "Sesi tidak valid.");
+      const id = Number(req.params.id);
+      if (!Number.isInteger(id)) throw new HttpError(400, "ID tidak valid.");
+      const ok = await storage.deleteOrganizationDraftForUser(id, userId);
+      if (!ok) throw new HttpError(404, "Rancangan tidak ditemukan.");
+      res.json({ ok: true });
     }),
   );
 }
