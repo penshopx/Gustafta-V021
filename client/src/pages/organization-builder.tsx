@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "wouter";
 import { SharedHeader } from "@/components/shared-header";
 import { useAuth } from "@/hooks/use-auth";
@@ -113,6 +113,14 @@ function defaultPrompt(m: MemberDraft, orgName: string, mission: string): string
 
 const pct = (n: number) => Math.round((n || 0) * 100);
 
+/* ── Draft auto-save (localStorage) ── */
+const DRAFT_KEY = "gustafta_org_builder_draft_v1";
+interface OrgDraft { orgName: string; mission: string; members: MemberDraft[]; maxSpecialists: number }
+const hasMeaningfulDraft = (d: Partial<OrgDraft>): boolean =>
+  !!(d.orgName?.trim() || d.mission?.trim() ||
+    (Array.isArray(d.members) && (d.members.length > 1 ||
+      d.members.some((m) => m.title?.trim() || m.responsibility?.trim() || m.systemPrompt?.trim()))));
+
 /* ── Component ─────────────────────────────────────────────────────────────── */
 export default function OrganizationBuilderPage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
@@ -132,6 +140,65 @@ export default function OrganizationBuilderPage() {
   const [maxSpecialists, setMaxSpecialists] = useState(3);
   const [composedDomain, setComposedDomain] = useState<string | null>(null);
   const [readiness, setReadiness] = useState<number | null>(null);
+  const [restorable, setRestorable] = useState<OrgDraft | null>(null);
+  const bootRef = useRef(false);
+  const holdRef = useRef(false);
+
+  /* ── Draft auto-save: muat sekali saat mount, tawarkan lanjutkan ── */
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) {
+        const d = JSON.parse(raw) as OrgDraft;
+        if (d && Array.isArray(d.members) && hasMeaningfulDraft(d)) {
+          holdRef.current = true;
+          setRestorable(d);
+        }
+      }
+    } catch { /* abaikan draft rusak */ }
+    bootRef.current = true;
+  }, []);
+
+  /* ── Draft auto-save: simpan tiap perubahan (kecuali saat menunggu keputusan) ── */
+  useEffect(() => {
+    if (!bootRef.current || holdRef.current) return;
+    try {
+      if (created) { localStorage.removeItem(DRAFT_KEY); return; }
+      const d: OrgDraft = { orgName, mission, members, maxSpecialists };
+      if (hasMeaningfulDraft(d)) localStorage.setItem(DRAFT_KEY, JSON.stringify(d));
+      else localStorage.removeItem(DRAFT_KEY);
+    } catch { /* storage penuh / diblokir — abaikan */ }
+  }, [orgName, mission, members, maxSpecialists, created]);
+
+  const restoreDraft = () => {
+    const d = restorable;
+    if (!d) return;
+    const roles: OrgMemberRole[] = ["orchestrator", "specialist", "support"];
+    const safeMembers = (Array.isArray(d.members) ? d.members : [])
+      .filter((m) => m && typeof m === "object")
+      .map((m, i) => ({
+        localId: typeof m.localId === "string" && m.localId.trim() ? m.localId : `m${i + 1}`,
+        role: roles.includes(m.role) ? m.role : "specialist",
+        title: typeof m.title === "string" ? m.title : "",
+        responsibility: typeof m.responsibility === "string" ? m.responsibility : "",
+        systemPrompt: typeof m.systemPrompt === "string" ? m.systemPrompt : "",
+      } as MemberDraft));
+    setOrgName(typeof d.orgName === "string" ? d.orgName : "");
+    setMission(typeof d.mission === "string" ? d.mission : "");
+    setMembers(safeMembers.length
+      ? safeMembers
+      : [{ localId: "m1", role: "orchestrator", title: "", responsibility: "", systemPrompt: "" }]);
+    setMaxSpecialists(Number.isFinite(d.maxSpecialists) ? Math.min(5, Math.max(1, d.maxSpecialists)) : 3);
+    holdRef.current = false;
+    setRestorable(null);
+    toast({ title: "Rancangan dipulihkan", description: "Lanjutkan dari tempat Anda berhenti." });
+  };
+
+  const discardDraft = () => {
+    holdRef.current = false;
+    setRestorable(null);
+    try { localStorage.removeItem(DRAFT_KEY); } catch { /* abaikan */ }
+  };
 
   /* ── Member helpers ── */
   const addMember = (role: OrgMemberRole) => {
@@ -345,6 +412,8 @@ export default function OrganizationBuilderPage() {
     setMembers([{ localId: "m1", role: "orchestrator", title: "", responsibility: "", systemPrompt: "" }]);
     setAnalysis(null); setPreview(null); setCreated(null); setCreateError(null);
     setComposedDomain(null); setMaxSpecialists(3); setReadiness(null);
+    holdRef.current = false;
+    try { localStorage.removeItem(DRAFT_KEY); } catch { /* abaikan */ }
   };
 
   /* ── Auth gate ── */
@@ -392,6 +461,29 @@ export default function OrganizationBuilderPage() {
       </div>
 
       <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
+
+        {/* ── Tawaran lanjutkan rancangan tersimpan ── */}
+        {restorable && (
+          <div
+            className="rounded-2xl border border-violet-200 dark:border-violet-500/30 bg-violet-50 dark:bg-violet-950/20 p-4 flex flex-col sm:flex-row sm:items-center gap-3"
+            data-testid="banner-restore-draft"
+          >
+            <div className="flex items-start gap-2 flex-1">
+              <Info className="h-4 w-4 text-violet-600 dark:text-violet-400 mt-0.5 shrink-0" />
+              <p className="text-sm text-gray-700 dark:text-gray-300">
+                Ada rancangan tim yang belum selesai{restorable.orgName?.trim() ? <> (<span className="font-semibold">{restorable.orgName.trim()}</span>)</> : ""}. Lanjutkan dari tempat Anda berhenti?
+              </p>
+            </div>
+            <div className="flex gap-2 shrink-0">
+              <Button size="sm" onClick={restoreDraft} className="bg-violet-600 hover:bg-violet-500 text-white gap-1.5" data-testid="btn-restore-draft">
+                <ArrowRight className="h-3.5 w-3.5" /> Lanjutkan
+              </Button>
+              <Button size="sm" variant="outline" onClick={discardDraft} data-testid="btn-discard-draft">
+                Mulai baru
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* ── STEP: INTRO ── */}
         {step === "intro" && (
