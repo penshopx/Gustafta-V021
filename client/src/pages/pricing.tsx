@@ -835,7 +835,7 @@ export default function Pricing() {
               Paket Bisnis AI
             </div>
             <h2 className="text-2xl font-bold mb-2">Harga Setup & Instalasi</h2>
-            <p className="text-muted-foreground max-w-xl mx-auto text-sm">Bayar sekali — ini biaya setup platform Anda. Terpisah dari biaya berlangganan hosting bulanan.</p>
+            <p className="text-muted-foreground max-w-xl mx-auto text-sm">Bayar sekali — ini biaya setup platform Anda, sudah termasuk lisensi + Starter Kit (panduan). Terpisah dari biaya berlangganan hosting bulanan.</p>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {chatbotPackages.map((pkg, index) => (

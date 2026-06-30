@@ -327,7 +327,7 @@ export default function CheckoutPage() {
               )}
               {jasa && (
                 <div className="mt-5 pt-4 border-t text-xs text-muted-foreground">
-                  * Biaya setup dibayar sekali. Hosting berlangganan dibayar terpisah sesuai durasi yang dipilih.
+                  * Biaya setup dibayar sekali, sudah termasuk lisensi + Starter Kit. Hosting berlangganan dibayar terpisah sesuai durasi yang dipilih.
                 </div>
               )}
             </div>
