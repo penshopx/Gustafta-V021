@@ -61,10 +61,15 @@ export default function BlueprintPage() {
             dan bagaimana roadmap monetisasinya. Blueprint membantu Anda menyusun semua itu.
           </p>
           <p className="text-sm text-cyan-200 mb-8 font-semibold">Dari ide abstrak menjadi rencana konkret. Dari "punya pengetahuan" menjadi "punya ekosistem".</p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-3 justify-center">
             <Link href="/dialog-gustafta">
               <Button size="lg" className="bg-white text-indigo-700 hover:bg-indigo-50 font-bold gap-2 px-8 h-12" data-testid="btn-hero-buat-blueprint">
                 <Sparkles className="h-5 w-5" /> Buat Blueprint Saya
+              </Button>
+            </Link>
+            <Link href="/blueprint-builder">
+              <Button size="lg" variant="outline" className="border-white/40 text-white hover:bg-white/10 gap-2 px-8 h-12" data-testid="btn-hero-blueprint-builder">
+                Rancang Agen (Builder) <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
             <a href={WA_URL} target="_blank" rel="noopener noreferrer">
@@ -345,10 +350,15 @@ export default function BlueprintPage() {
             melalui percakapan alami, lalu menghasilkan blueprint yang benar-benar personal.
           </p>
           <p className="text-blue-200 text-sm mb-8">Gratis untuk memulai. Tanpa perlu daftar.</p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-3 justify-center">
             <Link href="/dialog-gustafta">
               <Button size="lg" className="bg-white text-indigo-700 hover:bg-indigo-50 font-bold gap-2 px-8 h-12" data-testid="btn-cta-final-blueprint">
                 <Sparkles className="h-5 w-5" /> Buat Blueprint via Dialog
+              </Button>
+            </Link>
+            <Link href="/blueprint-builder">
+              <Button size="lg" variant="outline" className="border-white/40 text-white hover:bg-white/10 gap-2 px-8 h-12" data-testid="btn-cta-final-blueprint-builder">
+                Rancang Agen (Builder) <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
             <Link href={builderUrl}>
