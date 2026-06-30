@@ -286,6 +286,15 @@ export function registerEmailAuthRoutes(app: Express): void {
         console.error("[EmailAuth] Failed to apply pending invites:", inviteErr);
       }
 
+      // Deliver any pre-paid Premium Privat chatbots bought before this signup.
+      try {
+        const { storage } = await import("../../storage");
+        const clones = await storage.applyPendingPremiumDeliveriesForUser(userRow.id, email);
+        if (clones.length > 0) console.log(`[EmailAuth] Delivered ${clones.length} pending Premium Privat clone(s) for ${email}`);
+      } catch (delErr) {
+        console.error("[EmailAuth] Failed to deliver pending premium clones:", delErr);
+      }
+
       // Auto-create pending trial request so super-admin can approve from admin panel
       try {
         const { trialRequests } = await import("@shared/schema");

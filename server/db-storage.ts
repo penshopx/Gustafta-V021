@@ -45,6 +45,7 @@ import {
   blueprints,
   agentCollaborators,
   pendingAgentInvites,
+  pendingPremiumDeliveries,
   notifications,
 } from "@shared/schema";
 import { users } from "@shared/models/auth";
@@ -1102,39 +1103,46 @@ export class DatabaseStorage implements IStorage {
     } = master as any;
 
     const newToken = `gus_${randomUUID().replace(/-/g, "")}`;
-    const [clone] = await db.insert(agents).values({
-      ...rest,
-      userId: ownerUserId,
-      isListed: false,
-      isPublic: false,        // salinan privat: TIDAK boleh tampil/embed publik
-      isActive: false,        // hindari bentrok dengan singleton active-agent global
-      isEnabled: true,
-      archived: false,
-      slug: null,
-      accessToken: newToken,
-      // Jangan wariskan kredensial/endpoint milik penjual ke runtime pembeli.
-      customApiKey: "",
-      customBaseUrl: "",
-      customModelName: "",
-      premiumClass: "private",
-      clonedFromAgentId: masterAgentId,
-    }).returning();
 
-    // Salin Knowledge Base milik master + chunk RAG-nya agar retrieval tetap jalan.
-    const kbRows = await db.select().from(knowledgeBases).where(eq(knowledgeBases.agentId, masterAgentId));
-    for (const row of kbRows) {
-      const { id: oldKbId, createdAt: _kcreated, ...kbRest } = row as any;
-      const [newKb] = await db.insert(knowledgeBases).values({ ...kbRest, agentId: clone.id }).returning();
-      const chunkRows = await db.select().from(knowledgeChunks).where(eq(knowledgeChunks.knowledgeBaseId, oldKbId));
-      for (const chunk of chunkRows) {
-        const { id: _cid, createdAt: _ccreated, ...chunkRest } = chunk as any;
-        await db.insert(knowledgeChunks).values({
-          ...chunkRest,
-          knowledgeBaseId: newKb.id,
-          agentId: clone.id,
-        });
+    // ATOMIK: agen + KB + chunk dalam satu transaksi. Kalau ada langkah yang
+    // gagal, SEMUA di-rollback — tidak ada salinan parsial (mis. agen tanpa KB)
+    // yang bisa salah dianggap "sudah terkirim" oleh getCloneForOwner.
+    const clone = await db.transaction(async (tx) => {
+      const [created] = await tx.insert(agents).values({
+        ...rest,
+        userId: ownerUserId,
+        isListed: false,
+        isPublic: false,        // salinan privat: TIDAK boleh tampil/embed publik
+        isActive: false,        // hindari bentrok dengan singleton active-agent global
+        isEnabled: true,
+        archived: false,
+        slug: null,
+        accessToken: newToken,
+        // Jangan wariskan kredensial/endpoint milik penjual ke runtime pembeli.
+        customApiKey: "",
+        customBaseUrl: "",
+        customModelName: "",
+        premiumClass: "private",
+        clonedFromAgentId: masterAgentId,
+      }).returning();
+
+      // Salin Knowledge Base milik master + chunk RAG-nya agar retrieval tetap jalan.
+      const kbRows = await tx.select().from(knowledgeBases).where(eq(knowledgeBases.agentId, masterAgentId));
+      for (const row of kbRows) {
+        const { id: oldKbId, createdAt: _kcreated, ...kbRest } = row as any;
+        const [newKb] = await tx.insert(knowledgeBases).values({ ...kbRest, agentId: created.id }).returning();
+        const chunkRows = await tx.select().from(knowledgeChunks).where(eq(knowledgeChunks.knowledgeBaseId, oldKbId));
+        for (const chunk of chunkRows) {
+          const { id: _cid, createdAt: _ccreated, ...chunkRest } = chunk as any;
+          await tx.insert(knowledgeChunks).values({
+            ...chunkRest,
+            knowledgeBaseId: newKb.id,
+            agentId: created.id,
+          });
+        }
       }
-    }
+      return created;
+    });
 
     agentCache.delete("__active__");
     agentListCache.clear();
@@ -1326,6 +1334,57 @@ export class DatabaseStorage implements IStorage {
     await db.delete(pendingAgentInvites).where(eq(pendingAgentInvites.email, normalized));
     agentListCache.clear();
     return grants;
+  }
+
+  // ─── Pending Premium Privat deliveries (beli tanpa akun → clone saat daftar) ──
+  async addPendingPremiumDelivery(data: { masterAgentId: number; email: string; source?: string }): Promise<void> {
+    const email = (data.email || "").trim().toLowerCase();
+    if (!data.masterAgentId || !email) return;
+    await db.insert(pendingPremiumDeliveries)
+      .values({ masterAgentId: data.masterAgentId, email, source: data.source || "scalev" })
+      .onConflictDoNothing({
+        target: [pendingPremiumDeliveries.masterAgentId, pendingPremiumDeliveries.email],
+      });
+  }
+
+  // Idempotency: cek apakah user sudah punya salinan privat dari master ini.
+  async getCloneForOwner(masterAgentId: number, ownerUserId: string): Promise<Agent | undefined> {
+    if (!masterAgentId || !ownerUserId) return undefined;
+    const [row] = await db.select().from(agents)
+      .where(and(eq(agents.clonedFromAgentId, masterAgentId), eq(agents.userId, ownerUserId)))
+      .limit(1);
+    return row ? this.mapAgentRow(row) : undefined;
+  }
+
+  async applyPendingPremiumDeliveriesForUser(userId: string, email: string): Promise<Agent[]> {
+    const normalized = (email || "").trim().toLowerCase();
+    if (!userId || !normalized) return [];
+    const pending = await db.select()
+      .from(pendingPremiumDeliveries)
+      .where(eq(pendingPremiumDeliveries.email, normalized));
+    if (pending.length === 0) return [];
+    const delivered: Agent[] = [];
+    const doneMasterIds: number[] = [];
+    for (const p of pending) {
+      try {
+        // Idempotent: jangan clone dua kali kalau salinan sudah ada.
+        const existing = await this.getCloneForOwner(p.masterAgentId, userId);
+        const clone = existing || await this.cloneAgentForOwner(p.masterAgentId, userId);
+        delivered.push(clone);
+        doneMasterIds.push(p.masterAgentId);
+      } catch (err: any) {
+        // Hapus HANYA baris yang berhasil — yang gagal tetap antri untuk retry.
+        console.error(`[pending-premium] Gagal clone master #${p.masterAgentId} untuk ${normalized}:`, err?.message);
+      }
+    }
+    if (doneMasterIds.length > 0) {
+      await db.delete(pendingPremiumDeliveries).where(and(
+        eq(pendingPremiumDeliveries.email, normalized),
+        inArray(pendingPremiumDeliveries.masterAgentId, doneMasterIds),
+      ));
+    }
+    agentListCache.clear();
+    return delivered;
   }
 
   // ─── Notification methods ──────────────────────────────────────────────────

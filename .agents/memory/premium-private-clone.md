@@ -21,6 +21,14 @@ Also: set `isActive=false` on the clone (isActive behaves like a global active-a
 
 **Intentional non-clone:** an orchestrator clone keeps `agenticSubAgents` pointing at the ORIGINAL system-owned sub-agent IDs. By design the "brain" (orchestrator + sub-agents) stays system-owned; the buyer only edits KB. Not a bug.
 
-## Delivery (phased)
-- Foundation (done): schema fields + `cloneAgentForOwner` + admin `POST /api/admin/agents/:id/deliver-private` {email} (requireAdmin; 404 if buyer email not registered yet).
-- Later: wire Scalev webhook chatbot branch (server/routes.ts) to auto-clone when mapped master `premiumClass==="private"`; pending-delivery for unregistered emails (mirror pending_agent_invites); buyer "Update Pengetahuan" UI.
+## Delivery (done)
+- Foundation: schema fields + `cloneAgentForOwner` + admin `POST /api/admin/agents/:id/deliver-private` {email} (requireAdmin; 404 if buyer email not registered yet).
+- Buyer UI: "Perkuat Pengetahuan" page lets the owner feed/edit their clone's KB.
+- Scalev webhook auto-clone (POST /api/webhooks/scalev): when mapped master `premiumClass==="private"`, registered buyer → clone immediately; unregistered → `pending_premium_deliveries` row, auto-applied at next login/register (`applyPendingPremiumDeliveriesForUser` in both replitAuth callback + emailAuth register). If clone throws for a registered buyer, queue pending as fallback so the paid order is never lost.
+
+## Idempotency & atomicity (non-obvious, hard-won)
+- **One clone per (master, buyer) is the product policy** (repeat purchase reuses clone; different product = different master = different clone).
+- Enforce with a DB **partial unique index** `agents_clone_owner_unique` on `(cloned_from_agent_id, user_id) WHERE cloned_from_agent_id IS NOT NULL`. `getCloneForOwner` is only a fast-path check; the index is what makes concurrent webhook+login races safe (loser hits unique violation, caught/logged).
+- **`cloneAgentForOwner` MUST be one `db.transaction`** (agent + KB rows + chunks all via `tx`). Driver is `drizzle-orm/node-postgres` on a real `pg.Pool` → transactions supported. **Why:** without it, agent insert can succeed while a later chunk insert fails, leaving a partial clone that `getCloneForOwner` later treats as "delivered" → buyer gets a clone with empty RAG and pending rows get wrongly cleared.
+- `applyPendingPremiumDeliveriesForUser` deletes ONLY successfully-cloned masterIds (`inArray` on doneMasterIds), so failed deliveries stay queued for retry.
+- Webhook auth: optional `SCALEV_WEBHOOK_SECRET` gate (x-scalev-secret / x-webhook-secret header or ?secret=), mirroring the optional MAYAR pattern. Non-breaking for the live integration; set the secret in prod when the window allows.

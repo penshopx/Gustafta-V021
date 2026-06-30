@@ -270,7 +270,15 @@ export const agents = pgTable("agents", {
   archived: boolean("archived").default(false),
   archivedAt: timestamp("archived_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  // Premium Privat: jamin maksimal SATU salinan per (master, pemilik). Race-safe
+  // di level DB — dua webhook/login bersamaan tak bisa membuat clone ganda.
+  // Partial: hanya berlaku untuk baris salinan (cloned_from_agent_id NOT NULL),
+  // agen sistem/master (NULL) tidak terpengaruh.
+  uniqueIndex("agents_clone_owner_unique")
+    .on(table.clonedFromAgentId, table.userId)
+    .where(sql`${table.clonedFromAgentId} IS NOT NULL`),
+]);
 
 // Knowledge Taxonomy Table
 // Hierarki 4-level: Sektor (root) → Subsektor → Topik → Klausul.
@@ -451,6 +459,26 @@ export const insertPendingAgentInviteSchema = createInsertSchema(pendingAgentInv
   .extend({ role: collaboratorRoleSchema });
 export type InsertPendingAgentInvite = z.infer<typeof insertPendingAgentInviteSchema>;
 export type PendingAgentInvite = typeof pendingAgentInvites.$inferSelect;
+
+// Pending Premium Privat deliveries — a buyer pays (e.g. via Scalev) for a
+// private premium chatbot but has no Gustafta account yet. We can't clone until
+// we have an owner userId, so we persist the intent here. On the buyer's first
+// signup with that email, applyPendingPremiumDeliveriesForUser clones the master
+// agent to them (idempotent). Mirrors pending_agent_invites.
+export const pendingPremiumDeliveries = pgTable("pending_premium_deliveries", {
+  id: serial("id").primaryKey(),
+  masterAgentId: integer("master_agent_id").notNull(),
+  email: varchar("email", { length: 255 }).notNull(),
+  source: varchar("source", { length: 40 }).notNull().default("scalev"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("pending_premium_deliveries_agent_email_unique").on(table.masterAgentId, table.email),
+]);
+
+export const insertPendingPremiumDeliverySchema = createInsertSchema(pendingPremiumDeliveries)
+  .omit({ id: true, createdAt: true });
+export type InsertPendingPremiumDelivery = z.infer<typeof insertPendingPremiumDeliverySchema>;
+export type PendingPremiumDelivery = typeof pendingPremiumDeliveries.$inferSelect;
 
 // In-app notifications (e.g. agent shared with you). Email-independent so
 // collaborators reliably discover shares even when BREVO_API_KEY is absent.

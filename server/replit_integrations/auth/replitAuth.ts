@@ -143,6 +143,14 @@ export async function setupAuth(app: Express) {
       } catch (inviteErr) {
         console.error("[ReplitAuth] Failed to apply pending invites:", inviteErr);
       }
+      // Deliver any pre-paid Premium Privat chatbots bought before this signup.
+      try {
+        const { storage } = await import("../../storage");
+        const clones = await storage.applyPendingPremiumDeliveriesForUser(userId, email);
+        if (clones.length > 0) console.log(`[ReplitAuth] Delivered ${clones.length} pending Premium Privat clone(s) for ${email}`);
+      } catch (delErr) {
+        console.error("[ReplitAuth] Failed to deliver pending premium clones:", delErr);
+      }
     }
     if (userId) {
       const user = await authStorage.getUser(userId);

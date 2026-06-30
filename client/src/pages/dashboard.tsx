@@ -1117,6 +1117,15 @@ export default function Dashboard() {
                     <p className="text-xs text-muted-foreground">Buat Chatbot AI baru</p>
                   </div>
                 </button>
+                <a href="/perkuat-pengetahuan" className="flex items-center gap-3 p-3 rounded-lg border border-dashed hover:border-emerald-500 hover:bg-emerald-500/5 transition-colors" data-testid="card-perkuat-pengetahuan">
+                  <div className="w-8 h-8 rounded-md bg-emerald-500/10 flex items-center justify-center shrink-0">
+                    <BookOpen className="w-4 h-4 text-emerald-500" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Perkuat Pengetahuan</p>
+                    <p className="text-xs text-muted-foreground">Isi chatbot privat Anda dengan data internal</p>
+                  </div>
+                </a>
                 <a href="/domains" className="flex items-center gap-3 p-3 rounded-lg border border-dashed hover:border-green-500 hover:bg-green-500/5 transition-colors">
                   <div className="w-8 h-8 rounded-md bg-green-500/10 flex items-center justify-center shrink-0">
                     <Globe className="w-4 h-4 text-green-500" />
