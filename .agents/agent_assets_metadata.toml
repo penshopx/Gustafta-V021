@@ -154,4 +154,10 @@ title = "gustafta_explainer_bed"
 id = "YDGbRlaDcaCXailVQgdks"
 uri = "file://attached_assets/generated_videos/gustafta_explainer.mp4"
 type = "video"
-title = "Gustafta — Video Penjelasan Produk (30 detik)"
+title = "Gustafta — Versi Landscape 16:9 (sudah dipakai di landing)"
+
+[[outputs]]
+id = "5KM3CUnZesClaCHsgdw2v"
+uri = "file://attached_assets/generated_videos/gustafta_explainer_vertical.mp4"
+type = "video"
+title = "Gustafta — Versi Vertikal 9:16 (Reels/TikTok/Shorts)"
