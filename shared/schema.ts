@@ -1712,6 +1712,7 @@ export type TenderDocumentCatalog = typeof tenderDocumentCatalog.$inferSelect;
 
 export const conversations = pgTable("conversations", {
   id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
   title: text("title").notNull().default("New Chat"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
