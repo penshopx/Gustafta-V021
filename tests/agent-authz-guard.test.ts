@@ -70,9 +70,7 @@ test("assertCanMutateAgent mendelegasikan keputusan ke decideAgentMutation (logi
 const STRICT_GUARDED: Array<[string, string]> = [
   ["PATCH /api/agents/:id", 'app.patch("/api/agents/:id"'],
   ["PATCH /api/agents/:id/toggle-enabled", 'app.patch("/api/agents/:id/toggle-enabled"'],
-  ["PATCH /api/agents/:id/archive", 'app.patch("/api/agents/:id/archive"'],
   ["PATCH /api/agents/:id/folder", 'app.patch("/api/agents/:id/folder"'],
-  ["DELETE /api/agents/:id", 'app.delete("/api/agents/:id"'],
   ["POST /api/agents/:id/apply-import", 'app.post("/api/agents/:id/apply-import"'],
   ["POST /api/agents/:id/publish-template", 'app.post("/api/agents/:id/publish-template"'],
   ["GET /api/agents/:id/export", 'app.get("/api/agents/:id/export"'],
@@ -92,6 +90,27 @@ for (const [label, literal] of STRICT_GUARDED) {
       /assertCanMutateAgent\s*\(\s*req\s*,/,
       `Handler ${label} WAJIB memanggil assertCanMutateAgent(req, agent) sebelum memutasi / membaca config privat / menjalankan LLM. ` +
         "Tanpa ini, user mana pun yang login bisa menyalahgunakan agen milik orang lain.",
+    );
+  });
+}
+
+// ── 2b. Aksi DESTRUKTIF/KEPEMILIKAN: wajib assertOwnerOrAdminAgent (BUKAN editor) ──
+// delete & archive adalah aksi kepemilikan; kolaborator Editor TIDAK boleh.
+// Guard ketat ini sengaja tidak melakukan lookup peran kolaborator sehingga
+// editor otomatis 403. Lihat assertOwnerOrAdminAgent di routes.ts.
+const OWNER_ONLY_GUARDED: Array<[string, string]> = [
+  ["PATCH /api/agents/:id/archive", 'app.patch("/api/agents/:id/archive"'],
+  ["DELETE /api/agents/:id", 'app.delete("/api/agents/:id"'],
+];
+
+for (const [label, literal] of OWNER_ONLY_GUARDED) {
+  test(`${label} dijaga assertOwnerOrAdminAgent (owner/admin saja — editor ditolak)`, () => {
+    const block = routeBlock(literal);
+    assert.match(
+      block,
+      /assertOwnerOrAdminAgent\s*\(\s*req\s*,/,
+      `Handler ${label} WAJIB memanggil assertOwnerOrAdminAgent(req, agent) — aksi destruktif/kepemilikan ` +
+        "hanya boleh oleh owner atau admin, BUKAN kolaborator Editor.",
     );
   });
 }

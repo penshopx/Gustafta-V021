@@ -22,10 +22,12 @@ import {
   insertAffiliateSchema,
   miniAppTypeSchema,
   knowledgeBases,
+  collaboratorRoleSchema,
   type Agent,
   type MiniApp,
   type MiniAppType,
 } from "@shared/schema";
+import { z } from "zod";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -45,7 +47,7 @@ import {
 } from "./lib/file-processing";
 import { processKnowledgeBaseForRAG, searchKnowledgeBase } from "./lib/rag-service";
 import { buildFinalSystemPrompt, buildAgenticPrinciplesBlock } from "./lib/build-final-system-prompt";
-import { decideAgentMutation, type AgentAuthzResult } from "./lib/agent-authz";
+import { decideAgentMutation, decideAgentReadAccess, type AgentAuthzResult } from "./lib/agent-authz";
 import { getDefaultPoliciesForSeries, type AgentPolicySet } from "./lib/agent-policies";
 import { importDocumentToProposal, mergeProposalIntoAgent, type ApplyMode } from "./lib/document-importer";
 import { buildEbookMarkdown, buildEbookHtml, stripMarkdownToPlainText, buildEbookTables } from "./lib/ebook-generator";
@@ -1319,10 +1321,31 @@ export async function registerRoutes(
       let agents = await storage.getAgents(toolboxId);
 
       if (!isAdminUser && userId) {
-        // Non-admins only see their own agents, with sensitive fields stripped
+        // Non-admin: agen milik sendiri + agen yang DIBAGIKAN ke mereka (kolaborator).
+        // Keduanya disanitasi (systemPrompt & config internal tidak bocor).
+        const sharedIds = new Set(await storage.listAgentIdsForCollaborator(userId));
+        const collabRoleByAgent = new Map<string, "editor" | "viewer">();
+        if (sharedIds.size > 0) {
+          // Cari peran spesifik per agen untuk men-tag effectiveRole.
+          for (const a of agents) {
+            if (sharedIds.has(String((a as any).id)) && (a as any).userId !== userId) {
+              const r = await storage.getCollaboratorRole(String((a as any).id), userId);
+              if (r) collabRoleByAgent.set(String((a as any).id), r);
+            }
+          }
+        }
         agents = agents
-          .filter((a: any) => a.userId === userId)
-          .map(sanitizeAgentForPublic);
+          .filter((a: any) => a.userId === userId || collabRoleByAgent.has(String(a.id)))
+          .map((a: any) => {
+            const sanitized: any = sanitizeAgentForPublic(a);
+            if (a.userId === userId) {
+              sanitized.effectiveRole = "owner";
+            } else {
+              sanitized.effectiveRole = collabRoleByAgent.get(String(a.id)) || "viewer";
+              sanitized.shared = true;
+            }
+            return sanitized;
+          });
       }
 
       if (!includeArchived) {
@@ -1380,18 +1403,149 @@ export async function registerRoutes(
       const role = await getDbRole(req);
       const adminIds = (process.env.ADMIN_USER_IDS || "").split(",").map((s: string) => s.trim()).filter(Boolean);
       const isAdminUser = role === "admin" || role === "superadmin" || adminIds.includes(userId);
-      const isOwner = (agent as any).userId === userId;
+      const agentOwnerId = (agent as any).userId || "";
+      const isOwner = agentOwnerId === userId;
 
-      if (!isAdminUser && !isOwner) {
+      // Kolaborator (editor/viewer) boleh membaca konfigurasi tersanitasi.
+      let collaboratorRole: "editor" | "viewer" | null = null;
+      if (!isAdminUser && !isOwner && userId && agentOwnerId) {
+        collaboratorRole = await storage.getCollaboratorRole(String((agent as any).id), userId);
+      }
+      const access = decideAgentReadAccess({ userId, isAdmin: isAdminUser, agentOwnerId, collaboratorRole });
+      if (!access.ok) {
         const ip = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() || req.socket?.remoteAddress || "unknown";
-        console.warn(`[ADMIN_DENIED] 403 not-owner-or-admin | userId=${userId} | ip=${ip} | path=${req.path}`);
-        return res.status(403).json({ error: "Forbidden" });
+        console.warn(`[ADMIN_DENIED] ${access.status} not-owner-admin-or-collaborator | userId=${userId} | ip=${ip} | path=${req.path}`);
+        return res.status(access.status).json({ error: access.error });
       }
 
-      // Admin gets full data; owner gets data without sensitive internal fields
-      res.json(isAdminUser ? agent : sanitizeAgentForPublic(agent));
+      // Admin gets full data; owner & collaborators get sanitized data.
+      if (isAdminUser) return res.json(agent);
+      const sanitized: any = sanitizeAgentForPublic(agent);
+      sanitized.effectiveRole = isOwner ? "owner" : (collaboratorRole || "viewer");
+      if (!isOwner) sanitized.shared = true;
+      res.json(sanitized);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch agent" });
+    }
+  });
+
+  // ─── Agent Collaboration (share / Editor-Viewer) ──────────────────────────
+  // Manajemen kolaborator HANYA untuk pemilik agen atau admin. Editor TIDAK boleh
+  // mengelola kolaborator lain (itu hak kepemilikan, bukan hak edit konfigurasi).
+  async function assertCanManageCollaborators(req: any, agent: any): Promise<AgentAuthzResult> {
+    const userId = (req.user as any)?.claims?.sub || (req.user as any)?.id || "";
+    if (!userId) return { ok: false, status: 401, error: "Unauthorized" };
+    const adminIds = (process.env.ADMIN_USER_IDS || "").split(",").map((s: string) => s.trim()).filter(Boolean);
+    const dbRole = await getDbRole(req);
+    const isAdmin = dbRole === "admin" || dbRole === "superadmin" || adminIds.includes(userId);
+    if (isAdmin) return { ok: true };
+    const ownerId = (agent && agent.userId) || "";
+    if (!ownerId) return { ok: false, status: 403, error: "Forbidden: agen sistem hanya bisa dikelola admin" };
+    if (ownerId !== userId) return { ok: false, status: 403, error: "Forbidden: hanya pemilik agen yang bisa berbagi" };
+    return { ok: true };
+  }
+
+  // Daftar kolaborator agen.
+  app.get("/api/agents/:id/collaborators", isAuthenticated, async (req, res) => {
+    try {
+      const agent = await storage.getAgent(req.params.id as string);
+      if (!agent) return res.status(404).json({ error: "Agent not found" });
+      const auth = await assertCanManageCollaborators(req, agent);
+      if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
+      const collaborators = await storage.listCollaboratorsForAgent(req.params.id as string);
+      res.json(collaborators);
+    } catch (error) {
+      console.error("list collaborators error:", error);
+      res.status(500).json({ error: "Failed to list collaborators" });
+    }
+  });
+
+  // Tambah / undang kolaborator via email.
+  app.post("/api/agents/:id/collaborators", isAuthenticated, async (req, res) => {
+    try {
+      const agent = await storage.getAgent(req.params.id as string);
+      if (!agent) return res.status(404).json({ error: "Agent not found" });
+      const auth = await assertCanManageCollaborators(req, agent);
+      if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
+
+      const ownerId = (agent as any).userId || "";
+      if (!ownerId) {
+        return res.status(400).json({ error: "Agen sistem tidak bisa dibagikan" });
+      }
+
+      const parsed = z.object({
+        email: z.string().email("Email tidak valid"),
+        role: collaboratorRoleSchema.default("viewer"),
+      }).safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0]?.message || "Input tidak valid" });
+      }
+
+      const targetUser = await storage.getUserByEmail(parsed.data.email);
+      if (!targetUser) {
+        return res.status(404).json({ error: "Pengguna dengan email tersebut tidak ditemukan" });
+      }
+      if (targetUser.id === ownerId) {
+        return res.status(400).json({ error: "Pemilik agen tidak perlu ditambahkan sebagai kolaborator" });
+      }
+
+      const inviterId = (req.user as any)?.claims?.sub || (req.user as any)?.id || "";
+      const created = await storage.addOrUpdateCollaborator({
+        agentId: req.params.id as string,
+        userId: targetUser.id,
+        role: parsed.data.role,
+        invitedBy: inviterId,
+      });
+      res.status(201).json(created);
+    } catch (error) {
+      console.error("add collaborator error:", error);
+      res.status(500).json({ error: "Failed to add collaborator" });
+    }
+  });
+
+  // Ubah peran kolaborator.
+  app.patch("/api/agents/:id/collaborators/:userId", isAuthenticated, async (req, res) => {
+    try {
+      const agent = await storage.getAgent(req.params.id as string);
+      if (!agent) return res.status(404).json({ error: "Agent not found" });
+      const auth = await assertCanManageCollaborators(req, agent);
+      if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
+
+      const parsed = z.object({ role: collaboratorRoleSchema }).safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0]?.message || "Peran tidak valid" });
+      }
+      const existingRole = await storage.getCollaboratorRole(req.params.id as string, req.params.userId as string);
+      if (!existingRole) {
+        return res.status(404).json({ error: "Kolaborator tidak ditemukan" });
+      }
+      const inviterId = (req.user as any)?.claims?.sub || (req.user as any)?.id || "";
+      const updated = await storage.addOrUpdateCollaborator({
+        agentId: req.params.id as string,
+        userId: req.params.userId as string,
+        role: parsed.data.role,
+        invitedBy: inviterId,
+      });
+      res.json(updated);
+    } catch (error) {
+      console.error("update collaborator error:", error);
+      res.status(500).json({ error: "Failed to update collaborator" });
+    }
+  });
+
+  // Hapus kolaborator.
+  app.delete("/api/agents/:id/collaborators/:userId", isAuthenticated, async (req, res) => {
+    try {
+      const agent = await storage.getAgent(req.params.id as string);
+      if (!agent) return res.status(404).json({ error: "Agent not found" });
+      const auth = await assertCanManageCollaborators(req, agent);
+      if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
+      const removed = await storage.removeCollaborator(req.params.id as string, req.params.userId as string);
+      if (!removed) return res.status(404).json({ error: "Kolaborator tidak ditemukan" });
+      res.json({ success: true });
+    } catch (error) {
+      console.error("remove collaborator error:", error);
+      res.status(500).json({ error: "Failed to remove collaborator" });
     }
   });
 
@@ -1629,11 +1783,39 @@ export async function registerRoutes(
     // getDbRole hanya dipanggil bila ada userId (hindari query DB untuk request anonim).
     const dbRole = userId ? await getDbRole(req) : "";
     const isAdmin = dbRole === "admin" || dbRole === "superadmin" || adminIds.includes(userId);
+    const agentOwnerId = (agent && agent.userId) || "";
+    // Kolaborator Editor boleh memutasi konfigurasi. Lookup hanya bila perlu
+    // (bukan admin, bukan owner, ada userId & agentId) agar tidak query sia-sia.
+    let collaboratorRole: "editor" | "viewer" | null = null;
+    if (userId && !isAdmin && agentOwnerId && agentOwnerId !== userId && agent?.id != null) {
+      collaboratorRole = await storage.getCollaboratorRole(String(agent.id), userId);
+    }
     // Keputusan akhir di fungsi murni teruji (lihat server/lib/agent-authz.ts).
     return decideAgentMutation({
       userId,
       isAdmin,
-      agentOwnerId: (agent && agent.userId) || "",
+      agentOwnerId,
+      collaboratorRole,
+    });
+  }
+
+  // Guard ketat untuk aksi destruktif/kepemilikan (delete, archive): HANYA
+  // owner atau admin. Kolaborator Editor SENGAJA TIDAK di-lookup → otomatis
+  // jatuh ke 403 di decideAgentMutation (collaboratorRole = null).
+  async function assertOwnerOrAdminAgent(
+    req: any,
+    agent: any,
+  ): Promise<AgentAuthzResult> {
+    const userId = (req.user as any)?.claims?.sub || (req.user as any)?.id || "";
+    const adminIds = (process.env.ADMIN_USER_IDS || "").split(",").map((s: string) => s.trim()).filter(Boolean);
+    const dbRole = userId ? await getDbRole(req) : "";
+    const isAdmin = dbRole === "admin" || dbRole === "superadmin" || adminIds.includes(userId);
+    const agentOwnerId = (agent && agent.userId) || "";
+    return decideAgentMutation({
+      userId,
+      isAdmin,
+      agentOwnerId,
+      collaboratorRole: null,
     });
   }
 
@@ -1732,7 +1914,7 @@ export async function registerRoutes(
     try {
       const agent = await storage.getAgent(req.params.id as string);
       if (!agent) return res.status(404).json({ error: "Agent not found" });
-      const authAR = await assertCanMutateAgent(req, agent);
+      const authAR = await assertOwnerOrAdminAgent(req, agent);
       if (!authAR.ok) return res.status(authAR.status).json({ error: authAR.error });
       const nowArchived = !(agent as any).archived;
       const updated = await storage.updateAgent(req.params.id as string, {
@@ -1781,7 +1963,7 @@ export async function registerRoutes(
       if (!existingForDelete) {
         return res.status(404).json({ error: "Agent not found" });
       }
-      const authDel = await assertCanMutateAgent(req, existingForDelete);
+      const authDel = await assertOwnerOrAdminAgent(req, existingForDelete);
       if (!authDel.ok) return res.status(authDel.status).json({ error: authDel.error });
       const deleted = await storage.deleteAgent(req.params.id as string);
       if (!deleted) {

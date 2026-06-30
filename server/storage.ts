@@ -82,7 +82,14 @@ import type {
   InsertTenderAlertProfile,
   BlueprintRecord,
   InsertBlueprint,
+  AgentCollaborator,
+  CollaboratorRole,
 } from "@shared/schema";
+
+export type CollaboratorView = AgentCollaborator & {
+  email?: string | null;
+  displayName?: string | null;
+};
 
 export interface IStorage {
   // User methods
@@ -140,6 +147,15 @@ export interface IStorage {
   updateAgent(id: string, data: Partial<InsertAgent>): Promise<Agent | undefined>;
   setActiveAgent(id: string): Promise<Agent | undefined>;
   deleteAgent(id: string): Promise<boolean>;
+
+  // Agent Collaborator methods (sharing editor/viewer access)
+  getCollaboratorRole(agentId: string, userId: string): Promise<CollaboratorRole | null>;
+  listCollaboratorsForAgent(agentId: string): Promise<CollaboratorView[]>;
+  listAgentIdsForCollaborator(userId: string): Promise<string[]>;
+  addOrUpdateCollaborator(data: { agentId: string; userId: string; role: CollaboratorRole; invitedBy: string }): Promise<AgentCollaborator>;
+  removeCollaborator(agentId: string, userId: string): Promise<boolean>;
+  getUserByEmail(email: string): Promise<{ id: string; email: string; firstName?: string | null; lastName?: string | null } | undefined>;
+  getAgentsByIds(ids: string[]): Promise<Agent[]>;
 
   // Blueprint methods (AI Organization Builder — additive, not yet route-wired)
   getBlueprints(userId?: string): Promise<BlueprintRecord[]>;
@@ -1031,6 +1047,36 @@ export class MemStorage implements IStorage {
     });
 
     return deleted;
+  }
+
+  // Agent Collaborator methods (in-memory stub — DatabaseStorage is the real impl)
+  async getCollaboratorRole(_agentId: string, _userId: string): Promise<CollaboratorRole | null> {
+    return null;
+  }
+  async listCollaboratorsForAgent(_agentId: string): Promise<CollaboratorView[]> {
+    return [];
+  }
+  async listAgentIdsForCollaborator(_userId: string): Promise<string[]> {
+    return [];
+  }
+  async addOrUpdateCollaborator(data: { agentId: string; userId: string; role: CollaboratorRole; invitedBy: string }): Promise<AgentCollaborator> {
+    return {
+      id: 0,
+      agentId: parseInt(data.agentId) || 0,
+      userId: data.userId,
+      role: data.role,
+      invitedBy: data.invitedBy,
+      createdAt: new Date(),
+    } as AgentCollaborator;
+  }
+  async removeCollaborator(_agentId: string, _userId: string): Promise<boolean> {
+    return false;
+  }
+  async getUserByEmail(_email: string): Promise<{ id: string; email: string; firstName?: string | null; lastName?: string | null } | undefined> {
+    return undefined;
+  }
+  async getAgentsByIds(ids: string[]): Promise<Agent[]> {
+    return ids.map((id) => this.agents.get(id)).filter((a): a is Agent => !!a);
   }
 
   // Knowledge Base methods

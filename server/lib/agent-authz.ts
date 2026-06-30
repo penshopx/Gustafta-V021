@@ -14,6 +14,9 @@ export type AgentAuthzResult =
   | { ok: true }
   | { ok: false; status: number; error: string };
 
+/** Peran kolaborator yang di-share ke user (selain pemilik/admin). */
+export type CollaboratorRole = "editor" | "viewer";
+
 export interface AgentMutationContext {
   /** ID user dari sesi; string kosong berarti belum login. */
   userId: string;
@@ -21,10 +24,16 @@ export interface AgentMutationContext {
   isAdmin: boolean;
   /** Pemilik agen target; string kosong = agen sistem/seeded tanpa pemilik. */
   agentOwnerId: string;
+  /**
+   * Peran kolaborasi user pada agen ini (hasil lookup tabel agent_collaborators),
+   * atau null/undefined bila user bukan kolaborator. Editor boleh memutasi
+   * KONFIGURASI agen (mengikuti owner); viewer hanya boleh baca.
+   */
+  collaboratorRole?: CollaboratorRole | null;
 }
 
 export function decideAgentMutation(ctx: AgentMutationContext): AgentAuthzResult {
-  const { userId, isAdmin, agentOwnerId } = ctx;
+  const { userId, isAdmin, agentOwnerId, collaboratorRole } = ctx;
 
   // 1) Belum login — diprioritaskan di atas segalanya (defense-in-depth:
   //    tanpa identitas, klaim admin pun tidak dipercaya).
@@ -38,11 +47,43 @@ export function decideAgentMutation(ctx: AgentMutationContext): AgentAuthzResult
     return { ok: false, status: 403, error: "Forbidden: agen sistem hanya bisa diubah admin" };
   }
 
-  // 4) Bukan pemilik agen.
-  if (agentOwnerId !== userId) {
-    return { ok: false, status: 403, error: "Forbidden: bukan pemilik agen" };
-  }
+  // 4) Pemilik agen.
+  if (agentOwnerId === userId) return { ok: true };
 
-  // 5) Pemilik agen.
-  return { ok: true };
+  // 5) Kolaborator Editor — boleh memutasi konfigurasi (bukan pemilik tetapi
+  //    diberi hak edit eksplisit). Viewer TIDAK lolos (jatuh ke 403 di bawah).
+  if (collaboratorRole === "editor") return { ok: true };
+
+  // 6) Bukan pemilik, bukan editor.
+  return { ok: false, status: 403, error: "Forbidden: bukan pemilik agen" };
+}
+
+export interface AgentReadContext {
+  /** ID user dari sesi; string kosong berarti belum login. */
+  userId: string;
+  /** Sudah dihitung pemanggil dari DB role + ADMIN_USER_IDS. */
+  isAdmin: boolean;
+  /** Pemilik agen target; string kosong = agen sistem/seeded tanpa pemilik. */
+  agentOwnerId: string;
+  /** Peran kolaborasi user pada agen ini, atau null bila bukan kolaborator. */
+  collaboratorRole?: CollaboratorRole | null;
+}
+
+/**
+ * Keputusan AKSES BACA konfigurasi privat agen (lihat detail di builder).
+ * Owner, admin, dan kolaborator (editor ATAU viewer) boleh membaca. Agen sistem
+ * (tanpa pemilik) hanya boleh dibaca admin. Konten sensitif tetap disanitasi di
+ * route layer untuk non-admin.
+ */
+export function decideAgentReadAccess(ctx: AgentReadContext): AgentAuthzResult {
+  const { userId, isAdmin, agentOwnerId, collaboratorRole } = ctx;
+
+  if (!userId) return { ok: false, status: 401, error: "Unauthorized" };
+  if (isAdmin) return { ok: true };
+  if (!agentOwnerId) {
+    return { ok: false, status: 403, error: "Forbidden: agen sistem hanya bisa dibuka admin" };
+  }
+  if (agentOwnerId === userId) return { ok: true };
+  if (collaboratorRole === "editor" || collaboratorRole === "viewer") return { ok: true };
+  return { ok: false, status: 403, error: "Forbidden" };
 }

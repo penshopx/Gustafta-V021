@@ -4,7 +4,7 @@ import {
   Bot, BookOpen, Plug, MessageSquare, Plus, ChevronDown, ChevronRight, ArrowLeft, Settings, BarChart3,
   Lightbulb, Wrench, Sparkles, User, PanelLeftClose, PanelLeft, Menu, Home, X, Palette, Network, Brain, Blocks,
   ShoppingBag, Users, Handshake, TrendingUp, Users2, Ticket, Pencil, Trash2, Radio, FileText, FolderOpen, Target, Globe, Megaphone, Loader2, PackageCheck, Wand2, Scale,
-  Download, Upload, Folder, FolderPlus, Power, PowerOff, Cpu, Archive, ArchiveRestore, Eye, EyeOff, Crown, AlertCircle, Rocket, CheckCircle2, GraduationCap, DatabaseZap,
+  Download, Upload, Folder, FolderPlus, Power, PowerOff, Cpu, Archive, ArchiveRestore, Eye, EyeOff, Crown, AlertCircle, Rocket, CheckCircle2, GraduationCap, DatabaseZap, UserPlus, Share2,
   Award, Shield, ShieldCheck, ShieldAlert, Leaf, Search, HardHat, Building2, Construction, Map as MapIcon, Landmark, Calculator, Package,
   FileSignature, GitBranch, Lock, FileDown, ArrowRight
 } from "lucide-react";
@@ -63,6 +63,7 @@ import { CreateToolboxDialog } from "@/components/dialogs/create-toolbox-dialog"
 import { EditBigIdeaDialog } from "@/components/dialogs/edit-big-idea-dialog";
 import { EditToolboxDialog } from "@/components/dialogs/edit-toolbox-dialog";
 import { UserProfileDialog } from "@/components/dialogs/user-profile-dialog";
+import { ShareAgentDialog } from "@/components/dialogs/share-agent-dialog";
 import { ChatPopup } from "@/components/chat-popup";
 import { SeriesManagementDialog } from "@/components/series-management-dialog";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -360,6 +361,7 @@ export default function Dashboard() {
   const [editSeriesDesc, setEditSeriesDesc] = useState("");
   const [deleteSeriesConfirm, setDeleteSeriesConfirm] = useState<any | null>(null);
   const [editAgentTarget, setEditAgentTarget] = useState<Agent | null>(null);
+  const [shareAgentTarget, setShareAgentTarget] = useState<Agent | null>(null);
   const [editAgentName, setEditAgentName] = useState("");
   const [editAgentDesc, setEditAgentDesc] = useState("");
   const [folderDialogAgent, setFolderDialogAgent] = useState<Agent | null>(null);
@@ -2505,16 +2507,24 @@ export default function Dashboard() {
                             </Avatar>
                             <div className="flex-1 min-w-0 overflow-x-auto scrollbar-hide">
                               <span className="whitespace-nowrap block">{agent.name}</span>
-                              <span className="text-[10px] text-purple-500/70 whitespace-nowrap">Orkestrator</span>
+                              {(agent as any).shared ? (
+                                <span className="text-[10px] text-blue-500/80 whitespace-nowrap flex items-center gap-0.5" data-testid={`badge-shared-${agent.id}`}>
+                                  <Users className="w-2.5 h-2.5" />Dibagikan • {(agent as any).effectiveRole === "editor" ? "Editor" : "Viewer"}
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-purple-500/70 whitespace-nowrap">Orkestrator</span>
+                              )}
                             </div>
                             <div className="flex items-center gap-0.5 invisible group-hover:visible shrink-0">
-                              <Switch
-                                checked={(agent as any).isEnabled !== false}
-                                onCheckedChange={() => { toggleAgentEnabledMutation.mutate(String(agent.id)); }}
-                                onClick={(e) => e.stopPropagation()}
-                                className="scale-[0.65] origin-right"
-                                data-testid={`toggle-agent-enabled-${agent.id}`}
-                              />
+                              {!(agent as any).shared && (
+                                <Switch
+                                  checked={(agent as any).isEnabled !== false}
+                                  onCheckedChange={() => { toggleAgentEnabledMutation.mutate(String(agent.id)); }}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="scale-[0.65] origin-right"
+                                  data-testid={`toggle-agent-enabled-${agent.id}`}
+                                />
+                              )}
                               <Button
                                 size="icon"
                                 variant="ghost"
@@ -2536,34 +2546,52 @@ export default function Dashboard() {
                               >
                                 {exportingAgentId === String(agent.id) ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
                               </Button>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="w-6 h-6"
-                                onClick={(e) => { e.stopPropagation(); setEditAgentTarget(agent as Agent); setEditAgentName(agent.name); setEditAgentDesc((agent as any).description || ""); }}
-                                data-testid={`button-edit-agent-${agent.id}`}
-                              >
-                                <Pencil className="w-3 h-3" />
-                              </Button>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="w-6 h-6"
-                                title={(agent as any).archived ? "Pulihkan dari Arsip" : "Arsipkan"}
-                                onClick={(e) => { e.stopPropagation(); archiveAgentMutation.mutate(String(agent.id)); }}
-                                data-testid={`button-archive-agent-${agent.id}`}
-                              >
-                                {(agent as any).archived ? <ArchiveRestore className="w-3 h-3 text-blue-500" /> : <Archive className="w-3 h-3 text-amber-500" />}
-                              </Button>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="w-6 h-6"
-                                onClick={(e) => { e.stopPropagation(); setDeleteAgentConfirm(agent as Agent); }}
-                                data-testid={`button-delete-agent-${agent.id}`}
-                              >
-                                <Trash2 className="w-3 h-3 text-destructive" />
-                              </Button>
+                              {!(agent as any).shared && (
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="w-6 h-6"
+                                  title="Bagikan"
+                                  onClick={(e) => { e.stopPropagation(); setShareAgentTarget(agent as Agent); }}
+                                  data-testid={`button-share-agent-${agent.id}`}
+                                >
+                                  <Share2 className="w-3 h-3 text-blue-500" />
+                                </Button>
+                              )}
+                              {(agent as any).effectiveRole !== "viewer" && (
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="w-6 h-6"
+                                  onClick={(e) => { e.stopPropagation(); setEditAgentTarget(agent as Agent); setEditAgentName(agent.name); setEditAgentDesc((agent as any).description || ""); }}
+                                  data-testid={`button-edit-agent-${agent.id}`}
+                                >
+                                  <Pencil className="w-3 h-3" />
+                                </Button>
+                              )}
+                              {!(agent as any).shared && (
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="w-6 h-6"
+                                  title={(agent as any).archived ? "Pulihkan dari Arsip" : "Arsipkan"}
+                                  onClick={(e) => { e.stopPropagation(); archiveAgentMutation.mutate(String(agent.id)); }}
+                                  data-testid={`button-archive-agent-${agent.id}`}
+                                >
+                                  {(agent as any).archived ? <ArchiveRestore className="w-3 h-3 text-blue-500" /> : <Archive className="w-3 h-3 text-amber-500" />}
+                                </Button>
+                              )}
+                              {!(agent as any).shared && (
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="w-6 h-6"
+                                  onClick={(e) => { e.stopPropagation(); setDeleteAgentConfirm(agent as Agent); }}
+                                  data-testid={`button-delete-agent-${agent.id}`}
+                                >
+                                  <Trash2 className="w-3 h-3 text-destructive" />
+                                </Button>
+                              )}
                             </div>
                           </div>
                         ))}
@@ -2626,23 +2654,29 @@ export default function Dashboard() {
                               </Avatar>
                               <div className="flex-1 min-w-0 overflow-x-auto scrollbar-hide">
                                 <span className="whitespace-nowrap block">{agent.name}</span>
-                                {(agent as any).folderName && (
+                                {(agent as any).shared ? (
+                                  <span className="text-[10px] text-blue-500/80 whitespace-nowrap flex items-center gap-0.5" data-testid={`badge-shared-${agent.id}`}>
+                                    <Users className="w-2.5 h-2.5" />Dibagikan • {(agent as any).effectiveRole === "editor" ? "Editor" : "Viewer"}
+                                  </span>
+                                ) : (agent as any).folderName ? (
                                   <span className="text-[10px] text-muted-foreground whitespace-nowrap flex items-center gap-0.5">
                                     <Folder className="w-2.5 h-2.5" />{(agent as any).folderName}
                                   </span>
-                                )}
+                                ) : null}
                               </div>
                               {(agent as any).isEnabled === false && (
                                 <span className="text-[9px] bg-orange-100 dark:bg-orange-950 text-orange-600 dark:text-orange-400 rounded px-1 py-0.5 shrink-0">OFF</span>
                               )}
                               <div className="flex items-center gap-0.5 invisible group-hover:visible shrink-0">
-                                <Switch
-                                  checked={(agent as any).isEnabled !== false}
-                                  onCheckedChange={() => { toggleAgentEnabledMutation.mutate(String(agent.id)); }}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="scale-[0.65] origin-right"
-                                  data-testid={`toggle-agent-enabled-${agent.id}`}
-                                />
+                                {!(agent as any).shared && (
+                                  <Switch
+                                    checked={(agent as any).isEnabled !== false}
+                                    onCheckedChange={() => { toggleAgentEnabledMutation.mutate(String(agent.id)); }}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="scale-[0.65] origin-right"
+                                    data-testid={`toggle-agent-enabled-${agent.id}`}
+                                  />
+                                )}
                                 <Button
                                   size="icon"
                                   variant="ghost"
@@ -2664,34 +2698,52 @@ export default function Dashboard() {
                                 >
                                   {exportingAgentId === String(agent.id) ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
                                 </Button>
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="w-6 h-6"
-                                  onClick={(e) => { e.stopPropagation(); setEditAgentTarget(agent as Agent); setEditAgentName(agent.name); setEditAgentDesc((agent as any).description || ""); }}
-                                  data-testid={`button-edit-agent-${agent.id}`}
-                                >
-                                  <Pencil className="w-3 h-3" />
-                                </Button>
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="w-6 h-6"
-                                  title={(agent as any).archived ? "Pulihkan dari Arsip" : "Arsipkan"}
-                                  onClick={(e) => { e.stopPropagation(); archiveAgentMutation.mutate(String(agent.id)); }}
-                                  data-testid={`button-archive-agent-${agent.id}`}
-                                >
-                                  {(agent as any).archived ? <ArchiveRestore className="w-3 h-3 text-blue-500" /> : <Archive className="w-3 h-3 text-amber-500" />}
-                                </Button>
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="w-6 h-6"
-                                  onClick={(e) => { e.stopPropagation(); setDeleteAgentConfirm(agent as Agent); }}
-                                  data-testid={`button-delete-agent-${agent.id}`}
-                                >
-                                  <Trash2 className="w-3 h-3 text-destructive" />
-                                </Button>
+                                {!(agent as any).shared && (
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="w-6 h-6"
+                                    title="Bagikan"
+                                    onClick={(e) => { e.stopPropagation(); setShareAgentTarget(agent as Agent); }}
+                                    data-testid={`button-share-agent-${agent.id}`}
+                                  >
+                                    <Share2 className="w-3 h-3 text-blue-500" />
+                                  </Button>
+                                )}
+                                {(agent as any).effectiveRole !== "viewer" && (
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="w-6 h-6"
+                                    onClick={(e) => { e.stopPropagation(); setEditAgentTarget(agent as Agent); setEditAgentName(agent.name); setEditAgentDesc((agent as any).description || ""); }}
+                                    data-testid={`button-edit-agent-${agent.id}`}
+                                  >
+                                    <Pencil className="w-3 h-3" />
+                                  </Button>
+                                )}
+                                {!(agent as any).shared && (
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="w-6 h-6"
+                                    title={(agent as any).archived ? "Pulihkan dari Arsip" : "Arsipkan"}
+                                    onClick={(e) => { e.stopPropagation(); archiveAgentMutation.mutate(String(agent.id)); }}
+                                    data-testid={`button-archive-agent-${agent.id}`}
+                                  >
+                                    {(agent as any).archived ? <ArchiveRestore className="w-3 h-3 text-blue-500" /> : <Archive className="w-3 h-3 text-amber-500" />}
+                                  </Button>
+                                )}
+                                {!(agent as any).shared && (
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="w-6 h-6"
+                                    onClick={(e) => { e.stopPropagation(); setDeleteAgentConfirm(agent as Agent); }}
+                                    data-testid={`button-delete-agent-${agent.id}`}
+                                  >
+                                    <Trash2 className="w-3 h-3 text-destructive" />
+                                  </Button>
+                                )}
                               </div>
                             </div>
                           ))
@@ -3501,6 +3553,14 @@ export default function Dashboard() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Dialog Bagikan Agen (kolaborator) */}
+      <ShareAgentDialog
+        agentId={shareAgentTarget ? String(shareAgentTarget.id) : null}
+        agentName={shareAgentTarget?.name}
+        open={!!shareAgentTarget}
+        onOpenChange={(open) => { if (!open) setShareAgentTarget(null); }}
+      />
 
       {/* Dialog Edit Alat Bantu (Agent) */}
       <Dialog open={!!editAgentTarget} onOpenChange={(open) => { if (!open) setEditAgentTarget(null); }}>

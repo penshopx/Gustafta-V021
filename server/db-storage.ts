@@ -1,4 +1,4 @@
-import { eq, desc, and, sql, isNull } from "drizzle-orm";
+import { eq, desc, and, sql, isNull, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import { randomUUID } from "crypto";
@@ -43,6 +43,7 @@ import {
   scalevMappings,
   agenticDeliverables,
   blueprints,
+  agentCollaborators,
 } from "@shared/schema";
 import { users } from "@shared/models/auth";
 import type {
@@ -64,7 +65,8 @@ import type {
   InsertBlueprint,
 } from "@shared/schema";
 import { applyDefaultPolicies } from "./lib/agent-policies";
-import type { IStorage } from "./storage";
+import type { IStorage, CollaboratorView } from "./storage";
+import type { AgentCollaborator, CollaboratorRole } from "@shared/schema";
 import type {
   Agent,
   InsertAgent,
@@ -1099,10 +1101,107 @@ export class DatabaseStorage implements IStorage {
 
   async deleteAgent(id: string): Promise<boolean> {
     const result = await db.delete(agents).where(eq(agents.id, parseInt(id))).returning();
+    // Cascade: hapus semua entri kolaborator agen ini agar tidak menggantung.
+    await db.delete(agentCollaborators).where(eq(agentCollaborators.agentId, parseInt(id)));
     agentCache.delete(id);
     agentCache.delete("__active__");
     agentListCache.clear();
     return result.length > 0;
+  }
+
+  // ─── Agent Collaborator methods ───────────────────────────────────────────
+  async getCollaboratorRole(agentId: string, userId: string): Promise<CollaboratorRole | null> {
+    const aId = parseInt(agentId);
+    if (Number.isNaN(aId) || !userId) return null;
+    const rows = await db.select({ role: agentCollaborators.role })
+      .from(agentCollaborators)
+      .where(and(eq(agentCollaborators.agentId, aId), eq(agentCollaborators.userId, userId)))
+      .limit(1);
+    if (rows.length === 0) return null;
+    const role = rows[0].role;
+    return role === "editor" || role === "viewer" ? role : null;
+  }
+
+  async listCollaboratorsForAgent(agentId: string): Promise<CollaboratorView[]> {
+    const aId = parseInt(agentId);
+    if (Number.isNaN(aId)) return [];
+    const rows = await db
+      .select({
+        id: agentCollaborators.id,
+        agentId: agentCollaborators.agentId,
+        userId: agentCollaborators.userId,
+        role: agentCollaborators.role,
+        invitedBy: agentCollaborators.invitedBy,
+        createdAt: agentCollaborators.createdAt,
+        email: users.email,
+        firstName: users.firstName,
+        lastName: users.lastName,
+      })
+      .from(agentCollaborators)
+      .leftJoin(users, eq(agentCollaborators.userId, users.id))
+      .where(eq(agentCollaborators.agentId, aId))
+      .orderBy(desc(agentCollaborators.createdAt));
+    return rows.map((r) => ({
+      id: r.id,
+      agentId: r.agentId,
+      userId: r.userId,
+      role: r.role,
+      invitedBy: r.invitedBy,
+      createdAt: r.createdAt,
+      email: r.email,
+      displayName: [r.firstName, r.lastName].filter(Boolean).join(" ") || null,
+    }));
+  }
+
+  async listAgentIdsForCollaborator(userId: string): Promise<string[]> {
+    if (!userId) return [];
+    const rows = await db.select({ agentId: agentCollaborators.agentId })
+      .from(agentCollaborators)
+      .where(eq(agentCollaborators.userId, userId));
+    return rows.map((r) => String(r.agentId));
+  }
+
+  async addOrUpdateCollaborator(data: { agentId: string; userId: string; role: CollaboratorRole; invitedBy: string }): Promise<AgentCollaborator> {
+    const aId = parseInt(data.agentId);
+    const result = await db.insert(agentCollaborators)
+      .values({ agentId: aId, userId: data.userId, role: data.role, invitedBy: data.invitedBy })
+      .onConflictDoUpdate({
+        target: [agentCollaborators.agentId, agentCollaborators.userId],
+        set: { role: data.role, invitedBy: data.invitedBy },
+      })
+      .returning();
+    // Daftar agen yang terlihat user berubah → bersihkan list cache.
+    agentListCache.clear();
+    return result[0] as AgentCollaborator;
+  }
+
+  async removeCollaborator(agentId: string, userId: string): Promise<boolean> {
+    const aId = parseInt(agentId);
+    if (Number.isNaN(aId) || !userId) return false;
+    const result = await db.delete(agentCollaborators)
+      .where(and(eq(agentCollaborators.agentId, aId), eq(agentCollaborators.userId, userId)))
+      .returning();
+    agentListCache.clear();
+    return result.length > 0;
+  }
+
+  async getUserByEmail(email: string): Promise<{ id: string; email: string; firstName?: string | null; lastName?: string | null } | undefined> {
+    const normalized = (email || "").trim().toLowerCase();
+    if (!normalized) return undefined;
+    const rows = await db
+      .select({ id: users.id, email: users.email, firstName: users.firstName, lastName: users.lastName })
+      .from(users)
+      .where(sql`lower(${users.email}) = ${normalized}`)
+      .limit(1);
+    if (rows.length === 0) return undefined;
+    return { id: rows[0].id, email: rows[0].email || "", firstName: rows[0].firstName, lastName: rows[0].lastName };
+  }
+
+  async getAgentsByIds(ids: string[]): Promise<Agent[]> {
+    const numericIds = ids.map((i) => parseInt(i)).filter((n) => !Number.isNaN(n));
+    if (numericIds.length === 0) return [];
+    const result = await db.select().from(agents).where(inArray(agents.id, numericIds));
+    return result.map((row) => this.mapAgentRow(row));
   }
 
   private parseJsonArray(value: unknown): unknown[] {
