@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { pgTable, text, boolean, timestamp, real, integer, jsonb, varchar, serial } from "drizzle-orm/pg-core";
+import { pgTable, text, boolean, timestamp, real, integer, jsonb, varchar, serial, uniqueIndex } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 
@@ -395,6 +395,29 @@ export const blueprints = pgTable("blueprints", {
 export const insertBlueprintSchema = createInsertSchema(blueprints).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertBlueprint = z.infer<typeof insertBlueprintSchema>;
 export type BlueprintRecord = typeof blueprints.$inferSelect;
+
+// Agent Collaboration — owner shares an agent with other users as editor/viewer.
+// editor = boleh mengubah konfigurasi agen (kecuali hapus/aktivasi/kelola-share);
+// viewer = hanya baca (lihat konfigurasi tersanitasi, tidak boleh mutasi).
+export const agentCollaborators = pgTable("agent_collaborators", {
+  id: serial("id").primaryKey(),
+  agentId: integer("agent_id").notNull(),
+  userId: varchar("user_id", { length: 255 }).notNull(),
+  role: varchar("role", { length: 20 }).notNull().default("viewer"),
+  invitedBy: varchar("invited_by", { length: 255 }).notNull().default(""),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("agent_collaborators_agent_user_unique").on(table.agentId, table.userId),
+]);
+
+export const collaboratorRoleSchema = z.enum(["editor", "viewer"]);
+export type CollaboratorRole = z.infer<typeof collaboratorRoleSchema>;
+
+export const insertAgentCollaboratorSchema = createInsertSchema(agentCollaborators)
+  .omit({ id: true, createdAt: true })
+  .extend({ role: collaboratorRoleSchema });
+export type InsertAgentCollaborator = z.infer<typeof insertAgentCollaboratorSchema>;
+export type AgentCollaborator = typeof agentCollaborators.$inferSelect;
 
 // Affiliates/Partners Table — MLM 3-Level (Pusat L1 / Provinsi L2 / Kab-Kota L3)
 export const affiliates = pgTable("affiliates", {
