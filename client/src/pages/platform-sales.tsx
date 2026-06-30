@@ -98,7 +98,7 @@ const PACKAGES = [
       { text: "Modul Pembelajaran (basic)", included: true },
       { text: "5 Tipe Mini App", included: true },
       { text: "1.000 pesan AI / bulan", included: true },
-      { text: "Starter Kit — Panduan Gustafta (bulan pertama)", included: true },
+      { text: "Starter Kit (paket perkenalan, add-on lintas-tier) — Panduan Gustafta", included: true },
       { text: "E-Course (kursus online)", included: false },
       { text: "Document Generator", included: false },
       { text: "Podcast Management", included: false },
@@ -125,7 +125,7 @@ const PACKAGES = [
       { text: "Modul Pembelajaran (full)", included: true },
       { text: "15 Tipe Mini App", included: true },
       { text: "5.000 pesan AI / bulan", included: true },
-      { text: "Starter Kit — Panduan Gustafta (bulan pertama)", included: true },
+      { text: "Starter Kit (paket perkenalan, add-on lintas-tier) — Panduan Gustafta", included: true },
       { text: "E-Course (kursus online)", included: true },
       { text: "Document Generator (10 template)", included: true },
       { text: "Podcast Management", included: false },
@@ -152,7 +152,7 @@ const PACKAGES = [
       { text: "Modul Pembelajaran (full)", included: true },
       { text: "45 Tipe Mini App", included: true },
       { text: "20.000 pesan AI / bulan", included: true },
-      { text: "Starter Kit — Panduan Gustafta (bulan pertama)", included: true },
+      { text: "Starter Kit (paket perkenalan, add-on lintas-tier) — Panduan Gustafta", included: true },
       { text: "E-Course tak terbatas", included: true },
       { text: "Document Generator (semua template)", included: true },
       { text: "Podcast Management", included: true },
@@ -670,6 +670,9 @@ export default function PlatformSalesPage() {
             <div className="inline-flex items-center gap-3 px-4 py-2 rounded-xl bg-muted/60 border text-sm text-muted-foreground mb-6">
               <span>💡 Catatan: <strong>Paket Series Modul</strong> juga memiliki Setup & Instalasi tersendiri — lihat detail di halaman <a href="/packs" className="text-primary underline underline-offset-2">Paket Series Modul</a></span>
             </div>
+            <p className="text-xs text-muted-foreground max-w-2xl mx-auto -mt-2">
+              Catatan: <strong>Starter Kit</strong> bukan salah satu tier — ini paket perkenalan sekali bayar (lisensi + panduan + 7 hari trial) yang bisa dipakai sebagai pintu masuk ke tier mana pun.
+            </p>
           </div>
           <div className="text-center mb-6">
             <div className="inline-flex items-center gap-1 p-1 rounded-full bg-muted border">
