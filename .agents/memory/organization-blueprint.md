@@ -125,3 +125,8 @@ Kartu `card-templates` di step intro: 3 susunan tim contoh dari ebook Buku II (A
 - **Template tim HARUS lewat `applyDraft`/`sanitizeDraft`, jangan `setMembers` langsung.** sanitizeDraft yang menjamin role whitelist, gates disanitasi, & localId unik; bypass = risiko draft cacat. **Why:** template adalah "data tak tepercaya" yg sama bentuknya dgn impor/restore — satu jalur normalisasi. **How to apply:** sumber draft baru apa pun (template/preset/impor) masuk lewat applyDraft.
 - **`applyTemplate` mereset banner restore juga** (`holdRef.current=false; setRestorable(null)`) selain transien analyze/preview/created — biar draft localStorage lama tak menimpa template yang baru dimuat. Mirror pola `restoreDraft`.
 - Invariant tetap: tiap template tepat 1 orchestrator `m1` + ≥2 spesialis agar `topologyValid` langsung benar.
+
+## Tahap 36 — Panduan Operasi Tim (operating brief) (done)
+Di state sukses (`done`), kartu `card-operating-brief` menampilkan ringkasan bahasa-manusia yang bisa disalin (`btn-copy-brief` → `buildBriefText` → clipboard): daftar anggota+tugas + bagian "Keputusan yang tetap di tangan Anda (◆)". Mewujudkan Prinsip 5 ebook (log+ringkasan).
+- **Brief diturunkan dari state `members`, bukan dari `created`/`preview`.** Aman karena `confirmCreate` pindah ke step `done` TANPA meng-clear members (baru `reset()` yang menghapus). **Why:** `ConfigureResult.members` tak menyimpan responsibility/gates lengkap untuk teks ringkasan; draft lokal sumber terkaya. **How to apply:** fitur ringkasan/ekspor pasca-create boleh andalkan state draft selama belum `reset()`.
+- `navigator.clipboard.writeText` WAJIB dibungkus try/catch + toast fallback — clipboard bisa diblokir browser/iframe.
