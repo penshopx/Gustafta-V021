@@ -28,6 +28,14 @@ Trilogi Gustafta = framework berpikir di baliknya: **Dialog → Kolaborasi → K
 | 7 | **Confidence Engine** — skor keyakinan per field (bukan sekadar "completion %") | Ya (engine baru, pure, belum disambung) | ✅ SELESAI — `server/services/blueprint-engine/confidence-engine.ts` + `07-confidence-engine.md` |
 | 8 | **Gap Analysis Engine** — cari field kosong/inkonsisten + rekomendasi | Ya (engine baru, pure, belum disambung) | ✅ SELESAI — `server/services/blueprint-engine/gap-analysis-engine.ts` + `08-gap-analysis-engine.md` |
 | 9 | **Critic / Simulation / Evolution Engine** — kritik mutu, simulasi customer, belajar dari history | Ya (3 engine baru, pure, belum disambung) | ✅ SELESAI — `critic-engine.ts` + `simulation-engine.ts` + `evolution-engine.ts` + `09-critic-simulation-evolution.md` |
+| **10** | **API Wiring** — sambung engine 1–9 ke HTTP API (stateless, klien bawa Blueprint JSON), tanpa UI baru | Ya (route baru; UI/Builder TIDAK diubah) | ✅ SELESAI — `server/blueprint-engine-routes.ts` → `/api/blueprint/{start,answer,state,analyze,configure}` |
+
+## Tahap 10 — catatan penyambungan API
+- **Stateless:** tak ada tabel DB untuk Blueprint in-progress; klien mengirim seluruh Blueprint JSON tiap request. Validasi via `blueprintSchema`.
+- **`/configure` = satu-satunya jalur tulis** dan **aman secara default**: `dryRun` dianggap `true` kecuali klien kirim `dryRun:false` eksplisit.
+- **Otorisasi:** mode `update` wajib pemilik agen (`agent.userId`) atau admin (403 bila bukan). Semua endpoint di balik `isAuthenticated`.
+- **Pipeline tiap perubahan:** `applyAnswers` → `inferBlueprint` → `applyConfidence` → `getDialogueState`.
+- **Langkah lanjut (Tahap 11, belum dikerjakan):** UI wizard dialog di frontend yang memakai API ini.
 
 ## Tempat kerja engine (rencana, belum dibuat)
 Direktori service baru terpisah dari Builder, mis. `server/services/blueprint-engine/` —

@@ -14,3 +14,4 @@
 - [Framework Visibility Strategy](framework-visibility-strategy.md) — Framework™ login-gated, tidak dibuka penuh ke publik sampai maturity. Dua segmen berbeda: Profesional (tak peduli Framework) vs AI Builder (tertarik Framework).
 - [Struktur landing persuasif](landing-page-persuasion.md) — kerangka PAS→AIDA standar untuk rombak landing "katalog" jadi halaman jualan; tanpa testimoni palsu, harga dari sumber resmi.
 - [Pricing single source](pricing-single-source.md) — semua harga produk berasal dari client/src/data/pricing.ts; jangan hardcode string harga di halaman. Jasa = 4 SERVICE_TIERS kanonik.
+- [Blueprint Engine API](blueprint-engine-api.md) — engine Tahap 1-9 → /api/blueprint/*; /configure satu-satunya write (safe-by-default dryRun, update wajib cek ownership). InsertAgent omit userId → create tak ber-owner.
