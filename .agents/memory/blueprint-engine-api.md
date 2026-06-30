@@ -20,6 +20,11 @@ The Tahap 1–9 engines (`server/services/blueprint-engine/*`) are pure/stateles
 - Consequence: a naive create leaves `userId=""`, and `GET /api/agents` filters `a.userId === userId` for non-admins → the created agent is **invisible to its own creator** and can't be `update`d (the ownership check fails).
 - **Fix (in use):** `ConfigurationOptions.ownerUserId`. The create branch spreads ownership in **after** `insertAgentSchema.safeParse` (which strips `userId`): `storage.createAgent({ ...parsed.data, userId: ownerUserId })`; storage persists it via `(insertAgent as any).userId`. The `/configure` route sets `ownerUserId = sessionUserId` **only for mode `create`** (server identity, never client input). Any new write surface that creates agents MUST stamp ownership the same way or the agent vanishes from the user's dashboard.
 
+## Agent "active" state is a GLOBAL singleton — authorize before mutating
+- `setActiveAgent(id)` sets ONE agent `isActive=true` and clears the rest app-wide (not per-user). So activating an agent mutates **shared global state**.
+- `POST /api/agents/:id/activate` must check existence + ownership (`existing.userId === sessionUserId`, or admin via DB role / `ADMIN_USER_IDS`) **before** calling `setActiveAgent` — and reject empty `userId` for non-admins. The old code mutated first and only computed admin status for response sanitization → any user could hijack the global active agent (IDOR).
+- **Why:** the broken-access-control class here is "mutate global/shared state, then (don't) authorize". **How to apply:** for any route that flips shared singletons (active agent/toolbox/big-idea, project-brain instance), gate on ownership/admin first; non-admins only ever list their own agents (`GET /api/agents` filters `a.userId===userId`), so activation access must match that boundary.
+
 ## Dialogue UI: boolean answer submission (Tahap 11)
 - `/answer` treats any present key in `answers` as a real user-sourced answer (updates source/confidence). For boolean dialogue questions, **only submit the key if the user actually toggled it** — never default untouched booleans to `false`, or you silently write wrong answers and skew confidence/progression.
 - `multiselect` inputType must send an **array** (not a single Select string). Skip empty arrays before submitting.

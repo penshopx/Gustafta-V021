@@ -1657,14 +1657,25 @@ export async function registerRoutes(
   // Activate agent
   app.post("/api/agents/:id/activate", isAuthenticated, async (req, res) => {
     try {
-      const agent = await storage.setActiveAgent(req.params.id as string);
-      if (!agent) {
-        return res.status(404).json({ error: "Agent not found" });
-      }
       const userId5 = (req.user as any)?.claims?.sub || (req.user as any)?.id || "";
       const adminIds5 = (process.env.ADMIN_USER_IDS || "").split(",").map((s: string) => s.trim()).filter(Boolean);
       const dbRole5 = await getDbRole(req);
       const isAdminActivate = dbRole5 === "admin" || dbRole5 === "superadmin" || adminIds5.includes(userId5);
+
+      // Cek keberadaan & kepemilikan SEBELUM mengubah state aktif (global singleton).
+      // Tanpa ini, user mana pun bisa mengaktifkan agen milik orang lain / agen sistem.
+      const existing = await storage.getAgent(req.params.id as string);
+      if (!existing) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+      if (!isAdminActivate && (!userId5 || (existing as any).userId !== userId5)) {
+        return res.status(403).json({ error: "Forbidden: bukan pemilik agen" });
+      }
+
+      const agent = await storage.setActiveAgent(req.params.id as string);
+      if (!agent) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
       res.json(isAdminActivate ? agent : sanitizeAgentForPublic(agent));
     } catch (error) {
       res.status(500).json({ error: "Failed to activate agent" });
