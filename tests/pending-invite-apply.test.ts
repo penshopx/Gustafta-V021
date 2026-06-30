@@ -64,7 +64,7 @@ test("email-verification signup: pending invite untuk email tanpa akun → kolab
   } as any);
   const applied = await storage.applyPendingInvitesForUser(newUser.id, "newbie@contoh.id");
 
-  assert.equal(applied, 1, "tepat 1 invite harus teraplikasi");
+  assert.equal(applied.length, 1, "tepat 1 invite harus teraplikasi");
   assert.equal(
     await storage.getCollaboratorRole(agent.id, newUser.id),
     "editor",
@@ -98,7 +98,7 @@ test("Replit OAuth upsertUser signup: jalur yang sama mengaktifkan pending invit
   } as any);
   const applied = await storage.applyPendingInvitesForUser(oauthUser.id, "oauth-user@contoh.id");
 
-  assert.equal(applied, 1, "invite harus teraplikasi lewat jalur OAuth");
+  assert.equal(applied.length, 1, "invite harus teraplikasi lewat jalur OAuth");
   assert.equal(
     await storage.getCollaboratorRole(agent.id, oauthUser.id),
     "viewer",
@@ -118,12 +118,12 @@ test("idempoten: apply ulang TIDAK membuat baris kolaborator ganda", async () =>
   const user = await storage.createUser({ email: "dupe@contoh.id" } as any);
 
   const first = await storage.applyPendingInvitesForUser(user.id, "dupe@contoh.id");
-  assert.equal(first, 1, "apply pertama mengaplikasikan 1 invite");
+  assert.equal(first.length, 1, "apply pertama mengaplikasikan 1 invite");
 
   // Jalankan ulang (mis. user verifikasi/login berkali-kali). Pending sudah
   // dikonsumsi → 0 invite baru, dan TIDAK ada baris kolaborator ganda.
   const second = await storage.applyPendingInvitesForUser(user.id, "dupe@contoh.id");
-  assert.equal(second, 0, "apply kedua tidak menemukan pending lagi");
+  assert.equal(second.length, 0, "apply kedua tidak menemukan pending lagi");
 
   const collaborators = (await storage.listCollaboratorsForAgent(agent.id)).filter(
     (c) => c.userId === user.id,
@@ -165,7 +165,7 @@ test("email dicocokkan case-insensitive antara undangan dan signup", async () =>
   const user = await storage.createUser({ email: "mixedcase@contoh.id" } as any);
 
   const applied = await storage.applyPendingInvitesForUser(user.id, "mixedcase@contoh.id");
-  assert.equal(applied, 1, "perbedaan kapitalisasi email tidak boleh menghalangi apply");
+  assert.equal(applied.length, 1, "perbedaan kapitalisasi email tidak boleh menghalangi apply");
   assert.equal(
     await storage.getCollaboratorRole(agent.id, user.id),
     "editor",
@@ -177,7 +177,7 @@ test("email dicocokkan case-insensitive antara undangan dan signup", async () =>
   await storage.addOrUpdatePendingInvite({ agentId: agent2.id, email: "lower@contoh.id", role: "viewer", invitedBy: owner.id });
   const user2 = await storage.createUser({ email: "lower@contoh.id" } as any);
   const applied2 = await storage.applyPendingInvitesForUser(user2.id, "LOWER@CONTOH.ID");
-  assert.equal(applied2, 1, "apply dengan email kapital harus cocok dengan invite huruf kecil");
+  assert.equal(applied2.length, 1, "apply dengan email kapital harus cocok dengan invite huruf kecil");
   assert.equal(await storage.getCollaboratorRole(agent2.id, user2.id), "viewer");
 });
 
