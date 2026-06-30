@@ -15,7 +15,7 @@ import {
 import {
   Users, Sparkles, ArrowRight, ArrowLeft, Loader2, Lock, Check, AlertTriangle,
   Plus, Trash2, Crown, Rocket, RotateCcw, Info, Network, ClipboardList, Wand2,
-  Download, Upload, Copy,
+  Download, Upload, Copy, X,
 } from "lucide-react";
 import {
   createEmptyOrganizationBlueprint,
@@ -74,6 +74,8 @@ interface MemberDraft {
   systemPrompt: string; // opsional (lanjutan); kosong → di-generate otomatis
   /** localId atasan langsung (harus Ketua Tim). Kosong = lapor ke Ketua puncak. */
   parentLocalId?: string;
+  /** Gerbang Manusia (◆): keputusan yang WAJIB diserahkan ke manusia. */
+  gates?: string[];
 }
 
 const ROOT_SENTINEL = "__root__";
@@ -181,6 +183,28 @@ function defaultPrompt(m: MemberDraft, orgName: string, mission: string): string
   return `Kamu adalah ${m.title.trim() || "agen AI"}${team}.${aim}${task}${lead} Jawablah dengan akurat, jelas, dan sopan dalam Bahasa Indonesia.`;
 }
 
+/* ── Gerbang Manusia (◆) ─────────────────────────────────────────────────────
+ * Blok instruksi yang disisipkan ke systemPrompt anggota bila ia mendeklarasikan
+ * titik keputusan yang TIDAK boleh diambil agen sendiri. Mewujudkan prinsip
+ * ebook Buku II Bab 3: "alur tanpa gerbang adalah pelarian, bukan desain" —
+ * keputusan tentang manusia, uang/kontrak besar, & hal tak-bisa-dibatalkan
+ * harus berhenti di manusia, dengan eskalasi yang jujur. */
+function sanitizeGates(gates?: string[]): string[] {
+  if (!Array.isArray(gates)) return [];
+  return gates
+    .filter((g) => typeof g === "string")
+    .map((g) => g.trim())
+    .filter(Boolean)
+    .map((g) => g.slice(0, 160))
+    .slice(0, 8);
+}
+function gateBlock(gates?: string[]): string {
+  const clean = sanitizeGates(gates);
+  if (!clean.length) return "";
+  const list = clean.map((g) => `- ${g}`).join("\n");
+  return `\n\nGERBANG MANUSIA (◆) — WAJIB:\nUntuk hal-hal berikut, JANGAN memutuskan atau bertindak sendiri. Berhenti, jelaskan situasinya dengan jujur apa adanya, lalu serahkan keputusan akhir kepada manusia penanggung jawab:\n${list}\nBila ragu apakah sesuatu termasuk salah satu gerbang di atas, perlakukan sebagai gerbang dan minta keputusan manusia.`;
+}
+
 const pct = (n: number) => Math.round((n || 0) * 100);
 
 /* ── Draft auto-save (localStorage) ── */
@@ -189,7 +213,8 @@ interface OrgDraft { orgName: string; mission: string; members: MemberDraft[]; m
 const hasMeaningfulDraft = (d: Partial<OrgDraft>): boolean =>
   !!(d.orgName?.trim() || d.mission?.trim() ||
     (Array.isArray(d.members) && (d.members.length > 1 ||
-      d.members.some((m) => m.title?.trim() || m.responsibility?.trim() || m.systemPrompt?.trim()))));
+      d.members.some((m) => m.title?.trim() || m.responsibility?.trim() || m.systemPrompt?.trim() ||
+        (Array.isArray(m.gates) && m.gates.some((g) => g?.trim()))))));
 
 /* Normalisasi draft dari sumber tak tepercaya (localStorage / file impor). */
 const sanitizeDraft = (raw: any): OrgDraft => {
@@ -208,6 +233,7 @@ const sanitizeDraft = (raw: any): OrgDraft => {
         responsibility: typeof m.responsibility === "string" ? m.responsibility : "",
         systemPrompt: typeof m.systemPrompt === "string" ? m.systemPrompt : "",
         parentLocalId: typeof m.parentLocalId === "string" && m.parentLocalId.trim() ? m.parentLocalId : undefined,
+        gates: sanitizeGates(m.gates),
       };
     });
   // Buang atasan yang menunjuk localId tak dikenal (cegah edge menggantung).
@@ -368,11 +394,20 @@ export default function OrganizationBuilderPage() {
         responsibility: src.responsibility,
         systemPrompt: src.systemPrompt,
         parentLocalId: src.parentLocalId,
+        gates: src.gates ? [...src.gates] : undefined,
       };
       return [...ms.slice(0, idx + 1), clone, ...ms.slice(idx + 1)];
     });
   const patchMember = (localId: string, patch: Partial<MemberDraft>) =>
     setMembers((ms) => ms.map((m) => (m.localId === localId ? { ...m, ...patch } : m)));
+
+  /* ── Gerbang Manusia (◆) per anggota ── */
+  const addGate = (localId: string) =>
+    setMembers((ms) => ms.map((m) => (m.localId === localId ? { ...m, gates: [...(m.gates ?? []), ""] } : m)));
+  const updateGate = (localId: string, idx: number, value: string) =>
+    setMembers((ms) => ms.map((m) => (m.localId === localId ? { ...m, gates: (m.gates ?? []).map((g, i) => (i === idx ? value : g)) } : m)));
+  const removeGate = (localId: string, idx: number) =>
+    setMembers((ms) => ms.map((m) => (m.localId === localId ? { ...m, gates: (m.gates ?? []).filter((_, i) => i !== idx) } : m)));
 
   /* ── Bangun OrganizationBlueprint dari draft (client-side, valid by schema) ──
    * fillDefaults=false → JANGAN isi systemPrompt default (biar inferensi tahu
@@ -388,7 +423,7 @@ export default function OrganizationBuilderPage() {
       (bp.modules.identity.data as any).name = m.title.trim() || `Anggota ${m.localId}`;
       if (m.responsibility.trim()) (bp.modules.identity.data as any).description = m.responsibility.trim();
       (bp.modules.aiEngine.data as any).systemPrompt = fillDefaults
-        ? (m.systemPrompt.trim() || defaultPrompt(m, orgName, mission))
+        ? (m.systemPrompt.trim() || defaultPrompt(m, orgName, mission)) + gateBlock(m.gates)
         : m.systemPrompt.trim();
       return {
         localId: m.localId,
@@ -876,6 +911,51 @@ export default function OrganizationBuilderPage() {
                   <Textarea value={m.responsibility} onChange={(e) => patchMember(m.localId, { responsibility: e.target.value })} placeholder="Contoh: Membantu mengurus NIB, SBU, dan izin usaha lewat OSS." className="min-h-16" data-testid={`input-responsibility-${m.localId}`} />
                 </div>
 
+                <div className="space-y-1.5" data-testid={`field-gates-${m.localId}`}>
+                  <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 flex items-center gap-1">
+                    <span className="text-rose-500" aria-hidden="true">◆</span> Gerbang Manusia (opsional)
+                  </Label>
+                  {(m.gates ?? []).length > 0 && (
+                    <div className="space-y-1.5">
+                      {(m.gates ?? []).map((g, i) => (
+                        <div key={i} className="flex items-center gap-1.5">
+                          <Input
+                            value={g}
+                            onChange={(e) => updateGate(m.localId, i, e.target.value)}
+                            placeholder="Contoh: Menolak pengajuan pelanggan"
+                            className="h-8 text-xs"
+                            data-testid={`input-gate-${m.localId}-${i}`}
+                          />
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => removeGate(m.localId, i)}
+                            className="h-8 w-8 shrink-0 text-gray-400 hover:text-rose-500"
+                            data-testid={`btn-remove-gate-${m.localId}-${i}`}
+                            aria-label="Hapus gerbang"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => addGate(m.localId)}
+                    className="gap-1.5 h-7 text-[11px] border-rose-300 text-rose-700 dark:border-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-900/30"
+                    data-testid={`btn-add-gate-${m.localId}`}
+                  >
+                    <Plus className="h-3 w-3" /> Tambah gerbang
+                  </Button>
+                  <p className="text-[11px] text-gray-400">
+                    Keputusan yang TIDAK boleh diambil agen ini sendiri — ia akan berhenti & menyerahkannya kepadamu. Mis. menolak pelanggan, kontrak besar, atau hal yang tak bisa dibatalkan.
+                  </p>
+                </div>
+
                 <details className="group">
                   <summary className="text-xs text-violet-600 dark:text-violet-400 cursor-pointer select-none">Instruksi sistem (lanjutan, opsional)</summary>
                   <Textarea
@@ -1019,6 +1099,7 @@ export default function OrganizationBuilderPage() {
                 if (!m) return null;
                 const kids = tree.effectiveChildrenOf.get(localId) ?? [];
                 const isRoot = localId === tree.rootId;
+                const hasGates = (m.gates ?? []).some((g) => g.trim());
                 return (
                   <div
                     key={localId}
@@ -1031,6 +1112,7 @@ export default function OrganizationBuilderPage() {
                         <Crown className="h-4 w-4 text-amber-500 shrink-0" />
                         <span className="text-sm font-bold text-gray-900 dark:text-white">{m.title || "Ketua Tim"}</span>
                         <Badge variant="outline" className="text-[10px] border-amber-400 text-amber-700 dark:text-amber-300">{ROLE_LABEL.orchestrator}</Badge>
+                        {hasGates && <span className="text-rose-500 text-sm" title="Punya Gerbang Manusia (◆)" data-testid={`gate-badge-${localId}`}>◆</span>}
                       </div>
                     ) : (
                       <div className="flex items-center gap-2 rounded-xl border bg-white dark:bg-card px-3.5 py-2 shadow-sm">
@@ -1039,6 +1121,7 @@ export default function OrganizationBuilderPage() {
                           : <Users className="h-3.5 w-3.5 text-violet-500 shrink-0" />}
                         <span className="text-xs font-semibold text-gray-900 dark:text-white">{m.title || "Anggota"}</span>
                         <Badge variant="outline" className="text-[10px]">{ROLE_LABEL[m.role]}</Badge>
+                        {hasGates && <span className="text-rose-500 text-xs" title="Punya Gerbang Manusia (◆)" data-testid={`gate-badge-${localId}`}>◆</span>}
                       </div>
                     )}
                     {kids.length > 0 && (
