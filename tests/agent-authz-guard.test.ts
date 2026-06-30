@@ -115,6 +115,30 @@ for (const [label, literal] of OWNER_ONLY_GUARDED) {
   });
 }
 
+// ── 2c. Endpoint CHAT/PESAN: agen PRIVAT milik user lain wajib di-gate ──
+// assertCanAccessAgentChat: publik → siapa pun; agen sistem (tanpa pemilik) →
+// user login mana pun; agen PRIVAT berpemilik → owner/admin/kolaborator saja.
+// Tanpa ini, user login bisa chat/baca riwayat agen privat orang lain (IDOR by agentId).
+const CHAT_READ_GUARDED: Array<[string, string]> = [
+  ["POST /api/messages", 'app.post("/api/messages"'],
+  ["POST /api/messages/stream", 'app.post("/api/messages/stream"'],
+  ["GET /api/messages/:agentId", 'app.get("/api/messages/:agentId"'],
+  ["GET /api/messages/:agentId/export/json", 'app.get("/api/messages/:agentId/export/json"'],
+  ["GET /api/messages/:agentId/export/csv", 'app.get("/api/messages/:agentId/export/csv"'],
+];
+
+for (const [label, literal] of CHAT_READ_GUARDED) {
+  test(`${label} dijaga assertCanAccessAgentChat (anti-IDOR agen privat)`, () => {
+    const block = routeBlock(literal);
+    assert.match(
+      block,
+      /assertCanAccessAgentChat\s*\(\s*req\s*,/,
+      `Handler ${label} WAJIB memanggil assertCanAccessAgentChat(req, agent) sebelum membaca riwayat / ` +
+        "menjalankan LLM, agar agen privat milik user lain tidak bisa diakses non-kolaborator.",
+    );
+  });
+}
+
 // ── 3. Ekspor dokumen (ebook/docgen): gate anti-eksfiltrasi KB agen privat ──
 // Berbeda dari grup ketat: ekspor "render" ini SENGAJA tetap terbuka untuk
 // agen sistem bersama (tanpa userId) & agen publik (isPublic). Yang wajib
