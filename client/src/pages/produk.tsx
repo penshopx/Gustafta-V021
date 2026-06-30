@@ -601,7 +601,7 @@ function KomparasiTable() {
     { label: "Bot dirakit tim ahli (kami yang kerjakan)",   produk: false, jasa: true,  store: false },
     { label: "Bot langsung aktif dari katalog",             produk: false, jasa: false, store: true  },
     { label: "Akses platform builder Gustafta penuh",       produk: true,  jasa: false, store: false },
-    { label: "Biaya lisensi (sekali bayar)",                produk: true,  jasa: false, store: true  },
+    { label: "Biaya lisensi terpisah (sekali bayar)",       produk: true,  jasa: false, store: true  },
     { label: "Biaya berlangganan (bulanan/tahunan)",        produk: true,  jasa: false, store: false },
     { label: "Biaya setup/perakitan (sekali bayar)",        produk: false, jasa: true,  store: false },
     { label: "Hosting wajib (via Produk Berlangganan)",     produk: false, jasa: true,  store: true  },
@@ -649,6 +649,9 @@ function KomparasiTable() {
           </tbody>
         </table>
       </div>
+      <p className="text-center text-[11px] text-gray-500 dark:text-gray-400 mt-3 max-w-2xl mx-auto">
+        Semua jalur mendapat <strong>hak lisensi (hak pakai)</strong>. Di Layanan Jasa, lisensi sudah termasuk dalam biaya setup — tidak ditagih terpisah.
+      </p>
       <div className="mt-4 flex flex-col sm:flex-row gap-2 justify-center text-xs">
         <Link href="/packs"><span className="text-violet-600 dark:text-violet-400 hover:underline underline-offset-2 cursor-pointer">→ Lihat Layanan Jasa & Harga Setup</span></Link>
         <span className="hidden sm:inline text-gray-300">·</span>
