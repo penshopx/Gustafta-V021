@@ -8,17 +8,17 @@ description: Permission policy for shared agents — who may mutate, who may del
 Owners/admins share an agent by email granting **Editor** (mutate config) or **Viewer** (read-only). All authz *decisions* live in pure, tested functions (`decideAgentMutation` / `decideAgentReadAccess`); route-layer guards only gather inputs (userId, isAdmin, agentOwnerId, collaboratorRole) and delegate.
 
 ## Classify every agent route before choosing a guard
-There are FOUR capability tiers, each with its own guard. The bug that caused two review rejections was reusing one tier's guard for another.
+There are FOUR capability tiers, each with its own guard. The recurring failure mode is reusing one tier's guard for another.
 
 1. **Config mutation → editor-allowed.** Editors may edit the agent's configuration. Guard looks up collaborator role and passes it through (editor ⇒ ok).
-2. **Destructive / ownership (delete, archive) → owner-or-admin ONLY.** The guard deliberately does NOT look up collaborator role (passes null) so editors fall through to 403. Activate and collaborator-management are also owner-only.
+2. **Destructive / ownership (delete, archive, toggle-enabled, activate) → owner-or-admin ONLY.** The guard deliberately does NOT look up collaborator role (passes null) so editors fall through to 403. Enable/disable and activation are ownership actions, NOT config edits — keep them here, not in tier 1. Collaborator-management is also owner-only.
 3. **Chat / read of message history → tiered by visibility, NOT just "is logged in".** This is the IDOR surface (`/api/messages`, `/api/messages/stream`, `GET /api/messages/:agentId`, message export json/csv):
    - public agent (`isPublic`) → anyone, including anonymous/widget;
    - private + no owner (system/seeded shared agent, e.g. MultiClaw/Legal AI) → any logged-in user (entitlement enforced by the UI page guard, not here);
    - private + has owner → owner/admin/collaborator only.
 4. **Private config read (builder) → owner/admin/collaborator**, with sensitive fields sanitized for non-admin.
 
-**Why:** (a) editors were able to delete because delete reused the config-mutation guard; (b) any logged-in user could chat with / read another user's *private* agent by guessing the agentId because chat endpoints only checked `isAuthenticated`. Both were flagged in code review as broken access control.
+**Why:** broken access control hides in tier confusion — (a) reusing the config-mutation guard on a destructive/ownership action lets editors delete/disable; (b) gating chat/read with a bare `isAuthenticated` lets any logged-in user (or a guessed agentId/sessionId) reach another user's *private* agent history.
 
 **How to apply:** when adding ANY agent or message route, ask "which of the 4 tiers is this?" Never gate chat/read with a bare `isAuthenticated` — a system agent and a user's private agent need different rules. Never reuse the config-mutation guard for delete/archive/activate/share.
 
