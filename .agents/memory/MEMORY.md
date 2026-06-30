@@ -9,7 +9,7 @@
 - [Model Produk & Layanan](gustafta-pricing-model.md) — produk chatbot = lisensi (tanpa setup); jasa modul = setup; tak ada free permanen (gratis = bonus 7 hari); CTA trial wajib lewat Blueprint.
 - [Email verification & BREVO_API_KEY](email-verification-brevo.md) — "verifikasi email mati" biasanya bukan kode rusak; secret BREVO_API_KEY hilang. Dev tampilkan otpFallback, prod 503. Cek secret dulu.
 - [Session cookie SameSite & Replit proxy](session-cookie-samesite.md) — "login tak tersimpan setelah tutup browser" = cookie SameSite=None dibuang proteksi 3rd-party; fix sameSite:lax. Dev proxy paksa None — verifikasi di app published.
-- Acuan kanonik identitas/visi/arsitektur Gustafta = `replit.md` (dokumen genesis `.local/gustafta-pedoman.md` sudah TIDAK ADA — jangan cari lagi).
+- [Acuan kanonik proyek](canonical-reference.md) — sumber identitas/visi/arsitektur Gustafta = `replit.md`; dokumen genesis `.local/gustafta-pedoman.md` sudah TIDAK ADA, jangan cari lagi.
 - [Reposisi AI Organization Builder](ai-organization-builder.md) — Gustafta naik dari "AI Chatbot Builder" → platform yang ubah pengetahuan manusia jadi organisasi AI (berpikir/kolaborasi/karya/bisnis). Bertahap.
 - [Framework Visibility Strategy](framework-visibility-strategy.md) — Framework™ login-gated, tidak dibuka penuh ke publik sampai maturity. Dua segmen berbeda: Profesional (tak peduli Framework) vs AI Builder (tertarik Framework).
 - [Struktur landing persuasif](landing-page-persuasion.md) — kerangka PAS→AIDA standar untuk rombak landing "katalog" jadi halaman jualan; tanpa testimoni palsu, harga dari sumber resmi.

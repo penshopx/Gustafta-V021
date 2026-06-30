@@ -48,6 +48,7 @@ import {
 import { processKnowledgeBaseForRAG, searchKnowledgeBase } from "./lib/rag-service";
 import { buildFinalSystemPrompt, buildAgenticPrinciplesBlock } from "./lib/build-final-system-prompt";
 import { decideAgentMutation, decideAgentReadAccess, type AgentAuthzResult } from "./lib/agent-authz";
+import { makeAgentAccessGuards } from "./lib/agent-access-guards";
 import { getDefaultPoliciesForSeries, type AgentPolicySet } from "./lib/agent-policies";
 import { importDocumentToProposal, mergeProposalIntoAgent, type ApplyMode } from "./lib/document-importer";
 import { buildEbookMarkdown, buildEbookHtml, stripMarkdownToPlainText, buildEbookTables } from "./lib/ebook-generator";
@@ -1429,6 +1430,17 @@ export async function registerRoutes(
     }
   });
 
+  // Guard akses agen (mutasi/kepemilikan/chat-baca) — implementasi tunggal di
+  // server/lib/agent-access-guards.ts (diuji via HTTP request nyata di
+  // tests/agent-access-guards-http.test.ts). Dependensi disuntik agar route
+  // memakai storage+getDbRole produksi yang sama persis.
+  const { assertCanMutateAgent, assertOwnerOrAdminAgent, assertCanAccessAgentChat } =
+    makeAgentAccessGuards({
+      getCollaboratorRole: (agentId: string, userId: string) =>
+        storage.getCollaboratorRole(agentId, userId),
+      getDbRole: (req: any) => getDbRole(req),
+    });
+
   // ─── Agent Collaboration (share / Editor-Viewer) ──────────────────────────
   // Manajemen kolaborator HANYA untuk pemilik agen atau admin. Editor TIDAK boleh
   // mengelola kolaborator lain (itu hak kepemilikan, bukan hak edit konfigurasi).
@@ -1768,79 +1780,6 @@ export async function registerRoutes(
       return { ok: false, status: 403, error: "Forbidden: bukan pemilik agen" };
     }
     return { ok: true };
-  }
-
-  // Otorisasi MUTASI agen (edit/toggle/archive/folder/delete). Sama seperti
-  // preview tetapi memakai admin check lengkap (DB role + ADMIN_USER_IDS).
-  // Pola WAJIB: fetch agen → assert → baru mutasi. Agen sistem (userId kosong)
-  // hanya boleh diubah admin agar tidak ada bypass.
-  async function assertCanMutateAgent(
-    req: any,
-    agent: any,
-  ): Promise<AgentAuthzResult> {
-    const userId = (req.user as any)?.claims?.sub || (req.user as any)?.id || "";
-    const adminIds = (process.env.ADMIN_USER_IDS || "").split(",").map((s: string) => s.trim()).filter(Boolean);
-    // getDbRole hanya dipanggil bila ada userId (hindari query DB untuk request anonim).
-    const dbRole = userId ? await getDbRole(req) : "";
-    const isAdmin = dbRole === "admin" || dbRole === "superadmin" || adminIds.includes(userId);
-    const agentOwnerId = (agent && agent.userId) || "";
-    // Kolaborator Editor boleh memutasi konfigurasi. Lookup hanya bila perlu
-    // (bukan admin, bukan owner, ada userId & agentId) agar tidak query sia-sia.
-    let collaboratorRole: "editor" | "viewer" | null = null;
-    if (userId && !isAdmin && agentOwnerId && agentOwnerId !== userId && agent?.id != null) {
-      collaboratorRole = await storage.getCollaboratorRole(String(agent.id), userId);
-    }
-    // Keputusan akhir di fungsi murni teruji (lihat server/lib/agent-authz.ts).
-    return decideAgentMutation({
-      userId,
-      isAdmin,
-      agentOwnerId,
-      collaboratorRole,
-    });
-  }
-
-  // Guard ketat untuk aksi destruktif/kepemilikan (delete, archive): HANYA
-  // owner atau admin. Kolaborator Editor SENGAJA TIDAK di-lookup → otomatis
-  // jatuh ke 403 di decideAgentMutation (collaboratorRole = null).
-  async function assertOwnerOrAdminAgent(
-    req: any,
-    agent: any,
-  ): Promise<AgentAuthzResult> {
-    const userId = (req.user as any)?.claims?.sub || (req.user as any)?.id || "";
-    const adminIds = (process.env.ADMIN_USER_IDS || "").split(",").map((s: string) => s.trim()).filter(Boolean);
-    const dbRole = userId ? await getDbRole(req) : "";
-    const isAdmin = dbRole === "admin" || dbRole === "superadmin" || adminIds.includes(userId);
-    const agentOwnerId = (agent && agent.userId) || "";
-    return decideAgentMutation({
-      userId,
-      isAdmin,
-      agentOwnerId,
-      collaboratorRole: null,
-    });
-  }
-
-  // Guard AKSES BACA/CHAT terhadap agen. Menutup IDOR pada endpoint pesan:
-  // user login yang BUKAN kolaborator tidak boleh chat/baca riwayat agen
-  // PRIVAT milik orang lain. Aturan:
-  //   1) agent.isPublic               → boleh siapa pun (termasuk anonim/widget)
-  //   2) privat & belum login         → 401
-  //   3) privat & agen sistem (tanpa pemilik) → boleh (agen platform bersama;
-  //      mis. MultiClaw/Legal AI — entitlement diatur PremiumPageGuard di UI)
-  //   4) privat & ada pemilik         → owner/admin/kolaborator saja (decideAgentReadAccess)
-  async function assertCanAccessAgentChat(req: any, agent: any): Promise<AgentAuthzResult> {
-    if (agent && agent.isPublic) return { ok: true };
-    const userId = (req.user as any)?.claims?.sub || (req.user as any)?.id || "";
-    if (!userId) return { ok: false, status: 401, error: "Unauthorized" };
-    const agentOwnerId = (agent && agent.userId) || "";
-    if (!agentOwnerId) return { ok: true }; // agen sistem/seeded bersama
-    const adminIds = (process.env.ADMIN_USER_IDS || "").split(",").map((s: string) => s.trim()).filter(Boolean);
-    const dbRole = await getDbRole(req);
-    const isAdmin = dbRole === "admin" || dbRole === "superadmin" || adminIds.includes(userId);
-    let collaboratorRole: "editor" | "viewer" | null = null;
-    if (!isAdmin && agentOwnerId !== userId && agent?.id != null) {
-      collaboratorRole = await storage.getCollaboratorRole(String(agent.id), userId);
-    }
-    return decideAgentReadAccess({ userId, isAdmin, agentOwnerId, collaboratorRole });
   }
 
   // Preview hasil perakitan PERSONA + 7 field Kebijakan Agen menjadi
