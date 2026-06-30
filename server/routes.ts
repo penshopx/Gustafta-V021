@@ -45,6 +45,7 @@ import {
 } from "./lib/file-processing";
 import { processKnowledgeBaseForRAG, searchKnowledgeBase } from "./lib/rag-service";
 import { buildFinalSystemPrompt } from "./lib/build-final-system-prompt";
+import { decideAgentMutation, type AgentAuthzResult } from "./lib/agent-authz";
 import { getDefaultPoliciesForSeries, type AgentPolicySet } from "./lib/agent-policies";
 import { importDocumentToProposal, mergeProposalIntoAgent, type ApplyMode } from "./lib/document-importer";
 import { buildEbookMarkdown, buildEbookHtml, stripMarkdownToPlainText, buildEbookTables } from "./lib/ebook-generator";
@@ -1622,17 +1623,18 @@ export async function registerRoutes(
   async function assertCanMutateAgent(
     req: any,
     agent: any,
-  ): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
+  ): Promise<AgentAuthzResult> {
     const userId = (req.user as any)?.claims?.sub || (req.user as any)?.id || "";
-    if (!userId) return { ok: false, status: 401, error: "Unauthorized" };
     const adminIds = (process.env.ADMIN_USER_IDS || "").split(",").map((s: string) => s.trim()).filter(Boolean);
-    const dbRole = await getDbRole(req);
+    // getDbRole hanya dipanggil bila ada userId (hindari query DB untuk request anonim).
+    const dbRole = userId ? await getDbRole(req) : "";
     const isAdmin = dbRole === "admin" || dbRole === "superadmin" || adminIds.includes(userId);
-    if (isAdmin) return { ok: true };
-    const ownerId = (agent && agent.userId) || "";
-    if (!ownerId) return { ok: false, status: 403, error: "Forbidden: agen sistem hanya bisa diubah admin" };
-    if (ownerId !== userId) return { ok: false, status: 403, error: "Forbidden: bukan pemilik agen" };
-    return { ok: true };
+    // Keputusan akhir di fungsi murni teruji (lihat server/lib/agent-authz.ts).
+    return decideAgentMutation({
+      userId,
+      isAdmin,
+      agentOwnerId: (agent && agent.userId) || "",
+    });
   }
 
   // Preview hasil perakitan PERSONA + 7 field Kebijakan Agen menjadi
