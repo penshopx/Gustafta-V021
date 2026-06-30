@@ -355,6 +355,9 @@ export default function OrganizationBuilderPage() {
   const [savedDrafts, setSavedDrafts] = useState<SavedDraftSummary[]>([]);
   const [savingDraft, setSavingDraft] = useState(false);
   const [loadingDraftId, setLoadingDraftId] = useState<number | null>(null);
+  /* Tahap 38: rancangan tersimpan yang SEDANG dibuka (agar "simpan" memperbarui, bukan menduplikasi). */
+  const [activeDraftId, setActiveDraftId] = useState<number | null>(null);
+  const [activeDraftName, setActiveDraftName] = useState<string>("");
   const bootRef = useRef(false);
   const holdRef = useRef(false);
 
@@ -405,20 +408,39 @@ export default function OrganizationBuilderPage() {
     if (isAuthenticated) loadSavedDrafts();
   }, [isAuthenticated]);
 
+  /* Tahap 38: simpan SEBAGAI BARU (POST) — lalu tautkan agar simpan berikutnya memperbarui. */
   const saveToAccount = async () => {
     if (!hasMeaningfulDraft({ orgName, mission, members, maxSpecialists })) return;
     setSavingDraft(true);
     try {
       const data: OrgDraft = { orgName, mission, members, maxSpecialists };
-      await apiRequest("POST", "/api/organization/drafts", {
-        name: orgName.trim() || "Tim Tanpa Judul",
-        mission,
-        data,
-      });
+      const name = orgName.trim() || "Tim Tanpa Judul";
+      const res = await apiRequest("POST", "/api/organization/drafts", { name, mission, data });
+      const newId = res?.draft?.id;
+      if (typeof newId === "number") { setActiveDraftId(newId); setActiveDraftName(name); }
       await loadSavedDrafts();
       toast({ title: "Rancangan disimpan", description: "Tim tersimpan di akun Anda — bisa dibuka lagi kapan saja." });
     } catch (e) {
       toast({ title: "Gagal menyimpan", description: e instanceof Error ? e.message : "Coba lagi.", variant: "destructive" });
+    } finally {
+      setSavingDraft(false);
+    }
+  };
+
+  /* Tahap 38: perbarui (overwrite) rancangan yang sedang dibuka (PUT) — cegah duplikat saat mengedit. */
+  const updateActiveDraft = async () => {
+    if (activeDraftId == null) return;
+    if (!hasMeaningfulDraft({ orgName, mission, members, maxSpecialists })) return;
+    setSavingDraft(true);
+    try {
+      const data: OrgDraft = { orgName, mission, members, maxSpecialists };
+      const name = orgName.trim() || activeDraftName || "Tim Tanpa Judul";
+      await apiRequest("PUT", `/api/organization/drafts/${activeDraftId}`, { name, mission, data });
+      setActiveDraftName(name);
+      await loadSavedDrafts();
+      toast({ title: "Rancangan diperbarui", description: `Perubahan pada "${name}" tersimpan.` });
+    } catch (e) {
+      toast({ title: "Gagal memperbarui", description: e instanceof Error ? e.message : "Coba lagi.", variant: "destructive" });
     } finally {
       setSavingDraft(false);
     }
@@ -431,6 +453,8 @@ export default function OrganizationBuilderPage() {
       const payload = data?.draft?.data;
       if (!payload || !Array.isArray(payload.members)) throw new Error("Rancangan kosong / rusak.");
       applyDraft(payload); // WAJIB lewat applyDraft → sanitizeDraft (jaga invariant)
+      setActiveDraftId(id);
+      setActiveDraftName(data?.draft?.name ?? "");
       holdRef.current = false;
       setRestorable(null);
       setComposedDomain(null);
@@ -449,6 +473,7 @@ export default function OrganizationBuilderPage() {
     try {
       await apiRequest("DELETE", `/api/organization/drafts/${id}`);
       setSavedDrafts((prev) => prev.filter((d) => d.id !== id));
+      if (activeDraftId === id) { setActiveDraftId(null); setActiveDraftName(""); }
       toast({ title: "Rancangan dihapus" });
     } catch (e) {
       toast({ title: "Gagal menghapus", description: e instanceof Error ? e.message : "Coba lagi.", variant: "destructive" });
@@ -458,6 +483,7 @@ export default function OrganizationBuilderPage() {
   /* Tahap 35: muat template siap-pakai → langsung ke step anggota untuk ditinjau. */
   const applyTemplate = (tpl: { label: string; draft: OrgDraft }) => {
     applyDraft(tpl.draft);
+    setActiveDraftId(null); setActiveDraftName("");
     holdRef.current = false;
     setRestorable(null);
     setComposedDomain(null);
@@ -524,6 +550,7 @@ export default function OrganizationBuilderPage() {
       holdRef.current = false;
       setRestorable(null);
       applyDraft(parsed);
+      setActiveDraftId(null); setActiveDraftName("");
       setStep("intro");
       setAnalysis(null); setPreview(null); setCreated(null); setCreateError(null);
       setComposedDomain(null); setReadiness(null);
@@ -667,6 +694,7 @@ export default function OrganizationBuilderPage() {
         return;
       }
       setMembers(suggested);
+      setActiveDraftId(null); setActiveDraftName(""); // Tahap 38: susun-ulang = desain baru, lepas tautan agar tak menimpa rancangan lama
       setComposedDomain(data.domain || null);
       setAnalysis(null); setPreview(null); setCreated(null); setCreateError(null);
       setStep("members");
@@ -787,6 +815,7 @@ export default function OrganizationBuilderPage() {
     setMembers([{ localId: "m1", role: "orchestrator", title: "", responsibility: "", systemPrompt: "" }]);
     setAnalysis(null); setPreview(null); setCreated(null); setCreateError(null);
     setComposedDomain(null); setMaxSpecialists(3); setReadiness(null);
+    setActiveDraftId(null); setActiveDraftName("");
     holdRef.current = false;
     try { localStorage.removeItem(DRAFT_KEY); } catch { /* abaikan */ }
   };
@@ -894,15 +923,27 @@ export default function OrganizationBuilderPage() {
             >
               <Upload className="h-3.5 w-3.5" /> Muat dari file
             </Button>
+            {isAuthenticated && activeDraftId != null && (
+              <Button
+                size="sm"
+                onClick={updateActiveDraft}
+                disabled={savingDraft || !hasMeaningfulDraft({ orgName, mission, members, maxSpecialists })}
+                className="gap-1.5 bg-violet-600 hover:bg-violet-500 text-white"
+                data-testid="btn-update-draft-account"
+              >
+                {savingDraft ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />} Perbarui rancangan
+              </Button>
+            )}
             {isAuthenticated && (
               <Button
                 size="sm"
+                variant={activeDraftId != null ? "outline" : "default"}
                 onClick={saveToAccount}
                 disabled={savingDraft || !hasMeaningfulDraft({ orgName, mission, members, maxSpecialists })}
-                className="gap-1.5 bg-violet-600 hover:bg-violet-500 text-white"
+                className={activeDraftId != null ? "gap-1.5" : "gap-1.5 bg-violet-600 hover:bg-violet-500 text-white"}
                 data-testid="btn-save-draft-account"
               >
-                {savingDraft ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />} Simpan ke akun
+                {savingDraft && activeDraftId == null ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />} {activeDraftId != null ? "Simpan sebagai baru" : "Simpan ke akun"}
               </Button>
             )}
           </div>
@@ -968,7 +1009,12 @@ export default function OrganizationBuilderPage() {
                       data-testid={`saved-draft-${d.id}`}
                     >
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm font-semibold text-gray-900 dark:text-white truncate">{d.name}</div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-sm font-semibold text-gray-900 dark:text-white truncate">{d.name}</span>
+                          {activeDraftId === d.id && (
+                            <Badge variant="outline" className="text-[10px] shrink-0 border-violet-300 text-violet-600 dark:border-violet-500/40 dark:text-violet-300" data-testid={`badge-active-draft-${d.id}`}>Sedang dibuka</Badge>
+                          )}
+                        </div>
                         <div className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
                           {d.memberCount} anggota{d.mission?.trim() ? ` · ${d.mission.trim()}` : ""}
                         </div>
