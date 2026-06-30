@@ -45,7 +45,7 @@ Trilogi Gustafta = framework berpikir di baliknya: **Dialog → Kolaborasi → K
 | Tahap | Engine / Deliverable | Sentuh kode app? | Status |
 |------|----------------------|------------------|--------|
 | **18** | **Organization Blueprint Schema** — model data JSON untuk organisasi AI (banyak anggota memakai ulang single-agent Blueprint + struktur kolaborasi `localId`) | Tidak (tipe/skema baru, belum disambung) | ✅ SELESAI — `shared/blueprint/organization-blueprint-schema.ts` + `18-organization-blueprint-schema.md` + `tests/organization-blueprint-schema.test.ts` |
-| 19 | **Organization Mapping Engine** — `OrganizationBlueprint` → rencana N agen + wiring `agenticSubAgents` (pure) | Ya (fungsi murni, belum disambung) | ⏳ BELUM |
+| **19** | **Organization Mapping Engine** — `OrganizationBlueprint` → rencana N agen (pakai ulang single-agent mapping per anggota) + wiring orchestrator→sub-agen by `localId`; **sumber-kebenaran wiring = `structure.edges` saja** (field linkage anggota dibuang), `isOrchestrator` dipaksa dari `role` | Ya (fungsi murni, belum disambung) | ✅ SELESAI — `server/services/blueprint-engine/organization-mapping-engine.ts` + `tests/organization-mapping-engine.test.ts` (7/7) |
 | 20 | **Organization Configuration Engine** — materialisasi tim secara atomik, resolve `localId → agentId`, safe-by-default `dryRun` | Ya (engine baru) | ⏳ BELUM |
 | 21+ | **Dialogue/Inference org + API wiring + UI wizard** | Ya | ⏳ BELUM |
 
