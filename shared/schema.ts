@@ -409,6 +409,24 @@ export const insertBlueprintSchema = createInsertSchema(blueprints).omit({ id: t
 export type InsertBlueprint = z.infer<typeof insertBlueprintSchema>;
 export type BlueprintRecord = typeof blueprints.$inferSelect;
 
+// Organization Drafts (AI Organization Builder — saved TEAM designs, owner-scoped).
+// `data` holds the client OrgDraft JSON ({ orgName, mission, members, maxSpecialists }).
+// Persists the same shape the wizard exports/imports (Tahap 30), so a saved design can be
+// reopened & edited later from any device. ADDITIVE; never writes agents (that stays /configure).
+export const organizationDrafts = pgTable("organization_drafts", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id", { length: 255 }).notNull().default(""),
+  name: text("name").notNull().default("Tim Tanpa Judul"),
+  mission: text("mission").default(""),
+  data: jsonb("data").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertOrganizationDraftSchema = createInsertSchema(organizationDrafts).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertOrganizationDraft = z.infer<typeof insertOrganizationDraftSchema>;
+export type OrganizationDraftRecord = typeof organizationDrafts.$inferSelect;
+
 // Agent Collaboration — owner shares an agent with other users as editor/viewer.
 // editor = boleh mengubah konfigurasi agen (kecuali hapus/aktivasi/kelola-share);
 // viewer = hanya baca (lihat konfigurasi tersanitasi, tidak boleh mutasi).
