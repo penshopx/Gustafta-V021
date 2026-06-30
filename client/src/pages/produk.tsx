@@ -16,7 +16,7 @@ import {
   Mic, PenLine, Calculator, Megaphone, ScrollText, LayoutGrid,
   AlertTriangle, TrendingUp, Lightbulb, ClipboardList, BadgePlus,
 } from "lucide-react";
-import { CREDIT_PACKS as KREDIT_EKSTRA, PRICING, LICENSE_INFO } from "@/data/pricing";
+import { CREDIT_PACKS as KREDIT_EKSTRA, PRICING, LICENSE_INFO, SERVICE_TIERS } from "@/data/pricing";
 
 // ─── Types & Data ─────────────────────────────────────────────────────────────
 
@@ -728,22 +728,57 @@ export default function ProdukPage() {
           <span className="font-medium text-violet-600 dark:text-violet-400">Jasa</span> (kami yang rakit), atau{" "}
           <span className="font-medium text-blue-600 dark:text-blue-400">Store</span> (pilih dari kreator).
         </p>
-        <div className="mt-6 flex flex-wrap gap-2 justify-center text-xs">
-          <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg px-3 py-2 flex items-center gap-1.5">
-            <Wrench className="w-3.5 h-3.5 text-violet-500"/>
-            <span className="text-gray-600 dark:text-gray-400">Ingin chatbot dirakit tim kami?</span>
-            <Link href="/packs"><span className="text-violet-600 dark:text-violet-400 font-semibold hover:underline cursor-pointer">→ Layanan Jasa</span></Link>
+        {/* 3 jalur — kartu keputusan */}
+        <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-4xl mx-auto text-left">
+          {/* Jalur 1 — Beli Produk Jadi (lisensi + langganan) */}
+          <div className="rounded-2xl border border-indigo-200 dark:border-indigo-800 bg-white dark:bg-slate-900 p-4 flex flex-col" data-testid="card-jalur-produk">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center shrink-0"><Package className="w-4 h-4 text-indigo-600 dark:text-indigo-400"/></div>
+              <span className="text-sm font-bold text-gray-900 dark:text-white leading-tight">Beli Produk Jadi</span>
+            </div>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed flex-1">Akses chatbot premium yang sudah jadi — tinggal pakai, kelola & atur sendiri lewat Builder.</p>
+            <div className="mt-2 text-xs"><span className="text-gray-400">mulai</span> <span className="font-bold text-indigo-600 dark:text-indigo-400">{PRICING.subscription.starter.perMonth}</span></div>
+            <div className="text-[10px] text-gray-400 mb-3">lisensi + langganan · tanpa biaya setup</div>
+            <Button asChild size="sm" variant="outline" className="mt-auto w-full text-xs h-8 border-indigo-300 text-indigo-600 dark:border-indigo-700 dark:text-indigo-400">
+              <a href="#paket-langganan" data-testid="btn-jalur-produk">Lihat Paket <ChevronRight className="w-3.5 h-3.5 ml-1"/></a>
+            </Button>
           </div>
-          <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg px-3 py-2 flex items-center gap-1.5">
-            <Bot className="w-3.5 h-3.5 text-blue-500"/>
-            <span className="text-gray-600 dark:text-gray-400">Cari chatbot siap pakai dari kreator?</span>
-            <Link href="/store"><span className="text-blue-600 dark:text-blue-400 font-semibold hover:underline cursor-pointer">→ Chatbot Store</span></Link>
+
+          {/* Jalur 2 — Tim Kami Rakitkan (jasa) — HIGHLIGHT */}
+          <div className="relative rounded-2xl border-2 border-violet-400 dark:border-violet-600 bg-gradient-to-br from-violet-50 to-indigo-50 dark:from-violet-950/30 dark:to-indigo-950/30 p-4 flex flex-col shadow-sm" data-testid="card-jalur-jasa">
+            <div className="absolute -top-2.5 left-1/2 -translate-x-1/2">
+              <span className="bg-violet-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow">TANPA RIBET</span>
+            </div>
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-8 h-8 rounded-lg bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center shrink-0"><Wrench className="w-4 h-4 text-violet-600 dark:text-violet-400"/></div>
+              <span className="text-sm font-bold text-gray-900 dark:text-white leading-tight">Tim Kami Rakitkan</span>
+            </div>
+            <p className="text-[11px] text-gray-600 dark:text-gray-300 leading-relaxed flex-1">Tidak punya waktu atau bingung teknis? Tim ahli kami yang merakitkan chatbot Anda sampai siap pakai.</p>
+            <div className="mt-2 text-xs"><span className="text-gray-400">mulai</span> <span className="font-bold text-violet-600 dark:text-violet-400">{SERVICE_TIERS[0].price}</span></div>
+            <div className="text-[10px] text-gray-400 mb-3">biaya rakit sekali bayar · paling cepat jalan</div>
+            <Button asChild size="sm" className="mt-auto w-full text-xs h-8 bg-violet-600 hover:bg-violet-500 text-white">
+              <Link href="/packs" data-testid="btn-jalur-jasa">Layanan Jasa <ChevronRight className="w-3.5 h-3.5 ml-1"/></Link>
+            </Button>
+          </div>
+
+          {/* Jalur 3 — Pilih dari Store */}
+          <div className="rounded-2xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-900 p-4 flex flex-col" data-testid="card-jalur-store">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0"><Bot className="w-4 h-4 text-blue-600 dark:text-blue-400"/></div>
+              <span className="text-sm font-bold text-gray-900 dark:text-white leading-tight">Pilih dari Store</span>
+            </div>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed flex-1">Chatbot jadi dari kreator bersertifikat — pilih dari katalog, langsung aktif.</p>
+            <div className="mt-2 text-xs"><span className="text-gray-400">lisensi</span> <span className="font-bold text-blue-600 dark:text-blue-400">sekali bayar</span></div>
+            <div className="text-[10px] text-gray-400 mb-3">langsung aktif dari katalog · dikurasi tim</div>
+            <Button asChild size="sm" variant="outline" className="mt-auto w-full text-xs h-8 border-blue-300 text-blue-600 dark:border-blue-700 dark:text-blue-400">
+              <Link href="/store" data-testid="btn-jalur-store">Buka Store <ChevronRight className="w-3.5 h-3.5 ml-1"/></Link>
+            </Button>
           </div>
         </div>
       </section>
 
       {/* Content */}
-      <section className="py-10 px-4">
+      <section id="paket-langganan" className="py-10 px-4 scroll-mt-20">
         <BisnisPaket/>
         <KomparasiTable/>
       </section>
