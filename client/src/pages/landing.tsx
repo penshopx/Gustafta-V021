@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useAuth } from "@/hooks/use-auth";
 import { SharedHeader } from "@/components/shared-header";
+import explainerVideo from "@assets/generated_videos/gustafta_explainer.mp4";
+import explainerPoster from "@assets/generated_videos/gustafta_explainer_poster.jpg";
 import {
   Rocket, ArrowRight, Check, BookOpen, Wrench, Zap, Lightbulb, TrendingUp,
   MessageCircle, ChevronRight, ShieldCheck, Store, Bot, FileText,
@@ -484,12 +486,27 @@ export default function Landing() {
             </Button>
           </div>
 
-          <div className="flex flex-wrap gap-4 text-xs text-blue-200 justify-center">
+          <div className="flex flex-wrap gap-4 text-xs text-blue-200 justify-center mb-10">
             {["No-Code · Tanpa Coding", "30+ Sektor Industri", "1350+ Template Siap Pakai"].map((s) => (
               <span key={s} className="flex items-center gap-1.5">
                 <Check className="w-3.5 h-3.5 text-green-400" />{s}
               </span>
             ))}
+          </div>
+
+          <div className="relative max-w-3xl mx-auto rounded-2xl overflow-hidden ring-1 ring-white/20 shadow-2xl bg-black/30 backdrop-blur-sm">
+            <video
+              src={explainerVideo}
+              poster={explainerPoster}
+              controls
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="metadata"
+              className="w-full aspect-video"
+              data-testid="video-hero-explainer"
+            />
           </div>
         </div>
       </section>
