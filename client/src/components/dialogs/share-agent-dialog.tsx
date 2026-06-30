@@ -29,6 +29,15 @@ interface CollaboratorView {
   displayName: string | null;
 }
 
+interface PendingInvite {
+  id: number;
+  agentId: number;
+  email: string;
+  role: CollaboratorRole;
+  invitedBy: string;
+  createdAt: string;
+}
+
 interface ShareAgentDialogProps {
   agentId: string | null;
   agentName?: string;
@@ -42,6 +51,7 @@ export function ShareAgentDialog({ agentId, agentName, open, onOpenChange }: Sha
   const [role, setRole] = useState<CollaboratorRole>("viewer");
 
   const collaboratorsKey = ["/api/agents", agentId, "collaborators"];
+  const pendingKey = ["/api/agents", agentId, "pending-invites"];
 
   const { data: collaborators = [], isLoading } = useQuery<CollaboratorView[]>({
     queryKey: collaboratorsKey,
@@ -53,8 +63,19 @@ export function ShareAgentDialog({ agentId, agentName, open, onOpenChange }: Sha
     enabled: open && !!agentId,
   });
 
+  const { data: pendingInvites = [] } = useQuery<PendingInvite[]>({
+    queryKey: pendingKey,
+    queryFn: async () => {
+      const res = await fetch(`/api/agents/${agentId}/pending-invites`, { credentials: "include" });
+      if (!res.ok) throw new Error("Gagal memuat undangan tertunda");
+      return res.json();
+    },
+    enabled: open && !!agentId,
+  });
+
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: collaboratorsKey });
+    queryClient.invalidateQueries({ queryKey: pendingKey });
     queryClient.invalidateQueries({ queryKey: ["/api/agents"] });
   };
 
@@ -63,14 +84,35 @@ export function ShareAgentDialog({ agentId, agentName, open, onOpenChange }: Sha
       const res = await apiRequest("POST", `/api/agents/${agentId}/collaborators`, { email: email.trim(), role });
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       setEmail("");
       setRole("viewer");
       invalidate();
-      toast({ title: "Berhasil dibagikan", description: "Kolaborator telah ditambahkan." });
+      if (data?.pending) {
+        toast({
+          title: "Undangan dikirim",
+          description: "Pengguna ini belum punya akun. Kami kirim undangan untuk mendaftar; akses aktif otomatis setelah mereka daftar.",
+        });
+      } else {
+        toast({ title: "Berhasil dibagikan", description: "Kolaborator telah ditambahkan." });
+      }
     },
     onError: async (err: any) => {
       toast({ title: "Gagal berbagi", description: err?.message || "Terjadi kesalahan.", variant: "destructive" });
+    },
+  });
+
+  const removePendingMutation = useMutation({
+    mutationFn: async (inviteEmail: string) => {
+      const res = await apiRequest("DELETE", `/api/agents/${agentId}/pending-invites/${encodeURIComponent(inviteEmail)}`, {});
+      return res.json();
+    },
+    onSuccess: () => {
+      invalidate();
+      toast({ title: "Undangan dicabut" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Gagal mencabut undangan", description: err?.message || "Terjadi kesalahan.", variant: "destructive" });
     },
   });
 
@@ -209,6 +251,42 @@ export function ShareAgentDialog({ agentId, agentName, open, onOpenChange }: Sha
               </div>
             )}
           </div>
+
+          {pendingInvites.length > 0 && (
+            <div className="space-y-2">
+              <Label>Menunggu pendaftaran</Label>
+              <p className="text-xs text-muted-foreground">
+                Email ini belum punya akun. Akses aktif otomatis setelah mereka mendaftar.
+              </p>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {pendingInvites.map((inv) => (
+                  <div
+                    key={inv.id}
+                    className="flex items-center gap-2 rounded-md border border-dashed p-2"
+                    data-testid={`row-pending-invite-${inv.id}`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate" data-testid={`text-pending-email-${inv.id}`}>
+                        {inv.email}
+                      </p>
+                      <p className="text-xs text-muted-foreground">Menunggu pendaftaran</p>
+                    </div>
+                    <Badge variant="secondary" className="shrink-0 capitalize">{inv.role}</Badge>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 shrink-0"
+                      onClick={() => removePendingMutation.mutate(inv.email)}
+                      disabled={removePendingMutation.isPending}
+                      data-testid={`button-remove-pending-${inv.id}`}
+                    >
+                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

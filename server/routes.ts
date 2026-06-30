@@ -49,7 +49,7 @@ import { processKnowledgeBaseForRAG, searchKnowledgeBase } from "./lib/rag-servi
 import { buildFinalSystemPrompt, buildAgenticPrinciplesBlock } from "./lib/build-final-system-prompt";
 import { decideAgentMutation, decideAgentReadAccess, type AgentAuthzResult } from "./lib/agent-authz";
 import { makeAgentAccessGuards } from "./lib/agent-access-guards";
-import { sendAgentShareNotification } from "./lib/email";
+import { sendAgentShareNotification, sendAgentInviteToSignup } from "./lib/email";
 import { getDefaultPoliciesForSeries, type AgentPolicySet } from "./lib/agent-policies";
 import { importDocumentToProposal, mergeProposalIntoAgent, type ApplyMode } from "./lib/document-importer";
 import { buildEbookMarkdown, buildEbookHtml, stripMarkdownToPlainText, buildEbookTables } from "./lib/ebook-generator";
@@ -1494,15 +1494,37 @@ export async function registerRoutes(
         return res.status(400).json({ error: parsed.error.errors[0]?.message || "Input tidak valid" });
       }
 
+      const inviterId = (req.user as any)?.claims?.sub || (req.user as any)?.id || "";
+      const inviterUser = (req.user as any)?.claims || (req.user as any) || {};
+      const inviterName = [inviterUser.first_name || inviterUser.firstName, inviterUser.last_name || inviterUser.lastName]
+        .filter(Boolean).join(" ").trim() || inviterUser.email || null;
+
       const targetUser = await storage.getUserByEmail(parsed.data.email);
       if (!targetUser) {
-        return res.status(404).json({ error: "Pengguna dengan email tersebut tidak ditemukan" });
+        // No account yet → create a pending invite + email an invitation to sign up.
+        // On successful registration with this email the grant is auto-applied.
+        const pending = await storage.addOrUpdatePendingInvite({
+          agentId: req.params.id as string,
+          email: parsed.data.email,
+          role: parsed.data.role,
+          invitedBy: inviterId,
+        });
+        try {
+          void sendAgentInviteToSignup({
+            to: parsed.data.email,
+            agentName: (agent as any).name || "Agen AI",
+            role: parsed.data.role,
+            inviterName,
+          }).catch((err) => console.error("[collaborators] invite-to-signup error:", err));
+        } catch (notifyErr) {
+          console.error("[collaborators] failed to dispatch invite-to-signup:", notifyErr);
+        }
+        return res.status(202).json({ pending: true, invite: pending });
       }
       if (targetUser.id === ownerId) {
         return res.status(400).json({ error: "Pemilik agen tidak perlu ditambahkan sebagai kolaborator" });
       }
 
-      const inviterId = (req.user as any)?.claims?.sub || (req.user as any)?.id || "";
       const created = await storage.addOrUpdateCollaborator({
         agentId: req.params.id as string,
         userId: targetUser.id,
@@ -1514,9 +1536,6 @@ export async function registerRoutes(
       // never break the share itself (gracefully degrades if BREVO_API_KEY absent).
       try {
         const recipientName = [targetUser.firstName, targetUser.lastName].filter(Boolean).join(" ").trim();
-        const inviterUser = (req.user as any)?.claims || (req.user as any) || {};
-        const inviterName = [inviterUser.first_name || inviterUser.firstName, inviterUser.last_name || inviterUser.lastName]
-          .filter(Boolean).join(" ").trim() || inviterUser.email || null;
         void sendAgentShareNotification({
           to: targetUser.email,
           recipientName: recipientName || null,
@@ -1578,6 +1597,38 @@ export async function registerRoutes(
     } catch (error) {
       console.error("remove collaborator error:", error);
       res.status(500).json({ error: "Failed to remove collaborator" });
+    }
+  });
+
+  // Daftar undangan tertunda (email belum punya akun). Hanya pemilik/admin.
+  app.get("/api/agents/:id/pending-invites", isAuthenticated, async (req, res) => {
+    try {
+      const agent = await storage.getAgent(req.params.id as string);
+      if (!agent) return res.status(404).json({ error: "Agent not found" });
+      const auth = await assertCanManageCollaborators(req, agent);
+      if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
+      const invites = await storage.listPendingInvitesForAgent(req.params.id as string);
+      res.json(invites);
+    } catch (error) {
+      console.error("list pending invites error:", error);
+      res.status(500).json({ error: "Failed to list pending invites" });
+    }
+  });
+
+  // Cabut undangan tertunda berdasarkan email. Hanya pemilik/admin.
+  app.delete("/api/agents/:id/pending-invites/:email", isAuthenticated, async (req, res) => {
+    try {
+      const agent = await storage.getAgent(req.params.id as string);
+      if (!agent) return res.status(404).json({ error: "Agent not found" });
+      const auth = await assertCanManageCollaborators(req, agent);
+      if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
+      const email = decodeURIComponent(req.params.email as string);
+      const removed = await storage.removePendingInvite(req.params.id as string, email);
+      if (!removed) return res.status(404).json({ error: "Undangan tidak ditemukan" });
+      res.json({ success: true });
+    } catch (error) {
+      console.error("remove pending invite error:", error);
+      res.status(500).json({ error: "Failed to remove pending invite" });
     }
   });
 

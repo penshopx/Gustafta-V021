@@ -84,6 +84,7 @@ import type {
   InsertBlueprint,
   AgentCollaborator,
   CollaboratorRole,
+  PendingAgentInvite,
 } from "@shared/schema";
 
 export type CollaboratorView = AgentCollaborator & {
@@ -156,6 +157,12 @@ export interface IStorage {
   removeCollaborator(agentId: string, userId: string): Promise<boolean>;
   getUserByEmail(email: string): Promise<{ id: string; email: string; firstName?: string | null; lastName?: string | null } | undefined>;
   getAgentsByIds(ids: string[]): Promise<Agent[]>;
+
+  // Pending agent invites (share with email that has no account yet)
+  addOrUpdatePendingInvite(data: { agentId: string; email: string; role: CollaboratorRole; invitedBy: string }): Promise<PendingAgentInvite>;
+  listPendingInvitesForAgent(agentId: string): Promise<PendingAgentInvite[]>;
+  removePendingInvite(agentId: string, email: string): Promise<boolean>;
+  applyPendingInvitesForUser(userId: string, email: string): Promise<number>;
 
   // Blueprint methods (AI Organization Builder — additive, not yet route-wired)
   getBlueprints(userId?: string): Promise<BlueprintRecord[]>;
@@ -445,6 +452,8 @@ export class MemStorage implements IStorage {
   // integer agentId; di sini cukup string supaya lookup konsisten.
   private agentCollaboratorsMap: Map<string, AgentCollaborator & { rawAgentId: string }>;
   private collaboratorIdSeq = 0;
+  private pendingInvitesMap: Map<string, PendingAgentInvite & { rawAgentId: string }> = new Map();
+  private pendingInviteIdSeq = 0;
 
   constructor() {
     this.users = new Map();
@@ -1141,6 +1150,62 @@ export class MemStorage implements IStorage {
 
   async getAgentsByIds(ids: string[]): Promise<Agent[]> {
     return ids.map((id) => this.agents.get(id)).filter((a): a is Agent => !!a);
+  }
+
+  // ─── Pending agent invites ────────────────────────────────────────────────
+  private pendingInviteKey(agentId: string, email: string): string {
+    return `${agentId}::${(email || "").trim().toLowerCase()}`;
+  }
+
+  async addOrUpdatePendingInvite(data: { agentId: string; email: string; role: CollaboratorRole; invitedBy: string }): Promise<PendingAgentInvite> {
+    const email = (data.email || "").trim().toLowerCase();
+    const key = this.pendingInviteKey(data.agentId, email);
+    const existing = this.pendingInvitesMap.get(key);
+    const rec: PendingAgentInvite & { rawAgentId: string } = existing
+      ? { ...existing, role: data.role, invitedBy: data.invitedBy }
+      : {
+          id: ++this.pendingInviteIdSeq,
+          agentId: parseInt(data.agentId) || 0,
+          rawAgentId: data.agentId,
+          email,
+          role: data.role,
+          invitedBy: data.invitedBy,
+          createdAt: new Date(),
+        };
+    this.pendingInvitesMap.set(key, rec);
+    const { rawAgentId: _omit, ...out } = rec;
+    return out as PendingAgentInvite;
+  }
+
+  async listPendingInvitesForAgent(agentId: string): Promise<PendingAgentInvite[]> {
+    return Array.from(this.pendingInvitesMap.values())
+      .filter((p) => p.rawAgentId === agentId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .map(({ rawAgentId: _omit, ...out }) => out as PendingAgentInvite);
+  }
+
+  async removePendingInvite(agentId: string, email: string): Promise<boolean> {
+    return this.pendingInvitesMap.delete(this.pendingInviteKey(agentId, email));
+  }
+
+  async applyPendingInvitesForUser(userId: string, email: string): Promise<number> {
+    const normalized = (email || "").trim().toLowerCase();
+    if (!userId || !normalized) return 0;
+    const matches = Array.from(this.pendingInvitesMap.values()).filter(
+      (p) => p.email === normalized,
+    );
+    let applied = 0;
+    for (const inv of matches) {
+      await this.addOrUpdateCollaborator({
+        agentId: inv.rawAgentId,
+        userId,
+        role: inv.role as CollaboratorRole,
+        invitedBy: inv.invitedBy,
+      });
+      this.pendingInvitesMap.delete(this.pendingInviteKey(inv.rawAgentId, inv.email));
+      applied++;
+    }
+    return applied;
   }
 
   // Knowledge Base methods

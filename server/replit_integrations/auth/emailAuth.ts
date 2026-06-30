@@ -275,6 +275,16 @@ export function registerEmailAuthRoutes(app: Express): void {
       // Seed sample agent for new user — non-blocking
       seedSampleAgentForEmailUser(userRow.id, userRow.firstName).catch(() => {});
 
+      // Apply any pending agent-share invites addressed to this email — non-blocking.
+      // Turns an owner's "invite by email before signup" into a real collaborator grant.
+      try {
+        const { storage } = await import("../../storage");
+        const applied = await storage.applyPendingInvitesForUser(userRow.id, email);
+        if (applied > 0) console.log(`[EmailAuth] Applied ${applied} pending agent invite(s) for ${email}`);
+      } catch (inviteErr) {
+        console.error("[EmailAuth] Failed to apply pending invites:", inviteErr);
+      }
+
       // Auto-create pending trial request so super-admin can approve from admin panel
       try {
         const { trialRequests } = await import("@shared/schema");

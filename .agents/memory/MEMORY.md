@@ -19,3 +19,4 @@
 - [Chat-surface guard parity](chat-surface-guard-parity.md) — SETIAP /api/messages* (baca/kirim/ekspor/HAPUS) wajib assertCanAccessAgentChat, isAuthenticated saja = IDOR; tes statis agent-authz-guard.test.ts (CHAT_READ_GUARDED) menangkap yang lupa.
 - [Agent Collaboration authz](agent-collaboration-authz.md) — 4 tier hak agen (config-edit/destruktif/chat-read/config-read); pilih guard per tier, jangan campur. Chat agen privat = IDOR surface.
 - [Reusable Brevo email helper](reusable-email-helper.md) — server/lib/email.ts (sendEmail + sendAgentShareNotification); reuse instead of cloning emailAuth pattern. Always fire-and-forget so missing BREVO_API_KEY never breaks the action.
+- [Pending agent invites](agent-invite-pending.md) — sharing to unknown email = persist pending invite + 202, never 404; auto-apply grant at EVERY signup path (idempotent, non-blocking, lowercased email).

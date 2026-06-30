@@ -138,3 +138,83 @@ Kamu menerima email ini karena seseorang membagikan agen dengan akun Gustafta ka
     tags: ["agent-share", "transactional"],
   });
 }
+
+interface InviteToSignupOptions {
+  to: string;
+  agentName: string;
+  role: string;
+  inviterName?: string | null;
+  appUrl?: string;
+}
+
+// Invites someone WITHOUT a Gustafta account to sign up so a pending agent
+// share can be applied to them. Never throws — returns the SendEmailResult.
+export async function sendAgentInviteToSignup(opts: InviteToSignupOptions): Promise<SendEmailResult> {
+  const roleLabel = ROLE_LABELS[opts.role] || opts.role;
+  const inviter = opts.inviterName?.trim();
+  const signupUrl =
+    opts.appUrl ||
+    (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}/auth` : "");
+
+  const intro = inviter
+    ? `<b>${inviter}</b> ingin membagikan sebuah agen AI dengan kamu di Gustafta.`
+    : `Seseorang ingin membagikan sebuah agen AI dengan kamu di Gustafta.`;
+  const introText = inviter
+    ? `${inviter} ingin membagikan sebuah agen AI dengan kamu di Gustafta.`
+    : `Seseorang ingin membagikan sebuah agen AI dengan kamu di Gustafta.`;
+
+  const ctaButton = signupUrl
+    ? `<div style="text-align:center;margin:0 0 24px"><a href="${signupUrl}" style="display:inline-block;background:#6366f1;color:#fff;text-decoration:none;font-size:15px;font-weight:600;padding:12px 28px;border-radius:8px">Daftar & Terima Akses</a></div>`
+    : "";
+
+  const html = `<!DOCTYPE html>
+<html lang="id">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f3f4f6">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:32px 0">
+    <tr><td align="center">
+      <table width="480" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;padding:40px;font-family:Arial,sans-serif;color:#111">
+        <tr><td>
+          <p style="margin:0 0 4px;font-size:22px;font-weight:700;color:#6366f1">Gustafta</p>
+          <hr style="border:none;border-top:1px solid #e5e7eb;margin:16px 0">
+          <p style="font-size:16px;margin:0 0 8px">Halo,</p>
+          <p style="font-size:15px;color:#374151;margin:0 0 16px">${intro}</p>
+          <div style="padding:20px;background:#f9fafb;border-radius:8px;border:1px solid #e5e7eb;margin:0 0 24px">
+            <p style="font-size:13px;color:#6b7280;margin:0 0 4px">Nama Agen</p>
+            <p style="font-size:18px;font-weight:700;color:#111;margin:0 0 16px">${opts.agentName}</p>
+            <p style="font-size:13px;color:#6b7280;margin:0 0 4px">Peran Kamu</p>
+            <p style="font-size:15px;font-weight:600;color:#111;margin:0">${roleLabel}</p>
+          </div>
+          <p style="font-size:15px;color:#374151;margin:0 0 16px">Kamu belum punya akun Gustafta. Daftar dengan alamat email ini, dan akses agen akan otomatis aktif setelah pendaftaran selesai.</p>
+          ${ctaButton}
+          <hr style="border:none;border-top:1px solid #e5e7eb;margin:0 0 16px">
+          <p style="font-size:12px;color:#9ca3af;margin:0">Kamu menerima email ini karena seseorang ingin membagikan agen dengan alamat email kamu.</p>
+          <p style="font-size:12px;color:#9ca3af;margin:8px 0 0">© 2025 Gustafta. Seluruh hak dilindungi.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  const textContent = `Halo,
+
+${introText}
+
+Nama Agen: ${opts.agentName}
+Peran Kamu: ${roleLabel}
+
+Kamu belum punya akun Gustafta. Daftar dengan alamat email ini, dan akses agen akan otomatis aktif setelah pendaftaran selesai.
+${signupUrl ? `\nDaftar di sini: ${signupUrl}\n` : ""}
+Kamu menerima email ini karena seseorang ingin membagikan agen dengan alamat email kamu.
+
+— Tim Gustafta`;
+
+  return sendEmail({
+    to: opts.to,
+    subject: `Undangan: daftar untuk mengakses agen "${opts.agentName}" di Gustafta`,
+    htmlContent: html,
+    textContent,
+    tags: ["agent-invite", "transactional"],
+  });
+}
