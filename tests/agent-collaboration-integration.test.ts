@@ -147,6 +147,38 @@ test("listCollaboratorsForAgent mengembalikan email & displayName untuk UI berba
   assert.equal(byEmail["viewer@contoh.id"].role, "viewer");
 });
 
+// Alur undangan-tertunda → first-login → grant → CTA "Buka" mendarat di agen yang
+// SAH dibuka. Ini menutup celah yang ditemukan review: notice tidak boleh memakai
+// /activate (khusus pemilik). Kita buktikan bahwa setelah grant diterapkan, user
+// baru BISA membaca agen tersebut (target CTA), tanpa perlu jadi pemilik.
+test("undangan-tertunda diterapkan saat daftar → grant berisi nama agen & user baru SAH membuka agen (target CTA)", async () => {
+  const { storage, owner, agent } = await setup();
+  const undangEmail = "pendatang@contoh.id";
+
+  // Owner mengundang email yang BELUM punya akun → tersimpan sebagai pending invite.
+  await storage.addOrUpdatePendingInvite({ agentId: agent.id, email: undangEmail, role: "editor", invitedBy: owner.id });
+  assert.equal((await storage.listPendingInvitesForAgent(agent.id)).length, 1, "invite tertunda tersimpan");
+
+  // User mendaftar pakai email itu, lalu sistem menerapkan invite tertunda (first login).
+  const pendatang = await storage.createUser({ email: undangEmail, firstName: "Putri", lastName: "Pendatang" } as any);
+  const grants = await storage.applyPendingInvitesForUser(pendatang.id, undangEmail.toUpperCase());
+
+  // Grant membawa nama agen → notice bisa menampilkan "akses ke <nama>" + deep-link.
+  assert.equal(grants.length, 1, "tepat satu grant diterapkan");
+  assert.equal(grants[0].agentId, agent.id, "grant menunjuk agen yang benar (untuk ?agent=<id>)");
+  assert.equal(grants[0].agentName, agent.name, "grant membawa nama agen untuk teks notice");
+  assert.equal(grants[0].role, "editor", "peran sesuai undangan");
+
+  // Invite tertunda dikonsumsi sekali (idempotent — tidak terpakai dua kali).
+  assert.equal((await storage.listPendingInvitesForAgent(agent.id)).length, 0, "invite tertunda dikonsumsi");
+
+  // INTI: target CTA SAH. User baru kini boleh MEMBUKA (baca) agen yang dibagikan —
+  // tanpa /activate yang owner-only. Inilah yang dijamin oleh deep-link dashboard.
+  assert.equal((await canRead(storage, agent.id, owner.id, pendatang.id)).ok, true, "user baru boleh membuka agen yang dibagikan");
+  // Editor juga boleh mutasi config (sesuai peran undangan).
+  assert.equal((await canMutate(storage, agent.id, owner.id, pendatang.id)).ok, true, "editor hasil grant boleh mutasi config");
+});
+
 // Divergensi YANG DIKETAHUI & DISENGAJA antara MemStorage vs DatabaseStorage:
 // DatabaseStorage memakai agentId integer; MemStorage memakai id agen UUID.
 // AgentCollaborator.agentId bertipe number, jadi MemStorage menurunkan field itu

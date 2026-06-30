@@ -1462,6 +1462,24 @@ export async function registerRoutes(
     return { ok: true };
   }
 
+  // Notice sekali-pakai untuk pengguna yang baru saja diberi akses agen lewat
+  // undangan email (pending invite). Dibaca saat login pertama lalu di-clear dari
+  // session, supaya klien bisa menampilkan toast "Anda kini punya akses ke <agen>".
+  app.get("/api/me/new-agent-grants", isAuthenticated, async (req, res) => {
+    try {
+      const grants = (req.session as any)?.newAgentGrants;
+      if (Array.isArray(grants) && grants.length > 0) {
+        delete (req.session as any).newAgentGrants;
+        req.session.save(() => {});
+        return res.json(grants);
+      }
+      res.json([]);
+    } catch (error) {
+      console.error("new-agent-grants error:", error);
+      res.json([]);
+    }
+  });
+
   // Daftar kolaborator agen.
   app.get("/api/agents/:id/collaborators", isAuthenticated, async (req, res) => {
     try {

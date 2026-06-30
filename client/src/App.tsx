@@ -371,6 +371,7 @@ import SupplierBotPage from "@/pages/supplierbot";
 import { ChaesaWidget } from "@/components/chaesa-widget";
 import { MultiClawProvider } from "@/contexts/multiclaw-context";
 import { ProfileCompletionGuard } from "@/components/profile-completion-guard";
+import { NewAgentGrantsNotice } from "@/components/new-agent-grants-notice";
 
 const WIDGET_EXCLUDED_PATHS = ["/legal", "/embed/", "/chaesa", "/demo/", "/bot/", "/chat/", "/chatbot/", "/modul/", "/m/", "/mini-app/"];
 
@@ -1534,6 +1535,7 @@ function AppContent() {
   return (
     <>
       <ProfileCompletionGuard />
+      <NewAgentGrantsNotice />
       <Router />
       {showWidget && <ChaesaWidget />}
       <Toaster />

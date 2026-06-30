@@ -25,6 +25,12 @@ There are FOUR capability tiers, each with its own guard. The recurring failure 
 ## Don't over-tighten system agents
 ~900 seeded agents have an empty owner and are intentionally shared. Tiers 2–3 must let logged-in users reach them; only *owner-set* private agents get the collaborator gate. Tightening system agents silently breaks the whole MultiClaw / Legal AI chat suite.
 
+## Collaborator-facing CTAs must not hit owner-only routes
+A "open the shared agent" CTA for an invited collaborator must NOT call the owner-only `POST /api/agents/:id/activate` — it 403s for non-owners, and `isActive`/active-agent is a GLOBAL singleton so relaxing that auth would let a viewer flip what everyone sees. Instead deep-link to `/dashboard?agent=<id>`; the dashboard selects the agent via pure client state (`localAgentId`/`localToolboxId`, the same path as clicking a shared agent in the sidebar) — no mutation, collaborator-authorized. The unfiltered `/api/agents` list already returns shared agents to collaborators (tagged `shared`, `effectiveRole`).
+
+**Why:** the first cut wired the CTA to activate; review caught it as a guaranteed 403 for exactly the audience it serves.
+**How to apply:** any collaborator-reachable navigation/action should route through a tier-1/3/4 surface, never tier-2 (owner-only). Prefer client-state selection over a write when you only need to *display* an agent.
+
 ## Regression locks
 Static source-grep tests assert each route family calls the correct guard (mutation vs owner-only vs chat-access), plus a pure decision matrix (editor/viewer/non-collaborator/system/anonymous). Moving a route between tiers requires updating these tests in lockstep, or the grep test fails loudly.
 

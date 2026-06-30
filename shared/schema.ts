@@ -413,6 +413,14 @@ export const agentCollaborators = pgTable("agent_collaborators", {
 export const collaboratorRoleSchema = z.enum(["editor", "viewer"]);
 export type CollaboratorRole = z.infer<typeof collaboratorRoleSchema>;
 
+// Returned by applyPendingInvitesForUser: the agent access grants that were
+// just activated for a freshly-registered user, used to show a first-login notice.
+export type AppliedInviteGrant = {
+  agentId: string;
+  agentName: string;
+  role: CollaboratorRole;
+};
+
 export const insertAgentCollaboratorSchema = createInsertSchema(agentCollaborators)
   .omit({ id: true, createdAt: true })
   .extend({ role: collaboratorRoleSchema });

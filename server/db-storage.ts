@@ -68,7 +68,7 @@ import type {
 } from "@shared/schema";
 import { applyDefaultPolicies } from "./lib/agent-policies";
 import type { IStorage, CollaboratorView } from "./storage";
-import type { AgentCollaborator, CollaboratorRole, PendingAgentInvite, Notification, InsertNotification } from "@shared/schema";
+import type { AgentCollaborator, CollaboratorRole, PendingAgentInvite, AppliedInviteGrant, Notification, InsertNotification } from "@shared/schema";
 import type {
   Agent,
   InsertAgent,
@@ -1240,14 +1240,14 @@ export class DatabaseStorage implements IStorage {
     return result.length > 0;
   }
 
-  async applyPendingInvitesForUser(userId: string, email: string): Promise<number> {
+  async applyPendingInvitesForUser(userId: string, email: string): Promise<AppliedInviteGrant[]> {
     const normalized = (email || "").trim().toLowerCase();
-    if (!userId || !normalized) return 0;
+    if (!userId || !normalized) return [];
     const invites = await db.select()
       .from(pendingAgentInvites)
       .where(eq(pendingAgentInvites.email, normalized));
-    if (invites.length === 0) return 0;
-    let applied = 0;
+    if (invites.length === 0) return [];
+    const grants: AppliedInviteGrant[] = [];
     for (const inv of invites) {
       const role = inv.role === "editor" || inv.role === "viewer" ? inv.role : "viewer";
       await db.insert(agentCollaborators)
@@ -1256,11 +1256,19 @@ export class DatabaseStorage implements IStorage {
           target: [agentCollaborators.agentId, agentCollaborators.userId],
           set: { role, invitedBy: inv.invitedBy },
         });
-      applied++;
+      const [agentRow] = await db.select({ name: agents.name })
+        .from(agents)
+        .where(eq(agents.id, inv.agentId))
+        .limit(1);
+      grants.push({
+        agentId: String(inv.agentId),
+        agentName: agentRow?.name || "agen bersama",
+        role,
+      });
     }
     await db.delete(pendingAgentInvites).where(eq(pendingAgentInvites.email, normalized));
     agentListCache.clear();
-    return applied;
+    return grants;
   }
 
   // ─── Notification methods ──────────────────────────────────────────────────
