@@ -2587,6 +2587,9 @@ export function AgenticAIPanel() {
             <div>
               <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1.5">
                 <GraduationCap className="h-3 w-3" /> Pembelajaran Adaptif
+                <Badge variant="secondary" className="text-[9px] py-0 font-normal bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 border-0 normal-case" data-testid="badge-learning-summary-soon">
+                  Segera hadir
+                </Badge>
               </p>
               <div className="grid grid-cols-2 gap-2">
                 {[
@@ -2926,8 +2929,13 @@ export function AgenticAIPanel() {
               <CardTitle className="flex items-center gap-2 text-base">
                 <GraduationCap className="h-4 w-4 text-green-500" />
                 Pembelajaran & Telemetri
+                <Badge variant="secondary" className="text-[10px] py-0 font-normal bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 border-0" data-testid="badge-learning-soon">
+                  Segera hadir
+                </Badge>
               </CardTitle>
-              <CardDescription>Kontrol adaptasi dan penyimpanan sinyal interaksi.</CardDescription>
+              <CardDescription>
+                Adaptasi lintas-sesi & penyimpanan sinyal interaksi masih dalam pengembangan. Pengaturan di bawah belum memengaruhi perilaku agen.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <SelectRow
@@ -2936,6 +2944,7 @@ export function AgenticAIPanel() {
                 value={settings.adaptiveLearningMode}
                 onChange={(v) => save({ adaptiveLearningMode: v })}
                 options={["Off", "Sesi aktif saja", "Belajar pola interaksi", "Dengan review admin"]}
+                disabled
                 dataTestId="select-adaptive-learning"
               />
               <div className="border-t pt-4">
@@ -2944,6 +2953,7 @@ export function AgenticAIPanel() {
                   helper="Simpan sinyal untuk evaluasi kualitas."
                   value={settings.storeInteractionSignals}
                   onChange={(v) => save({ storeInteractionSignals: v })}
+                  disabled
                   dataTestId="toggle-store-signals"
                 />
               </div>

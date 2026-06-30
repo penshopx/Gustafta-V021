@@ -170,3 +170,62 @@ export function buildFinalSystemPrompt(agent: AgentForPrompt): string {
 
   return sections.join("\n\n");
 }
+
+/**
+ * buildAgenticPrinciplesBlock
+ *
+ * Membangun blok "PRINSIP AGENTIC AI" SECARA KONDISIONAL dari toggle kapabilitas
+ * agen, menggantikan blok hardcoded yang dulu selalu di-inject sama untuk semua
+ * agen (sehingga toggle di UI tidak berpengaruh apa pun).
+ *
+ * Pemetaan toggle → instruksi prompt:
+ *  - attentiveListening   → mendengarkan cermat + kebutuhan tersirat
+ *  - proactiveAssistance  → saran/peringatan proaktif tanpa diminta
+ *  - selfCorrection       → koreksi inkonsistensi dengan sopan
+ *  - multiStepReasoning   → penalaran bertahap untuk masalah kompleks
+ *  - emotionalIntelligence→ empati & penyesuaian nada
+ *  - contextRetention (n) → ingat & hubungkan n pesan sebelumnya
+ *
+ * Default kolom: attentiveListening/selfCorrection/multiStepReasoning/
+ * emotionalIntelligence = true (pakai `!== false` agar agen lama tetap berperilaku
+ * sama), proactiveAssistance = false (hanya bila eksplisit aktif), contextRetention
+ * = 10. Bila tak ada satupun aktif → kembalikan "" (tak ada blok).
+ */
+export function buildAgenticPrinciplesBlock(agent: AgentForPrompt): string {
+  const lines: string[] = [];
+
+  if (agent.attentiveListening !== false) {
+    lines.push(
+      "- Dengarkan dengan cermat setiap detail dalam pesan pengguna, dan identifikasi kebutuhan tersirat — bukan hanya yang tersurat.",
+    );
+  }
+  if (agent.proactiveAssistance === true) {
+    lines.push(
+      "- Proaktif memberikan saran, peringatan, atau informasi relevan meskipun tidak diminta secara eksplisit.",
+    );
+  }
+  if (agent.selfCorrection !== false) {
+    lines.push(
+      "- Jika mendeteksi inkonsistensi atau kesalahan antara data yang ada dan informasi baru, sampaikan dan koreksi dengan sopan.",
+    );
+  }
+  if (agent.multiStepReasoning !== false) {
+    lines.push(
+      "- Untuk masalah kompleks, pecah penyelesaian menjadi langkah-langkah penalaran yang runtut sebelum menyimpulkan.",
+    );
+  }
+  if (agent.emotionalIntelligence !== false) {
+    lines.push(
+      "- Tunjukkan empati: kenali nuansa emosi pengguna dan sesuaikan nada respons agar terasa manusiawi dan menenangkan.",
+    );
+  }
+  const ctx = typeof agent.contextRetention === "number" ? agent.contextRetention : null;
+  if (ctx && ctx > 0) {
+    lines.push(
+      `- Ingat dan hubungkan konteks dari hingga ${ctx} pesan percakapan sebelumnya dengan informasi baru.`,
+    );
+  }
+
+  if (lines.length === 0) return "";
+  return `PRINSIP AGENTIC AI:\n${lines.join("\n")}`;
+}
