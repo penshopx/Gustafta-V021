@@ -1085,6 +1085,63 @@ export class DatabaseStorage implements IStorage {
     return mapped;
   }
 
+  // Buat salinan privat sebuah agen master untuk seorang pemilik (pembeli).
+  // Menyalin seluruh kolom agen + semua baris Knowledge Base-nya, lalu menandai
+  // userId = pembeli sehingga authz (decideAgentMutation) otomatis mengizinkan
+  // pemilik mengedit/menyegarkan pengetahuannya sendiri.
+  async cloneAgentForOwner(masterAgentId: number, ownerUserId: string): Promise<Agent> {
+    const [master] = await db.select().from(agents).where(eq(agents.id, masterAgentId));
+    if (!master) throw new Error(`Agen master ${masterAgentId} tidak ditemukan`);
+
+    const {
+      id: _omitId,
+      createdAt: _omitCreated,
+      slug: _omitSlug,
+      accessToken: _omitToken,
+      ...rest
+    } = master as any;
+
+    const newToken = `gus_${randomUUID().replace(/-/g, "")}`;
+    const [clone] = await db.insert(agents).values({
+      ...rest,
+      userId: ownerUserId,
+      isListed: false,
+      isPublic: false,        // salinan privat: TIDAK boleh tampil/embed publik
+      isActive: false,        // hindari bentrok dengan singleton active-agent global
+      isEnabled: true,
+      archived: false,
+      slug: null,
+      accessToken: newToken,
+      // Jangan wariskan kredensial/endpoint milik penjual ke runtime pembeli.
+      customApiKey: "",
+      customBaseUrl: "",
+      customModelName: "",
+      premiumClass: "private",
+      clonedFromAgentId: masterAgentId,
+    }).returning();
+
+    // Salin Knowledge Base milik master + chunk RAG-nya agar retrieval tetap jalan.
+    const kbRows = await db.select().from(knowledgeBases).where(eq(knowledgeBases.agentId, masterAgentId));
+    for (const row of kbRows) {
+      const { id: oldKbId, createdAt: _kcreated, ...kbRest } = row as any;
+      const [newKb] = await db.insert(knowledgeBases).values({ ...kbRest, agentId: clone.id }).returning();
+      const chunkRows = await db.select().from(knowledgeChunks).where(eq(knowledgeChunks.knowledgeBaseId, oldKbId));
+      for (const chunk of chunkRows) {
+        const { id: _cid, createdAt: _ccreated, ...chunkRest } = chunk as any;
+        await db.insert(knowledgeChunks).values({
+          ...chunkRest,
+          knowledgeBaseId: newKb.id,
+          agentId: clone.id,
+        });
+      }
+    }
+
+    agentCache.delete("__active__");
+    agentListCache.clear();
+    kbCache.delete(String(clone.id));
+    return this.mapAgentRow(clone);
+  }
+
   async setActiveAgent(id: string): Promise<Agent | undefined> {
     // Hanya deaktivasi agent dashboard (tanpa toolboxId = bukan seeded series agent)
     // agar series page tidak ikut terpengaruh

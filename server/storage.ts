@@ -149,6 +149,7 @@ export interface IStorage {
   getActiveAgent(): Promise<Agent | null>;
   createAgent(agent: InsertAgent): Promise<Agent>;
   updateAgent(id: string, data: Partial<InsertAgent>): Promise<Agent | undefined>;
+  cloneAgentForOwner(masterAgentId: number, ownerUserId: string): Promise<Agent>;
   setActiveAgent(id: string): Promise<Agent | undefined>;
   deleteAgent(id: string): Promise<boolean>;
 
@@ -2457,6 +2458,10 @@ export class MemStorage implements IStorage {
     const existing = this.blueprintsMem.get(id);
     if (!existing || existing.userId !== userId) return false;
     return this.blueprintsMem.delete(id);
+  }
+
+  async cloneAgentForOwner(_masterAgentId: number, _ownerUserId: string): Promise<Agent> {
+    throw new Error("cloneAgentForOwner not implemented in MemStorage");
   }
 }
 

@@ -22,4 +22,5 @@
 - [Reusable Brevo email helper](reusable-email-helper.md) — server/lib/email.ts (sendEmail + sendAgentShareNotification); reuse instead of cloning emailAuth pattern. Always fire-and-forget so missing BREVO_API_KEY never breaks the action.
 - [Pending agent invites](agent-invite-pending.md) — sharing to unknown email = persist pending invite + 202, never 404; auto-apply grant at EVERY signup path (idempotent, non-blocking, lowercased email).
 - [getAgent must expose userId](agent-userid-mapping.md) — mapAgentRow drop userId → owner 403 di agennya sendiri + daftar agen non-admin kosong. Authz baca agent.userId; integration test HTTP nyata yang menangkapnya.
+- [Premium Privat clone](premium-private-clone.md) — per-buyer agent clone; cloning MUST override isPublic+isListed, reset custom* API keys, and copy knowledge_chunks (not just KB rows) or RAG silently empty. Owner-edit works free via decideAgentMutation.
 - [Conversation/voice API authz](conversation-api-authz.md) — Replit chat/audio integration ships /api/conversations* with NO auth + NO owner column (IDOR); must add userId, isAuthenticated, ownership checks on import.

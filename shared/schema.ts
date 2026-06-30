@@ -183,6 +183,11 @@ export const agents = pgTable("agents", {
   messageQuotaMonthly: integer("message_quota_monthly").default(1000),
   guestMessageLimit: integer("guest_message_limit").default(10),
   requireRegistration: boolean("require_registration").default(false),
+  // Premium product class: "standard" (satu bot bersama, dikurasi admin, pembeli tak bisa edit)
+  //                        "private"  (tiap pembeli dapat salinan sendiri yang bisa ia perkuat)
+  premiumClass: text("premium_class").default("standard"),
+  // Jika agen ini salinan privat, menunjuk ke ID agen master sumbernya.
+  clonedFromAgentId: integer("cloned_from_agent_id"),
   paymentUrl: text("payment_url").default(""),
   brandingName: text("branding_name").default(""),
   brandingLogo: text("branding_logo").default(""),
@@ -809,6 +814,7 @@ export const insertAgentSchema = z.object({
   messageQuotaMonthly: z.number().min(0).optional().default(1000),
   guestMessageLimit: z.number().min(0).optional().default(10),
   requireRegistration: z.boolean().optional().default(false),
+  premiumClass: z.enum(["standard", "private"]).optional().default("standard"),
   brandingName: z.string().optional().default(""),
   brandingLogo: z.string().optional().default(""),
   contextQuestions: z.array(z.object({
