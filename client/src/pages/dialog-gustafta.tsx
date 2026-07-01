@@ -331,12 +331,12 @@ export default function DialogGustaftaPage() {
         body: JSON.stringify({ messages: msgs }),
       });
       const data = await res.json();
-      const bp = data.blueprint ?? { judul: "Blueprint Ekosistem AI Anda", ringkasan: "Roadmap personal berdasarkan dialog.", langkahAwal: ["Daftar di Gustafta", "Konfigurasi chatbot pertama", "Upload knowledge base"], namaChatbot: "Chatbot Spesialis", persona: "Konsultan yang hangat", targetPengguna: "Profesional di bidang Anda", estimasiDampak: "Melayani ratusan klien otomatis 24/7" };
+      const bp = data.blueprint ?? { judul: "Blueprint Ekosistem AI Anda", ringkasan: "Roadmap personal berdasarkan dialog.", langkahAwal: ["Daftar di Gustafta", "Konfigurasi chatbot pertama", "Upload knowledge base", "Rakit tim AI & bagikan ke rekan"], namaChatbot: "Chatbot Spesialis", persona: "Konsultan yang hangat", targetPengguna: "Profesional di bidang Anda", estimasiDampak: "Melayani ratusan klien otomatis 24/7" };
       setBlueprint(bp);
       setStage("blueprint");
       persist({ stage: "blueprint", messages: msgs, profil, gambaran, blueprint: bp, s1Count: c1, s2Count: c2, s3Count: c3, s3Unlocked, savedAt: "" });
     } catch {
-      setBlueprint({ judul: "Blueprint Ekosistem AI Anda", ringkasan: "Roadmap personal.", langkahAwal: ["Daftar di Gustafta", "Konfigurasi chatbot", "Upload knowledge base"], namaChatbot: "Chatbot Spesialis", persona: "Konsultan hangat", targetPengguna: "Profesional Anda", estimasiDampak: "Melayani klien 24/7" });
+      setBlueprint({ judul: "Blueprint Ekosistem AI Anda", ringkasan: "Roadmap personal.", langkahAwal: ["Daftar di Gustafta", "Konfigurasi chatbot", "Upload knowledge base", "Rakit tim AI & kolaborasi"], namaChatbot: "Chatbot Spesialis", persona: "Konsultan hangat", targetPengguna: "Profesional Anda", estimasiDampak: "Melayani klien 24/7" });
       setStage("blueprint");
     } finally { setProcessing(false); }
   };
@@ -737,6 +737,15 @@ export default function DialogGustaftaPage() {
                       <span className="text-emerald-400 shrink-0 font-bold mt-0.5">{i + 1}.</span> {l}
                     </li>
                   ))}
+                </ul>
+              </div>
+
+              <div className="rounded-xl bg-white/5 border border-white/10 p-3 space-y-2">
+                <div className="text-xs text-white/40 font-semibold uppercase tracking-wider">Setelah chatbot pertama Anda</div>
+                <ul className="space-y-1.5 text-xs text-white/80">
+                  <li className="flex items-start gap-2"><span>🧩</span><span><span className="font-semibold text-white">Rakit Tim AI</span> — kembangkan dari satu chatbot menjadi satu tim agen yang saling bekerja sama.</span></li>
+                  <li className="flex items-start gap-2"><span>🤝</span><span><span className="font-semibold text-white">Kolaborasi</span> — bagikan chatbot ke rekan lewat email dan kerjakan bersama tim.</span></li>
+                  <li className="flex items-start gap-2"><span>✅</span><span><span className="font-semibold text-white">Sertifikasi</span> — jadikan chatbot Anda bersertifikat &amp; tepercaya di Store.</span></li>
                 </ul>
               </div>
 

@@ -221,6 +221,11 @@ Gustafta adalah **platform pembuatan chatbot AI multi-tenant berbasis cloud**, d
 - **Broadcast WA**: Kirim pesan WhatsApp terjadwal ke banyak kontak; A/B test AI 2 varian pesan; personalisasi AI per kontak; integrasi data tender & ekosistem via MultiClaw Context
 - **Conversion Layer**: Lead capture, scoring, CTA otomatis, paket penawaran
 - **Analytics**: Pantau percakapan, sesi, kepuasan, tren
+- **Rakit Tim AI (AI Organization Builder)**: Dari satu misi/deskripsi, sistem menyusun satu tim agen AI lengkap yang saling bekerja sama — bukan hanya satu chatbot tunggal
+- **Blueprint Builder**: Rancang chatbot lewat dialog terpandu (tanya-jawab Socratic) yang langsung menjadi konfigurasi agen siap pakai — cocok untuk user non-teknis
+- **Kolaborasi & Berbagi Chatbot**: Bagikan chatbot ke rekan lewat email dengan pengaturan peran; undangan untuk email yang belum terdaftar otomatis aktif saat mereka mendaftar; ada notifikasi in-app (lonceng) + email
+- **Chatbot Bersertifikat**: Chatbot tepercaya di Store mendapat badge "Bersertifikat" sebagai jaminan kualitas bagi pembeli
+- **Transparansi AI**: Setiap jawaban AI diberi label bahasa manusia ("Disiapkan oleh asisten AI — periksa hal penting sebelum dipakai") agar pengguna tahu apa yang perlu diverifikasi sebelum dipakai
 
 ### Segmen Pengguna Gustafta:
 - **Konstruksi & Profesional**: Tender, SKK/SBU, ISO, K3, manajemen proyek, SKKNI
