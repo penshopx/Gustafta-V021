@@ -111,9 +111,11 @@ Buat Blueprint Konfigurasi AI dalam format JSON yang valid SAJA (tanpa markdown,
 
 const BLUEPRINT_STORAGE_KEY = "gustafta_blueprint_pending";
 
+const STARTER_KIT_URL = "https://dialog.gustafta.my.id/c/checkout?variant_ids=533205&qty=1";
+
 function BlueprintLockedCard({ bp, onClose }: { bp: Blueprint; onClose: () => void }) {
   const waText = encodeURIComponent(
-    `Halo Gustafta! Saya sudah menyelesaikan sesi Socratic Dialog dan Blueprint AI saya sudah siap. Nama AI: ${bp.namaAI} | Domain: ${bp.domain}. Saya ingin melanjutkan ke pembelian paket untuk mengakses Blueprint lengkap dan mulai merakitnya di Builder.`
+    `Halo Gustafta! Blueprint AI saya sudah siap dari sesi Dialog. Nama AI: ${bp.namaAI} | Domain: ${bp.domain}. Saya ingin beli Starter Kit untuk mengakses Blueprint lengkapnya.`
   );
 
   return (
@@ -121,72 +123,73 @@ function BlueprintLockedCard({ bp, onClose }: { bp: Blueprint; onClose: () => vo
       {/* Header */}
       <div className="px-3 py-2 bg-gradient-to-r from-amber-500 to-orange-500 flex items-center gap-2">
         <Sparkles className="h-3.5 w-3.5 text-white" />
-        <span className="text-white text-xs font-bold tracking-wide">BLUEPRINT AI ANDA — SIAP!</span>
+        <span className="text-white text-xs font-bold tracking-wide">BLUEPRINT AI ANDA — SIAP! 🎉</span>
         <Lock className="h-3 w-3 text-white/80 ml-auto" />
       </div>
 
-      <div className="p-3 space-y-2">
-        {/* Visible — nama & domain sebagai hook */}
-        <div>
-          <p className="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Nama AI Anda</p>
-          <p className="text-sm font-bold text-gray-900 dark:text-white">{bp.namaAI}</p>
-          <p className="text-[11px] text-gray-600 dark:text-gray-400 mt-0.5">Domain: <strong>{bp.domain}</strong></p>
+      <div className="p-3 space-y-2.5">
+        {/* Nama AI */}
+        <div className="text-center py-1">
+          <p className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold uppercase tracking-wider mb-0.5">AI yang akan Anda miliki</p>
+          <p className="text-base font-bold text-gray-900 dark:text-white">"{bp.namaAI}"</p>
+          <p className="text-[11px] text-gray-500 dark:text-gray-400">Bidang: {bp.domain}</p>
         </div>
 
-        {/* Locked preview — blurred */}
+        {/* Blurred preview */}
         <div className="relative rounded-lg overflow-hidden">
-          <div className="p-2.5 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 space-y-1.5 select-none">
+          <div className="p-2.5 bg-white dark:bg-zinc-800 border border-gray-100 dark:border-zinc-700 space-y-1.5 select-none">
             <div className="flex flex-wrap gap-1">
               {(bp.fiturUtama ?? []).map((_, i) => (
-                <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-gray-200 dark:bg-zinc-600 text-gray-200 dark:text-zinc-600">████████</span>
+                <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-gray-200 dark:bg-zinc-600 text-transparent">████████</span>
               ))}
             </div>
-            <p className="text-[10px] text-gray-200 dark:text-zinc-600 leading-relaxed">████████████ ████ ██████ ████████████ ████</p>
-            <p className="text-[10px] text-gray-200 dark:text-zinc-600">████████ ████████████</p>
+            <p className="text-[10px] text-transparent bg-gray-200 dark:bg-zinc-600 rounded leading-relaxed">████████████ ████ ██████ ████████████ ████</p>
           </div>
-          {/* Blur overlay */}
-          <div className="absolute inset-0 backdrop-blur-[3px] bg-white/60 dark:bg-zinc-900/60 flex flex-col items-center justify-center gap-1">
-            <Lock className="h-5 w-5 text-amber-600" />
-            <p className="text-[10px] font-bold text-amber-700 dark:text-amber-400 text-center px-2">Persona · Fitur · System Prompt · Langkah</p>
-            <p className="text-[9px] text-gray-500 text-center">Tersedia setelah pembelian paket</p>
+          <div className="absolute inset-0 backdrop-blur-[2px] bg-white/50 dark:bg-zinc-900/50 flex flex-col items-center justify-center gap-1">
+            <Lock className="h-4 w-4 text-amber-500" />
+            <p className="text-[9px] text-amber-600 dark:text-amber-400 font-semibold text-center">Persona · Fitur · System Prompt tersembunyi</p>
           </div>
         </div>
 
-        {/* What they get after purchase */}
-        <div className="bg-white dark:bg-zinc-800 rounded-lg p-2 border border-amber-200 dark:border-amber-800">
-          <p className="text-[10px] font-bold text-amber-700 dark:text-amber-400 mb-1">Setelah beli paket, Anda akan mendapatkan:</p>
-          <div className="space-y-0.5">
-            {[
-              "Blueprint lengkap bisa diimport ke Gustafta Builder",
-              "Konfigurasi awal chatbot otomatis terisi",
-              "Tinggal lengkapi field fitur sesuai kebutuhan",
-            ].map((item, i) => (
-              <div key={i} className="flex items-start gap-1">
-                <Check className="h-2.5 w-2.5 text-green-500 shrink-0 mt-0.5" />
-                <span className="text-[10px] text-gray-600 dark:text-gray-400">{item}</span>
-              </div>
-            ))}
-          </div>
+        {/* Manfaat — ringkas */}
+        <div className="space-y-1">
+          {[
+            "Blueprint langsung bisa diimport ke Builder",
+            "Trial platform 7 hari — coba semua fitur",
+            "3 panduan digital Trilogi Gustafta",
+          ].map((item, i) => (
+            <div key={i} className="flex items-center gap-1.5">
+              <Check className="h-3 w-3 text-green-500 shrink-0" />
+              <span className="text-[11px] text-gray-700 dark:text-gray-300">{item}</span>
+            </div>
+          ))}
         </div>
 
-        {/* CTA */}
-        <div className="space-y-1.5 pt-0.5">
-          <div className="flex gap-1.5">
-            <Link href="/packs" onClick={onClose} className="flex-1">
-              <Button className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white h-8 text-xs font-bold gap-1">
-                <ShoppingBag className="h-3 w-3" /> Pilih Paket
-              </Button>
-            </Link>
-            <a href={`https://wa.me/6282299417818?text=${waText}`} target="_blank" rel="noopener noreferrer" className="flex-1">
-              <Button variant="outline" className="w-full h-8 text-xs gap-1 border-amber-300 text-amber-700 hover:bg-amber-50">
-                <MessageCircle className="h-3 w-3" /> Konsultasi
-              </Button>
-            </a>
-          </div>
-          <Link href="/blueprint-saya" onClick={onClose} className="block">
-            <Button variant="ghost" className="w-full h-7 text-[11px] gap-1 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30">
-              <FileDown className="h-3 w-3" /> Lihat Blueprint Saya → simpan & kembali kapan saja
-            </Button>
+        {/* SATU CTA utama */}
+        <a href={STARTER_KIT_URL} target="_blank" rel="noopener noreferrer" className="block">
+          <Button className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white h-10 text-sm font-bold gap-2 shadow-md">
+            <ShoppingBag className="h-4 w-4" />
+            Beli Starter Kit — Rp 245.000
+          </Button>
+        </a>
+        <p className="text-center text-[10px] text-gray-500 dark:text-gray-400 -mt-1">
+          Sekali bayar · Termasuk lisensi + trial 7 hari
+        </p>
+
+        {/* Tautan sekunder kecil */}
+        <div className="flex items-center justify-center gap-3 pt-0.5">
+          <a
+            href={`https://wa.me/6282299417818?text=${waText}`}
+            target="_blank" rel="noopener noreferrer"
+            className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-green-600 transition-colors"
+          >
+            <MessageCircle className="h-3 w-3" /> Tanya dulu via WA
+          </a>
+          <span className="text-gray-300 dark:text-gray-600">·</span>
+          <Link href="/blueprint-saya" onClick={onClose}
+            className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-amber-600 transition-colors"
+          >
+            <FileDown className="h-3 w-3" /> Simpan Blueprint
           </Link>
         </div>
       </div>
