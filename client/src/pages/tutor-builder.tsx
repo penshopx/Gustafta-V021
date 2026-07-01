@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import {
@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -33,6 +34,7 @@ interface BlueprintMeta {
   sourceChapter: string;
   agentCount: number;
   specialists: Array<{ name: string; role: string; icon: React.ReactNode; color: string }>;
+  humanGates?: string[];
 }
 
 interface TabDef {
@@ -223,6 +225,10 @@ const KREASI_BLUEPRINTS: BlueprintMeta[] = [
     bgGradient: "from-rose-50 to-pink-50 dark:from-rose-950/30 dark:to-pink-950/30",
     icon: <Mic className="w-6 h-6" />,
     sourceChapter: "Buku III Bab 3 — Pipeline Multi-Platform (Naya)",
+    humanGates: [
+      "Setiap konten wajib disentuh & diberi suara kreator sebelum publish — agen hanya menyiapkan bahan, bukan konten final.",
+      "Perspektif, pengalaman, dan jiwa konten tetap milik kreator — ini bukan ghostwriter.",
+    ],
     agentCount: 5,
     specialists: [
       { name: "PENELITI", role: "Research Agent", icon: <Search className="w-3.5 h-3.5" />, color: "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300" },
@@ -242,6 +248,11 @@ const KREASI_BLUEPRINTS: BlueprintMeta[] = [
     bgGradient: "from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30",
     icon: <Headphones className="w-6 h-6" />,
     sourceChapter: "Buku III Bab 5 — Studio Audio Mikro (Pak Joko)",
+    humanGates: [
+      "Wawancara & rekaman selalu manusia-ke-manusia — tidak ada AI di depan mic.",
+      "Jeda emosional (tangis, tawa, keheningan bermakna) tidak boleh dipotong.",
+      "Review final wajib disetujui kreator sebelum episode dirilis.",
+    ],
     agentCount: 5,
     specialists: [
       { name: "TRANSKRIPSI", role: "Transkripsi & Penanda Narasi", icon: <FileText className="w-3.5 h-3.5" />, color: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" },
@@ -261,6 +272,11 @@ const KREASI_BLUEPRINTS: BlueprintMeta[] = [
     bgGradient: "from-teal-50 to-emerald-50 dark:from-teal-950/30 dark:to-emerald-950/30",
     icon: <BookText className="w-6 h-6" />,
     sourceChapter: "Buku III Bab 4 — Penerbit Mikro (Bu Rahma)",
+    humanGates: [
+      "Setiap kalimat naskah final ditulis oleh penulis sendiri — Sparring hanya membuka jalan saat benar-benar macet.",
+      "Keputusan estetika kover & layout final tetap di tangan penulis.",
+      "Suara penulis adalah aset paling langka — tidak diserahkan ke agen.",
+    ],
     agentCount: 6,
     specialists: [
       { name: "ARSIP", role: "Riset & Arsip Pengetahuan", icon: <Archive className="w-3.5 h-3.5" />, color: "bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300" },
@@ -281,6 +297,12 @@ const KREASI_BLUEPRINTS: BlueprintMeta[] = [
     bgGradient: "from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/30",
     icon: <Users className="w-6 h-6" />,
     sourceChapter: "Buku III Bab 7 — Komunitas Builder (Lulu)",
+    humanGates: [
+      "Janji 1 — Transparansi: anggota selalu tahu saat berbicara dengan agen; tidak ada agen yang menyamar jadi manusia.",
+      "Janji 2 — Tidak ada cerita yang hilang: pesan krisis & curhat mendalam selalu diantar ke manusia; agen tidak boleh jadi pendengar akhir.",
+      "Respons krisis = eskalasi ke manusia (<2 jam) — agen tidak mentriase atau menasihati.",
+      "Keputusan kebijakan komunitas & 50 anggota paling loyal dibalas sendiri oleh pengelola.",
+    ],
     agentCount: 6,
     specialists: [
       { name: "PENYAMBUT", role: "Onboarding Concierge", icon: <Heart className="w-3.5 h-3.5" />, color: "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300" },
@@ -301,6 +323,11 @@ const KREASI_BLUEPRINTS: BlueprintMeta[] = [
     bgGradient: "from-fuchsia-50 to-purple-50 dark:from-fuchsia-950/30 dark:to-purple-950/30",
     icon: <PenLine className="w-6 h-6" />,
     sourceChapter: "Buku III Bab 6 — Studio Visual Hibrida (Mira & Bayu)",
+    humanGates: [
+      "Tangan manusia hadir di tiap karya, disertai process log yang transparan.",
+      "Data training milik sendiri atau berizin — tanpa scraping karya orang lain.",
+      "Mulai dari sketsa/niat manusia; tolak permintaan klien yang melanggar prinsip.",
+    ],
     agentCount: 5,
     specialists: [
       { name: "EKSPLORASI", role: "Eksplorasi Visual", icon: <Sparkles className="w-3.5 h-3.5" />, color: "bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-900/40 dark:text-fuchsia-300" },
@@ -320,6 +347,12 @@ const KREASI_BLUEPRINTS: BlueprintMeta[] = [
     bgGradient: "from-cyan-50 to-sky-50 dark:from-cyan-950/30 dark:to-sky-950/30",
     icon: <UserCheck className="w-6 h-6" />,
     sourceChapter: "Buku III Bab 2 — Anatomi Studio Personal (Rizky)",
+    humanGates: [
+      "Kreator mengunci thumbnail & suara brand — bukan agen.",
+      "Semua eskalasi DM dibaca kreator (ter-batch 2x/hari).",
+      "Setiap kerja sama brand disetujui kreator sendiri.",
+      "Label transparansi dibubuhkan di tiap keluaran agen.",
+    ],
     agentCount: 6,
     specialists: [
       { name: "RISET", role: "Riset & Ideasi", icon: <Search className="w-3.5 h-3.5" />, color: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300" },
@@ -504,7 +537,12 @@ function CreateTeamDialog({
   onSuccess: (orchestratorId: number, teamName: string) => void;
 }) {
   const [teamName, setTeamName] = useState("");
+  const [gatesAck, setGatesAck] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    setGatesAck(false);
+  }, [blueprint?.id]);
 
   const mutation = useMutation({
     mutationFn: async (data: { blueprintId: string; teamName: string }) => {
@@ -529,9 +567,16 @@ function CreateTeamDialog({
 
   if (!blueprint) return null;
 
+  const hasGates = !!blueprint.humanGates?.length;
+  const gatesOk = !hasGates || gatesAck;
+
   const handleCreate = () => {
     if (!teamName.trim()) {
       toast({ title: "Nama tim wajib diisi", variant: "destructive" });
+      return;
+    }
+    if (!gatesOk) {
+      toast({ title: "Centang dulu Gerbang Manusia", description: "Konfirmasi komitmenmu menjaga bagian yang tidak boleh diserahkan ke agen.", variant: "destructive" });
       return;
     }
     mutation.mutate({ blueprintId: blueprint.id, teamName: teamName.trim() });
@@ -541,7 +586,7 @@ function CreateTeamDialog({
 
   return (
     <Dialog open={!!blueprint} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
             {blueprint.icon}
@@ -563,6 +608,37 @@ function CreateTeamDialog({
               ))}
             </div>
           </div>
+
+          {hasGates && (
+            <div className="rounded-lg border border-rose-200 dark:border-rose-900/60 bg-rose-50/60 dark:bg-rose-950/20 p-3 space-y-2" data-testid="panel-human-gates">
+              <p className="text-[11px] font-semibold text-rose-700 dark:text-rose-300 flex items-center gap-1.5">
+                <Shield className="w-3.5 h-3.5" /> Gerbang Manusia (◆) — tetap tanggung jawabmu
+              </p>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Tim agen ini melipat pekerjaan teknis, tapi bagian berikut tidak boleh diserahkan ke mesin:
+              </p>
+              <ul className="space-y-1">
+                {blueprint.humanGates!.map((g, i) => (
+                  <li key={i} className="text-[11px] text-foreground/80 flex items-start gap-1.5" data-testid={`gate-${blueprint.id}-${i}`}>
+                    <span className="text-rose-500 shrink-0 leading-tight">◆</span>
+                    <span>{g}</span>
+                  </li>
+                ))}
+              </ul>
+              <label className="flex items-start gap-2 pt-1 cursor-pointer select-none" data-testid="ack-human-gates">
+                <Checkbox
+                  checked={gatesAck}
+                  onCheckedChange={(v) => setGatesAck(v === true)}
+                  disabled={mutation.isPending}
+                  className="mt-0.5"
+                  data-testid="checkbox-human-gates"
+                />
+                <span className="text-[11px] text-foreground/90 leading-snug">
+                  Saya paham & berkomitmen menjaga gerbang manusia ini saat memakai tim agen.
+                </span>
+              </label>
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <Label htmlFor="team-name" className="text-sm">Nama Tim / Konteks</Label>
@@ -608,7 +684,7 @@ function CreateTeamDialog({
           <Button variant="outline" onClick={onClose} disabled={mutation.isPending} data-testid="button-cancel-create">
             Batal
           </Button>
-          <Button onClick={handleCreate} disabled={mutation.isPending || !teamName.trim()} data-testid="button-confirm-create">
+          <Button onClick={handleCreate} disabled={mutation.isPending || !teamName.trim() || !gatesOk} data-testid="button-confirm-create">
             {mutation.isPending ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
