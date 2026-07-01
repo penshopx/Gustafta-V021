@@ -1899,6 +1899,41 @@ export async function registerRoutes(
     }
   });
 
+  // Naikkan/turunkan status "Bersertifikat" sebuah agen. Jalur admin TUNGGAL &
+  // AUDITABLE untuk `isCertified` (dipakai pasca-workshop kreator). Hanya admin
+  // (requireAdmin) — kreator tak pernah bisa menyertifikasi agennya sendiri.
+  // Body: { certified: boolean }.
+  app.post("/api/admin/agents/:id/certification", requireAdmin, async (req: any, res) => {
+    try {
+      const agentId = String(req.params.id);
+      const existing = await storage.getAgent(agentId);
+      if (!existing) {
+        return res.status(404).json({ error: "Agen tidak ditemukan" });
+      }
+      // Wajib boolean eksplisit — cegah payload malformed diam-diam dianggap
+      // `false` (yang berarti mencabut sertifikat tanpa disengaja).
+      if (typeof req.body?.certified !== "boolean") {
+        return res.status(400).json({ error: "Field 'certified' wajib berupa boolean (true/false)." });
+      }
+      const certified = req.body.certified === true;
+      const updated = await storage.updateAgent(agentId, { isCertified: certified } as any);
+      const adminId = (req.user as any)?.claims?.sub || (req.user as any)?.id || "unknown";
+      console.log(`[CERTIFICATION] agent#${agentId} isCertified=${certified} oleh admin=${adminId}`);
+      res.json({
+        success: true,
+        id: agentId,
+        name: updated?.name ?? existing.name,
+        isCertified: certified,
+        message: certified
+          ? `Agen "${updated?.name ?? existing.name}" ditandai Bersertifikat.`
+          : `Status Bersertifikat untuk "${updated?.name ?? existing.name}" dicabut.`,
+      });
+    } catch (e: any) {
+      console.error("[certification] error:", e?.message);
+      res.status(500).json({ error: e?.message || "Gagal memperbarui status sertifikasi" });
+    }
+  });
+
   // Resolve series name for an agent by walking toolbox -> bigIdea -> series.
   // Dipakai oleh endpoint policy-defaults & policy-preview agar template
   // Kebijakan Agen yang dipakai konsisten dengan kategori series-nya.
