@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, X, ChevronRight, Sparkles, BookOpen, Star, Zap } from "lucide-react";
+import { Send, X, ChevronRight, Sparkles, BookOpen, Star, Zap, Mic, MicOff, Paperclip, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -27,8 +27,14 @@ export function DialogGustaftaWidget() {
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const recognitionRef = useRef<any>(null);
+  const sendRef = useRef<() => void>(() => {});
   const userMessageCount = messages.filter((m) => m.role === "user").length;
 
   useEffect(() => {
@@ -46,6 +52,100 @@ export function DialogGustaftaWidget() {
       setShowPromo(true);
     }
   }, [userMessageCount, promoDismissed]);
+
+  // ── Speech API ──────────────────────────────────────────────────────────
+  useEffect(() => {
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) return;
+    setSpeechSupported(true);
+    const recognition = new SR();
+    recognition.lang = "id-ID";
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    let final = "";
+    recognition.onstart = () => { setIsListening(true); final = ""; };
+    recognition.onresult = (e: any) => {
+      let interim = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript;
+        if (e.results[i].isFinal) final += t; else interim += t;
+      }
+      setInput(final + interim);
+    };
+    recognition.onend = () => {
+      setIsListening(false);
+      if (final.trim()) setTimeout(() => sendRef.current(), 50);
+    };
+    recognition.onerror = () => setIsListening(false);
+    recognitionRef.current = recognition;
+  }, []);
+
+  const toggleMic = () => {
+    if (!recognitionRef.current) return;
+    if (isListening) { recognitionRef.current.stop(); }
+    else { setInput(""); recognitionRef.current.start(); }
+  };
+
+  // ── File upload ─────────────────────────────────────────────────────────
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    setIsUploading(true);
+    try {
+      for (const file of files) {
+        const fd = new FormData();
+        fd.append("file", file);
+        const r = await fetch("/api/chat/upload", { method: "POST", body: fd });
+        if (!r.ok) continue;
+        const data = await r.json();
+        // Auto-transcribe audio
+        if (data.category === "audio") {
+          try {
+            const tf = new FormData(); tf.append("file", file);
+            const tr = await fetch("/api/chat/transcribe", { method: "POST", body: tf });
+            if (tr.ok) {
+              const td = await tr.json();
+              if (td.transcript) setInput(prev => prev ? `${prev}\n\n${td.transcript}` : td.transcript);
+            }
+          } catch { /* optional */ }
+        } else {
+          setInput(prev => prev ? `${prev}\n[File: ${data.fileName}]` : `[File: ${data.fileName}]`);
+        }
+      }
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  sendRef.current = async () => {
+    if (!input.trim() || loading) return;
+    await sendMessageCore(input.trim());
+  };
+
+  const sendMessageCore = async (text: string) => {
+    if (!text || loading) return;
+    const userMsg: ChatMessage = { role: "user", content: text };
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages);
+    setInput("");
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
+    setLoading(true);
+    try {
+      const newUserCount = newMessages.filter((m) => m.role === "user").length;
+      const res = await fetch("/api/dialog-gustafta", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: newMessages, userMessageCount: newUserCount }),
+      });
+      const data = await res.json();
+      setMessages([...newMessages, { role: "assistant", content: data.reply || "Maaf, ada gangguan sebentar." }]);
+    } catch {
+      setMessages([...newMessages, { role: "assistant", content: "Koneksi terganggu, coba lagi ya!" }]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
@@ -221,7 +321,28 @@ export function DialogGustaftaWidget() {
 
           {/* Input */}
           <div className="p-4 border-t border-border bg-background/60">
+            {isListening && (
+              <div className="flex items-center gap-2 mb-2">
+                <span className="flex h-2 w-2 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+                </span>
+                <span className="text-xs text-red-400 font-medium">Mendengarkan…</span>
+              </div>
+            )}
             <div className="flex gap-2 items-end">
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={loading || isUploading || isListening}
+                className="shrink-0 p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30 transition-colors"
+                title="Lampirkan file"
+                data-testid="button-attach-file-dialog"
+              >
+                {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Paperclip className="w-4 h-4" />}
+              </button>
+              <input ref={fileInputRef} type="file" multiple className="hidden"
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.jpg,.jpeg,.png,.mp3,.wav,.webm,.ogg,.m4a,.mp4,.mov"
+                onChange={handleFileSelect} />
               <Textarea
                 ref={textareaRef}
                 value={input}
@@ -231,15 +352,28 @@ export function DialogGustaftaWidget() {
                   e.target.style.height = `${Math.min(e.target.scrollHeight, 100)}px`;
                 }}
                 onKeyDown={handleKeyDown}
-                placeholder="Ceritakan sesuatu tentang dirimu..."
+                placeholder={isListening ? "Mendengarkan suara Anda…" : "Ceritakan sesuatu tentang dirimu..."}
                 className="min-h-[44px] max-h-[100px] resize-none text-sm rounded-xl"
                 rows={1}
+                disabled={isListening}
               />
+              {speechSupported && (
+                <button
+                  onClick={toggleMic}
+                  disabled={loading}
+                  className={`shrink-0 p-2.5 rounded-xl transition-all ${isListening ? "bg-red-500/20 text-red-500" : "text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30"}`}
+                  title={isListening ? "Berhenti" : "Rekam suara"}
+                  data-testid="button-mic-dialog"
+                >
+                  {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                </button>
+              )}
               <Button
                 size="icon"
                 onClick={sendMessage}
-                disabled={!input.trim() || loading}
+                disabled={!input.trim() || loading || isListening}
                 className="shrink-0 h-11 w-11 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-700 hover:from-cyan-600 hover:to-blue-800 border-0"
+                data-testid="button-send-dialog"
               >
                 <Send className="w-4 h-4" />
               </Button>
