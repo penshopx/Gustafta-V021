@@ -246,7 +246,7 @@ export default function StarterKitPage() {
             </div>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-4">
+          <div className="grid md:grid-cols-2 gap-4 max-w-3xl mx-auto">
 
             {/* Kartu 1: Tanpa Starter Kit */}
             <div className="bg-white dark:bg-card rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 flex flex-col">
@@ -305,40 +305,6 @@ export default function StarterKitPage() {
                 </Button>
               </a>
               <p className="text-xs text-gray-400 mt-2 text-center">Pembayaran aman via Scalev</p>
-            </div>
-
-            {/* Kartu 3: Starter Kit + Langganan */}
-            <div className="bg-gradient-to-b from-indigo-600 to-blue-700 rounded-2xl shadow-xl border-2 border-indigo-400 p-6 flex flex-col text-white relative overflow-hidden">
-              <div className="absolute top-4 right-4 bg-yellow-400 text-yellow-900 text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wide">
-                Terbaik
-              </div>
-              <div className="text-xs font-bold text-indigo-200 uppercase tracking-widest mb-3">Kit + Langganan</div>
-              <div className="text-3xl font-extrabold text-white mb-0.5">Rp 445.000</div>
-              <div className="text-xs text-indigo-300 line-through mb-1">Nilai Rp 550.000</div>
-              <div className="text-xs text-indigo-200 mb-5">Kit + Langganan Belajar 1 bulan · hemat Rp 53rb vs tanpa kit</div>
-              <ul className="text-sm space-y-2.5 mb-6 text-indigo-100 flex-1">
-                {[
-                  { text: "Semua isi Starter Kit", highlight: false },
-                  { text: "Langganan plan Starter 1 bulan penuh", highlight: true },
-                  { text: "Akses Builder tidak terbatas (bukan trial)", highlight: true },
-                  { text: "Mulai rakit AI hari ini", highlight: true },
-                  "🛡️ Garansi 7 hari uang kembali",
-                  "🔄 Update gratis selamanya",
-                ].map((item, i) => (
-                  <li key={i} className="flex items-center gap-2.5">
-                    <Check className={`h-4 w-4 flex-shrink-0 ${typeof item === "object" && item.highlight ? "text-yellow-300" : "text-indigo-300"}`} />
-                    <span className={typeof item === "object" && item.highlight ? "text-white font-medium" : ""}>
-                      {typeof item === "object" ? item.text : item}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              <a href={`https://wa.me/6282299417818?text=Halo%20Gustafta%2C%20saya%20mau%20ambil%20paket%20Starter%20Kit%20%2B%20Langganan%20Belajar%20Rp%20445.000`} target="_blank" rel="noopener noreferrer">
-                <Button className="w-full h-11 bg-white text-indigo-700 hover:bg-indigo-50 font-bold" data-testid="btn-pricing-bundle">
-                  Ambil Paket Ini →
-                </Button>
-              </a>
-              <p className="text-xs text-indigo-300 mt-2 text-center">Konfirmasi via WhatsApp</p>
             </div>
 
           </div>

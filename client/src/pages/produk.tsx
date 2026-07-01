@@ -278,7 +278,7 @@ function BisnisPaket() {
           semakin banyak chatbot konstruksi canggih yang langsung bisa dipakai.
         </p>
         <p className="text-emerald-600 dark:text-emerald-400 mt-2 text-xs font-medium">
-          Produk chatbot sudah jadi, tinggal pakai — hanya biaya lisensi, tanpa biaya setup.
+          Produk chatbot sudah jadi, tinggal pakai — cukup lisensi + langganan bulanan, tanpa biaya setup.
         </p>
         <p className="text-gray-400 dark:text-gray-500 mt-2 text-[11px] leading-relaxed">
           Catatan: <strong>Starter Kit</strong> bukan salah satu tier — ini paket perkenalan sekali bayar
@@ -319,7 +319,7 @@ function BisnisPaket() {
                     <span className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 font-semibold px-1.5 py-0.5 rounded">Tanpa Starter Kit</span>
                     <span className="text-gray-500 dark:text-gray-400">lisensi {PRICING.license.price} (sekali), tanpa trial</span>
                   </div>
-                  <div className="text-[10px] text-gray-400 dark:text-gray-500">Produk siap pakai — hanya biaya lisensi, tanpa biaya setup.</div>
+                  <div className="text-[10px] text-gray-400 dark:text-gray-500">Produk siap pakai — cukup lisensi + langganan bulanan, tanpa biaya setup.</div>
                 </div>
               )}
             </div>
@@ -602,9 +602,8 @@ function KomparasiTable() {
     { label: "Bot langsung aktif dari katalog",             produk: false, jasa: false, store: true  },
     { label: "Akses platform builder Gustafta penuh",       produk: true,  jasa: false, store: false },
     { label: "Biaya lisensi terpisah (sekali bayar)",       produk: true,  jasa: false, store: true  },
-    { label: "Biaya berlangganan (bulanan/tahunan)",        produk: true,  jasa: false, store: false },
+    { label: "Biaya berlangganan bulanan / hosting (wajib)", produk: true, jasa: true,  store: true  },
     { label: "Biaya setup/perakitan (sekali bayar)",        produk: false, jasa: true,  store: false },
-    { label: "Hosting wajib (via Produk Berlangganan)",     produk: false, jasa: true,  store: true  },
     { label: "Tidak perlu konfigurasi teknis",              produk: false, jasa: true,  store: true  },
     { label: "Cocok untuk pemula non-teknis",               produk: false, jasa: true,  store: true  },
     { label: "Kontrol penuh atas konfigurasi AI",           produk: true,  jasa: false, store: false },
@@ -775,7 +774,7 @@ export default function ProdukPage() {
               <span className="text-sm font-bold text-gray-900 dark:text-white leading-tight">Pilih dari Store</span>
             </div>
             <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed flex-1">Chatbot jadi dari kreator bersertifikat — pilih dari katalog, langsung aktif.</p>
-            <div className="mt-2 text-xs"><span className="text-gray-400">lisensi</span> <span className="font-bold text-blue-600 dark:text-blue-400">sekali bayar</span></div>
+            <div className="mt-2 text-xs"><span className="text-gray-400">lisensi</span> <span className="font-bold text-blue-600 dark:text-blue-400">sekali bayar</span> <span className="text-gray-400">+ bulanan</span></div>
             <div className="text-[10px] text-gray-400 mb-3">langsung aktif dari katalog · dikurasi tim</div>
             <Button asChild size="sm" variant="outline" className="mt-auto w-full text-xs h-8 border-blue-300 text-blue-600 dark:border-blue-700 dark:text-blue-400">
               <Link href="/store" data-testid="btn-jalur-store">Buka Store <ChevronRight className="w-3.5 h-3.5 ml-1"/></Link>

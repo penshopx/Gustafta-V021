@@ -545,13 +545,13 @@ export default function StoreFeatured() {
         <p className="text-gray-600 max-w-xl mx-auto mb-6 text-sm leading-relaxed">
           Dua sumber produk — <strong className="text-gray-900">AI resmi Gustafta</strong> dan{" "}
           <strong className="text-gray-900">AI dari creator bersertifikat</strong>.
-          Semua siap pakai, biaya lisensi sekali bayar.
+          Semua siap pakai — lisensi sekali bayar + langganan bulanan (hosting).
         </p>
 
         <div className="inline-flex flex-wrap items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-gray-900 border border-gray-700 text-sm mb-6 shadow-sm">
           <span className="text-orange-300 font-medium">🏷️ Pilih AI</span>
           <span className="text-gray-400">→</span>
-          <span className="text-green-300 font-medium">💳 Bayar Lisensi Sekali</span>
+          <span className="text-green-300 font-medium">💳 Lisensi + Langganan</span>
           <span className="text-gray-400">→</span>
           <span className="text-white font-bold">✓ Langsung Aktif</span>
         </div>
@@ -561,7 +561,7 @@ export default function StoreFeatured() {
             <span className="w-2 h-2 rounded-full bg-violet-400 inline-block" />Aktif tanpa konfigurasi teknis
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />Biaya lisensi sekali bayar
+            <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />Lisensi sekali + langganan bulanan
           </span>
           <span className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-blue-400 inline-block" />Dikurasi & diuji tim
@@ -695,7 +695,7 @@ export default function StoreFeatured() {
               <div className="bg-violet-50 border border-violet-200 rounded-xl p-3 flex items-center justify-between">
                 <div>
                   <p className="text-gray-700 text-sm font-medium">Biaya Lisensi</p>
-                  <p className="text-[11px] text-gray-400">Sekali bayar · produk siap pakai</p>
+                  <p className="text-[11px] text-gray-400">Lisensi sekali bayar · langganan bulanan terpisah</p>
                 </div>
                 <span className="text-xl font-bold text-violet-600">{formatPrice(selectedAgent.price)}</span>
               </div>

@@ -7,9 +7,16 @@
  *
  * Aturan kanonik (jangan dilanggar):
  * - Setiap pengguna WAJIB punya lisensi (hak pakai). Yang berbeda hanya cara mendapatnya.
- * - Produk chatbot = LISENSI saja (tanpa biaya setup wajib).
- * - Layanan jasa (dirakit tim) = ada biaya SETUP sekali bayar; setup SUDAH TERMASUK lisensi (tidak ditagih terpisah).
- * - Starter Kit otomatis dibundel GRATIS di jalur Jasa (pintu masuk + panduan agar user bisa merakit sendiri kelak); tanpa tagihan tambahan.
+ * - Biaya BULANAN (hosting + token) dikenakan ke SEMUA produk chatbot — biasa maupun premium.
+ *   Bulanan mengikuti 4 tier platform (Starter/Profesional/Bisnis/Enterprise); 100% ke Gustafta.
+ * - 3 cara mendapatkan chatbot:
+ *     1. Chatbot Biasa (kosongan, user merakit)           = lisensi STANDAR + bulanan.
+ *     2. Chatbot Premium (siap pakai, Gustafta/Creator)   = lisensi PREMIUM (lebih tinggi) + bulanan.
+ *     3. Jasa Order (custom, belum ada di katalog)        = biaya SETUP sekali (termasuk lisensi) + bulanan.
+ *   Beda chatbot biasa vs premium HANYA di biaya lisensi (premium tidak dirakit sendiri).
+ * - Marketplace/Creator: bagi hasil 80% Creator / 20% Gustafta, dihitung HANYA dari biaya LISENSI premium.
+ *   Biaya bulanan (hosting) pembeli tetap 100% ke Gustafta.
+ * - Starter Kit = pintu masuk murah (lisensi Rp 0) untuk jalur Chatbot Biasa; juga dibundel GRATIS di jalur Jasa.
  * - Tidak ada paket "Gratis" permanen — gratis hanya bonus trial 7 hari.
  */
 
@@ -61,6 +68,20 @@ export const TRILOGI = {
 
 /** Kalimat info skema lisensi (dipakai berulang di kartu paket bisnis) */
 export const LICENSE_INFO = `Dengan Starter Kit ${PRICING.starterKit.price} (sekali) → lisensi Rp 0 · Tanpa Starter Kit → lisensi ${PRICING.license.price} (sekali)`;
+
+// ─── Marketplace / Program Creator ───────────────────────────────────────────────
+// Bagi hasil chatbot premium yang dibuat Creator & dijual di toko Gustafta.
+// PENTING: split dihitung HANYA dari biaya LISENSI premium.
+// Biaya bulanan (hosting + token) pembeli tetap 100% ke Gustafta (bukan bagian Creator).
+export const MARKETPLACE = {
+  creatorSharePct: 80,
+  gustaftaSharePct: 20,
+  /** Dasar bagi hasil: 'license' saja — TIDAK termasuk biaya bulanan. */
+  splitBasis: "license" as const,
+} as const;
+
+/** Kalimat info bagi hasil Creator (dipakai di halaman store/creator) */
+export const MARKETPLACE_INFO = `Bagi hasil ${MARKETPLACE.creatorSharePct}% Creator / ${MARKETPLACE.gustaftaSharePct}% Gustafta — dihitung dari biaya lisensi. Biaya bulanan (hosting) 100% ke Gustafta.`;
 
 // ─── Hosting / Paket Berlangganan ────────────────────────────────────────────────
 export const HOSTING = {
