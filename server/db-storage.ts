@@ -74,6 +74,20 @@ import type {
 import { applyDefaultPolicies } from "./lib/agent-policies";
 import { isPremiumClass, priceForClass } from "@shared/premium-classes";
 import type { IStorage, CollaboratorView } from "./storage";
+
+// Normalisasi agenticSubAgents: nilai bisa tersimpan sebagai jsonb array asli
+// ATAU string JSON ganda (double-encoded) dari seed lama. Tanpa parse defensif,
+// Array.isArray() gagal dan orkestrasi MultiClaw diam-diam tidak jalan.
+export function parseSubAgentsValue(value: unknown): any[] {
+  if (Array.isArray(value)) return value;
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) return parsed;
+    } catch { /* bukan JSON valid — jatuhkan ke [] */ }
+  }
+  return [];
+}
 import type { ConfigStorage } from "./services/blueprint-engine/configuration-engine";
 import type { AgentCollaborator, CollaboratorRole, PendingAgentInvite, AppliedInviteGrant, Notification, InsertNotification, CertificationAudit } from "@shared/schema";
 import type {
@@ -1033,6 +1047,9 @@ export class DatabaseStorage implements IStorage {
       paymentUrl: insertAgent.paymentUrl ?? "",
       isActive: true,
       slug: (insertAgent as any).slug || null,
+      // Normalisasi tulis: seed lama sering mengirim JSON.stringify(cfg) —
+      // tanpa parse, kolom jsonb menyimpan string ganda dan orkestrasi mati.
+      agenticSubAgents: parseSubAgentsValue((insertAgent as any).agenticSubAgents),
     }).returning();
     const mapped = this.mapAgentRow(result[0]);
     // Hindari menyetel cache dengan baris yang BELUM commit (di dalam transaksi).
@@ -1091,6 +1108,10 @@ export class DatabaseStorage implements IStorage {
       if (value !== undefined) {
         if (key === "toolboxId" || key === "parentAgentId") {
           updateData[key] = value ? parseInt(value as string) : null;
+        } else if (key === "agenticSubAgents") {
+          // Backstop tulis: normalisasi string JSON ganda dari seed/admin
+          // menjadi array asli agar kolom jsonb tidak menyimpan string.
+          updateData[key] = parseSubAgentsValue(value);
         } else {
           updateData[key] = value;
         }
@@ -1681,7 +1702,7 @@ export class DatabaseStorage implements IStorage {
       isActive: row.isActive || false,
       isEnabled: (row as any).isEnabled !== false,
       folderName: (row as any).folderName ?? null,
-      agenticSubAgents: (row.agenticSubAgents as any[]) || [],
+      agenticSubAgents: parseSubAgentsValue(row.agenticSubAgents),
       slug: (row as any).slug || null,
       createdAt: row.createdAt.toISOString(),
     } as unknown as Agent);
