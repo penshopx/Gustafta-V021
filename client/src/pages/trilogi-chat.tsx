@@ -210,6 +210,12 @@ function ChatMessage({ msg, agentName, accent }: { msg: Message; agentName: stri
         {msg.subAgents && msg.subAgents.length > 0 && (
           <SubAgentPanel agents={msg.subAgents} accent={accent} />
         )}
+        {!msg.isStreaming && msg.content.trim().length > 0 && (
+          <div className="flex items-center gap-1 text-[10px] text-white/30 px-1" data-testid="label-ai-transparency">
+            <Bot className="h-2.5 w-2.5" />
+            <span>Disiapkan oleh asisten AI — periksa hal penting sebelum dipakai</span>
+          </div>
+        )}
         {msg.orchestrationMs && !msg.isStreaming && (
           <div className="text-[10px] text-white/20 px-1">
             {(msg.orchestrationMs / 1000).toFixed(1)}s · OpenClaw L4 · MultiClaw ABD-7
