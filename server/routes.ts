@@ -5295,6 +5295,7 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
         agenticSubAgents: agentsTable.agenticSubAgents,
         parentAgentId: agentsTable.parentAgentId,
         userId: agentsTable.userId,
+        isListed: agentsTable.isListed,
       }).from(agentsTable).where(agentWhere).orderBy(agentsTable.id);
 
       // Count direct child agents per parent for accurate team-size pricing
@@ -5343,7 +5344,13 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
           // Only include chatbot bundles (2+ components) — single agents not sold standalone
           const subCount = Array.isArray(a.agenticSubAgents) ? a.agenticSubAgents.length : 0;
           const childCount = childCountMap.get(a.id) ?? 0;
-          return (1 + Math.max(subCount, childCount)) >= 2;
+          if ((1 + Math.max(subCount, childCount)) < 2) return false;
+          // Gerbang persetujuan publikasi: agen buatan kreator independen (punya user_id nyata)
+          // HANYA tayang bila pemiliknya memilih "Terbitkan ke Store" (isListed = true).
+          // Agen resmi/seeded Gustafta (user_id = "") TIDAK terpengaruh — tetap tayang seperti biasa.
+          const isCreator = (a.userId ?? "").trim() !== "";
+          if (isCreator && a.isListed !== true) return false;
+          return true;
         })
         .map((a) => {
           const subCount = Array.isArray(a.agenticSubAgents) ? a.agenticSubAgents.length : 0;
