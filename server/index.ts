@@ -128,6 +128,7 @@ import * as M_ketenagalistrikanClaw from "./seed-ketenagalistrikan-claw";
 import * as M_energiClaw from "./seed-energi-claw";
 import * as M_pertambanganClaw from "./seed-pertambangan-claw";
 import * as M_ebtSolarClaw from "./seed-ebt-solar-claw";
+import * as M_safiraClaw from "./seed-safira-claw";
 import * as M_geologiClaw from "./seed-geologi-claw";
 import * as M_offshoreSafetyClaw from "./seed-offshore-safety-claw";
 import * as M_transisiEnergiClaw from "./seed-transisi-energi-claw";
@@ -1702,6 +1703,14 @@ Data yang belum tersedia akan saya estimasi dengan standar industri dan ditandai
         await seedEbtSolarClaw();
       } catch (err) {
         log("[Seed EBTSolarClaw] Error: " + (err as Error).message);
+      }
+
+      // Seed: SafiraClaw — Coach SKK K3 Konstruksi (5 sub-agen spesialis)
+      try {
+        const { seedSafiraClaw } = M_safiraClaw;
+        await seedSafiraClaw();
+      } catch (err) {
+        log("[Seed SafiraClaw] Error: " + (err as Error).message);
       }
 
       // Seed: GeologiClaw — Geologi & Eksplorasi Mineral Indonesia (8 sub-agen spesialis)
