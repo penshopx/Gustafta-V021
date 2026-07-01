@@ -1936,7 +1936,10 @@ export async function registerRoutes(
         try {
           await storage.createNotification({
             userId: String(ownerUserId),
-            type: "agent_certification",
+            // Tipe eksplisit per aksi (Loop Publikasi #12) — UI lonceng memilih
+            // ikon dari `type`, TIDAK menebak dari teks judul (agar tak putus
+            // bila copy diubah). Legacy `agent_certification` tetap didukung UI.
+            type: certified ? "agent_certification_granted" : "agent_certification_revoked",
             title: certified
               ? `Chatbot "${agentName}" kini Bersertifikat`
               : `Status Bersertifikat "${agentName}" dicabut`,
