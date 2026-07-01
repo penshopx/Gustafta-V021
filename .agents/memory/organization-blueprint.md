@@ -149,3 +149,10 @@ Menyambungkan engine dialog org murni (Tahap 23: `getOrgDialogueState`/`ORG_QUES
 - **Jawaban guided WAJIB diikat ke state `mission`/`orgName` yang SAMA dengan form manual** — JANGAN bikin draft/state jawaban terpisah. **Why:** menjaga satu source-of-truth; guided & manual jadi dua pintu masuk ke field yang sama, tak pernah divergen. **How to apply:** fitur "mode alternatif input intro" apa pun harus menulis ke state kanonik yang sudah ada, bukan menyalin.
 - `btn-guided-next` cukup panggil ulang `refreshGuided()` (POST /dialogue dgn name+mission terkini) — karena field sudah terisi, engine otomatis membuang pertanyaan itu & mengirim berikutnya/empty. Tak perlu logika "advance index" di klien (engine = sumber urutan).
 - Selesai pertanyaan → `composeFromMission()` lama (sudah lepas `activeDraftId` Tahap 38). Buku II (KOLABORASI) tuntas; Buku III (KREASI) baru dikerjakan setelah pembahasan tahap "Menghasilkan/Berkembang" (atas instruksi user; upload Buku III sebelumnya tidak sengaja).
+
+## Buku III (KREASI) — pemetaan audit (masuk Fase 4)
+Buku III = 7 arketipe kreator; tiap bab = "cetak biru" tim agen + prinsip Gerbang Manusia/transparansi (sudah punya padanan di engine Buku II: gates ◆, template, operating brief). Peta status:
+- BUILT (kreasi tab `tutor-builder.tsx` → `POST /api/tutor-builder/create-team`): Bab 3 `pipeline-konten`, Bab 4 `penerbit-mikro`, Bab 5 `studio-audio`, Bab 7 `komunitas-builder`.
+- MISSING: Bab 1 (pemilih profil kreator), Bab 6 (Studio Visual Hibrida). PARTIAL: Bab 2 (Studio Personal — bisa manual, belum ada template).
+- Celah loop monetisasi terbesar: one-click publish Builder→Store. Infra ada: Studio Kompetensi (`studio-panel.tsx`), Store + Revenue/Affiliate/Voucher, `/affiliate` `/packs`.
+- **Why:** peta ini menghindari rebuild fitur yang sudah ada saat mulai Buku III. **How to apply:** tahap Buku III harus aditif per pola Buku I/II; detail lengkap di `docs/blueprint-engine/00-roadmap.md` bagian "Fase 4".
