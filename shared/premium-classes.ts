@@ -21,6 +21,10 @@ export const PREMIUM_CLASSES: Record<1 | 2 | 3 | 4, PremiumClass> = {
 
 export const PREMIUM_CLASS_IDS = [1, 2, 3, 4] as const;
 
+// Harga lisensi default (sekali bayar) untuk produk NON-premium yang tak mematok harga sendiri.
+// SUMBER TUNGGAL — jangan hardcode 299000 di server/klien.
+export const DEFAULT_LICENSE_PRICE = 299_000;
+
 export function isPremiumClass(n: unknown): n is 1 | 2 | 3 | 4 {
   return n === 1 || n === 2 || n === 3 || n === 4;
 }
@@ -33,4 +37,17 @@ export function priceForClass(n: number | null | undefined): number | null {
 // Metadata kelas (label/blurb/price) atau null bila tak valid.
 export function premiumClassInfo(n: number | null | undefined): PremiumClass | null {
   return isPremiumClass(n) ? PREMIUM_CLASSES[n] : null;
+}
+
+// Harga lisensi EFEKTIF sebuah produk (sekali bayar) untuk katalog/checkout:
+//  - berkelas  → SELALU band kelas (otoritatif),
+//  - non-kelas → harga bebas pemilik bila >0, jika tidak DEFAULT_LICENSE_PRICE.
+// Ini TIDAK menyentuh monthlyPrice (biaya bulanan hosting/token) — sumbu terpisah.
+export function resolveLicensePrice(
+  licenseClass: number | null | undefined,
+  licensePrice: number | null | undefined,
+): number {
+  const banded = priceForClass(licenseClass);
+  if (banded != null) return banded;
+  return licensePrice && licensePrice > 0 ? licensePrice : DEFAULT_LICENSE_PRICE;
 }

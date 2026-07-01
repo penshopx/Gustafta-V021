@@ -193,6 +193,10 @@ export const agents = pgTable("agents", {
   // produk tidak berkelas (perilaku harga lama). Bila 1–4, harga lisensi
   // OTORITATIF dari shared/premium-classes.ts (server override monthlyPrice).
   licenseClass: integer("license_class"),
+  // Harga LISENSI (sekali bayar) untuk produk NON-berkelas yang mematok harga sendiri.
+  // Sumbu TERPISAH dari monthlyPrice (biaya bulanan). Bila berkelas, harga efektif
+  // selalu dari band kelas (kolom ini diabaikan). null → pakai DEFAULT_LICENSE_PRICE.
+  licensePrice: integer("license_price"),
   // Jika agen ini salinan privat, menunjuk ke ID agen master sumbernya.
   clonedFromAgentId: integer("cloned_from_agent_id"),
   paymentUrl: text("payment_url").default(""),
@@ -899,6 +903,7 @@ export const insertAgentSchema = z.object({
   requireRegistration: z.boolean().optional().default(false),
   premiumClass: z.enum(["standard", "private"]).optional().default("standard"),
   licenseClass: z.number().int().min(1).max(4).nullable().optional(),
+  licensePrice: z.number().int().min(0).nullable().optional(),
   brandingName: z.string().optional().default(""),
   brandingLogo: z.string().optional().default(""),
   contextQuestions: z.array(z.object({
@@ -2065,10 +2070,17 @@ export type StoreProduct = typeof storeProducts.$inferSelect;
 export const storeOrders = pgTable("store_orders", {
   id: serial("id").primaryKey(),
   productId: integer("product_id").notNull(),
+  // Agen sumber pesanan (bila beli per-agen). Nullable untuk pesanan produk katalog.
+  agentId: integer("agent_id"),
   customerName: text("customer_name").notNull(),
   customerEmail: text("customer_email").notNull(),
   customerPhone: text("customer_phone").default(""),
   amount: integer("amount").notNull(),
+  // Bagi hasil marketplace 80/20 dari LISENSI (bulanan tetap 100% platform, tak di sini).
+  // creatorUserId diisi hanya bila produk buatan kreator (agent.userId non-kosong).
+  creatorUserId: text("creator_user_id"),
+  creatorShare: integer("creator_share").default(0),
+  platformShare: integer("platform_share").default(0),
   midtransOrderId: text("midtrans_order_id").notNull().unique(),
   accessToken: text("access_token").notNull().unique(),
   status: text("status").notNull().default("pending"),

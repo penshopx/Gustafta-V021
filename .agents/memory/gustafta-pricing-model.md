@@ -36,12 +36,15 @@ Pemilik sempat menyamakan "Starter Kit" sebagai level paling bawah dari tangga t
 
 ## Kelas Premium 1–4 (band harga LISENSI untuk chatbot premium)
 
-Sumbu HARGA LISENSI premium dibuat berjenjang jadi 4 kelas tetap (bukan harga bebas). Sumber tunggal: `shared/premium-classes.ts` (`PREMIUM_CLASSES`, `priceForClass`, `isPremiumClass`). Band: K1=Rp1jt · K2=Rp2,5jt · K3=Rp5jt · K4=Rp10jt. Kolom `agents.licenseClass` (int 1–4, nullable) = penentu. null → produk non-premium, perilaku harga lama (harga bebas/`monthlyPrice`).
+Sumbu HARGA LISENSI premium dibuat berjenjang jadi 4 kelas tetap (bukan harga bebas). Sumber tunggal: `shared/premium-classes.ts` (`PREMIUM_CLASSES`, `priceForClass`, `isPremiumClass`, `DEFAULT_LICENSE_PRICE`=Rp299rb, `resolveLicensePrice`). Band: K1=Rp1jt · K2=Rp2,5jt · K3=Rp5jt · K4=Rp10jt. Kolom `agents.licenseClass` (int 1–4, nullable) = penentu.
 
-- **Kelas = otoritatif.** Bila `licenseClass` 1–4, harga lisensi SELALU diturunkan dari kelas via `priceForClass` — abaikan harga bebas kiriman klien. Ini berlaku di: create/PATCH agen (server paksa `monthlyPrice`), katalog Store, DAN kedua alur order (`/api/store/order`, `/api/store/order/manual`).
-- **Cegah bypass PATCH.** Enforcement pakai KELAS EFEKTIF = `body.licenseClass` bila dikirim, jika tidak dari record tersimpan. Kalau cuma di-PATCH `monthlyPrice` pada agen yang sudah berkelas, server tetap timpa dengan harga kelas. **Why:** kalau hanya cek "licenseClass ada di body", pemilik bisa ubah `monthlyPrice` saja untuk menembus band.
+- **LISENSI ≠ BULANAN — dua kolom TERPISAH.** Harga lisensi (sekali bayar) hidup di `agents.licensePrice` (int nullable); `agents.monthlyPrice` HANYA untuk bulanan hosting/token. **Why:** dulu memilih kelas menimpa `monthlyPrice` → produk premium salah tampil "/bulan". Sekarang panel product-settings mengikat input harga-bebas & gate link bayar ke licensePrice, bukan monthlyPrice. **How to apply:** JANGAN pakai `monthlyPrice` sebagai harga jual produk lagi; harga jual lisensi = `resolveLicensePrice(licenseClass, licensePrice)`.
+- **`resolveLicensePrice(licenseClass, licensePrice)` = satu-satunya cara hitung harga lisensi efektif:** band kelas bila premium → else `licensePrice` bebas → else `DEFAULT_LICENSE_PRICE`. Dipakai konsisten di katalog Store, panel, dan SEMUA jalur order.
+- **Kelas = otoritatif.** Bila `licenseClass` 1–4, `licensePrice` SELALU diturunkan dari band via `priceForClass` — abaikan harga bebas kiriman klien. Enforcement berlapis: create route (validasi range) + PATCH route (set licensePrice dari kelas efektif) + `createAgent`/`updateAgent` storage backstop (cover seed/admin/jalur langsung).
+- **Cegah bypass.** Enforcement pakai KELAS EFEKTIF = kelas di patch bila dikirim, JIKA TIDAK baca kelas tersimpan agen. Ubah HANYA `licensePrice`/`monthlyPrice` pada agen berkelas tetap ditimpa band. **Why:** kalau hanya cek "licenseClass ada di body", pemilik bisa ubah field lain untuk menembus band.
+- **`mapAgentRow` WAJIB expose `licenseClass`+`licensePrice`.** Pernah ke-drop (latent bug) → owner tak lihat harga lisensinya. Kalau authz/harga terlihat salah, cek mapper dulu.
+- **Marketplace 80/20 tercatat di `storeOrders`.** Kolom: `agentId`, `creatorUserId`, `creatorShare` (round 0.8×lisensi), `platformShare` (sisa). Produk buatan kreator (agent.userId non-kosong) → 80/20; produk resmi Gustafta → 100% platform. Berlaku di `/api/store/order` (jalur agentId DAN productId yang memetakan ke agen) + `/api/store/order/manual`.
 - **Sumbu terpisah.** Kelas Premium ≠ `premiumClass` (standard/private) ≠ 4 tier bulanan platform. Jangan campur.
-- **How to apply:** JANGAN hardcode harga band di UI/route; selalu lewat `priceForClass`. Setiap jalur baca-harga produk premium (checkout/katalog/invoice) wajib pakai `priceForClass(licenseClass) ?? fallback`, bukan `monthlyPrice` mentah.
 
 ## White-label — DIHAPUS dari produk (belum siap)
 
