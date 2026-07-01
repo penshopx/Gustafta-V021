@@ -309,6 +309,26 @@ const KREASI_BLUEPRINTS: BlueprintMeta[] = [
       { name: "DISTRIBUSI", role: "Distribusi & Klien", icon: <Globe className="w-3.5 h-3.5" />, color: "bg-pink-100 text-pink-700 dark:bg-pink-900/40 dark:text-pink-300" },
     ],
   },
+  {
+    id: "studio-personal",
+    label: "Studio Personal — 1 Manusia + 5 Agen",
+    tagline: "Jadi satu orang yang setara dengan dua belas — lewat arsitektur, bukan kerja gila-gilaan",
+    description:
+      "Cetak biru kreator solo dari Bab 2 (Rizky): kreator tetap jadi direktur kreatif & suara brand, sementara 5 agen melipat puluhan jam eksekusi teknis. Agen Riset kirim topik & angle segar, Agen Naskah ubah brief 3 kalimat jadi outline + script + caption multi-platform, Agen Editor Teknis rapikan raw footage (trim/caption/B-roll), Agen Komunitas balas DM repetitif & eskalasi ter-batch 2x/hari, Agen Analitik kirim laporan + rekomendasi mingguan. Tidak ada 'Agen CEO' — keputusan bisnis & suara brand tetap milik kreator, dan tiap keluaran dibubuhi label transparansi.",
+    useCase: "Kreator solo: YouTuber, podcaster, penulis, kreator multi-platform",
+    color: "cyan",
+    bgGradient: "from-cyan-50 to-sky-50 dark:from-cyan-950/30 dark:to-sky-950/30",
+    icon: <UserCheck className="w-6 h-6" />,
+    sourceChapter: "Buku III Bab 2 — Anatomi Studio Personal (Rizky)",
+    agentCount: 6,
+    specialists: [
+      { name: "RISET", role: "Riset & Ideasi", icon: <Search className="w-3.5 h-3.5" />, color: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300" },
+      { name: "NASKAH", role: "Co-writer Naskah", icon: <Edit3 className="w-3.5 h-3.5" />, color: "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300" },
+      { name: "EDITOR", role: "Editor Teknis", icon: <Scissors className="w-3.5 h-3.5" />, color: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" },
+      { name: "KOMUNITAS", role: "First-line Support", icon: <MessageSquare className="w-3.5 h-3.5" />, color: "bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300" },
+      { name: "ANALITIK", role: "Strategist Mingguan", icon: <BarChart2 className="w-3.5 h-3.5" />, color: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300" },
+    ],
+  },
 ];
 
 const TABS: TabDef[] = [

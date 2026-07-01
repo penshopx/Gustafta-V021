@@ -162,3 +162,7 @@ Menambah tim kreator baru di tab Kreasi `tutor-builder.tsx`. **Pola dual-entry W
 - **Why:** kartu klien saja tanpa entri server = tombol "Rakit" 404; audit "BUILT" harus cek KEDUA sisi.
 - **How to apply:** blueprint kreator Buku III berikutnya (studio-personal dst) ikut pola sama; verifikasi via `GET /api/tutor-builder/blueprints` (list dari server, bukan klien).
 - Icon lucide kartu harus sudah di-import di tutor-builder.tsx (MEMORY: Map-icon crash) — studio-visual pakai PenLine/Sparkles/Layers/Archive/Globe (sudah ada).
+
+## Tahap 41 — Blueprint kreator "studio-personal" (Buku III Bab 2, Studio Personal/Rizky)
+Menambah tim kreator solo (1 manusia + 5 agen: Riset, Naskah, Editor Teknis, Komunitas, Analitik) via pola dual-entry yang sama (kartu klien `KREASI_BLUEPRINTS` + entri server `TUTOR_BLUEPRINTS["studio-personal"]`, `agentCount:6`). Prompt menanamkan 5 prinsip + 4 Gerbang Manusia (thumbnail/suara brand, baca eskalasi DM ter-batch, setujui brand deal, label transparansi); tanpa "Agen CEO".
+- **Milestone:** dengan Tahap 41, SEMUA 7 bab Buku III (KREASI) kini punya blueprint kreasi (Bab 1 profil-selector konseptual masih terpisah). Kandidat Tahap 42+ bergeser ke infra lintas-bab: pemilih profil kreator (Bab 1), gerbang krisis (Bab 7), one-click publish Builder→Store (monetisasi), atribusi transparansi.
