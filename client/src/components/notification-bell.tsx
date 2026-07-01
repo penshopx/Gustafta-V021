@@ -29,14 +29,17 @@ type NotificationsResponse = {
   unread: number;
 };
 
-// Ikon + warna per jenis notifikasi. Sertifikasi (Tahap 55) pakai perisai:
-// hijau "diberi", abu "dicabut" (dibedakan dari judul). Selain itu → Share2.
+// Ikon + warna per jenis notifikasi. Sertifikasi pakai perisai: hijau "diberi",
+// abu "dicabut". Tipe eksplisit (Loop #12) `agent_certification_granted`/`_revoked`
+// dipilih dari `type` — bukan menebak judul. Legacy `agent_certification` (data
+// lama, sebelum tipe dipisah) tetap didukung via parsing judul. Selain itu → Share2.
+const GRANT_VISUAL = { Icon: ShieldCheck, wrap: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" };
+const REVOKE_VISUAL = { Icon: ShieldX, wrap: "bg-muted text-muted-foreground" };
 function visualFor(n: NotificationItem): { Icon: LucideIcon; wrap: string } {
+  if (n.type === "agent_certification_granted") return GRANT_VISUAL;
+  if (n.type === "agent_certification_revoked") return REVOKE_VISUAL;
   if (n.type === "agent_certification") {
-    const revoked = /dicabut/i.test(n.title);
-    return revoked
-      ? { Icon: ShieldX, wrap: "bg-muted text-muted-foreground" }
-      : { Icon: ShieldCheck, wrap: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" };
+    return /dicabut/i.test(n.title) ? REVOKE_VISUAL : GRANT_VISUAL;
   }
   return { Icon: Share2, wrap: "bg-primary/10 text-primary" };
 }
