@@ -8,6 +8,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { SharedHeader } from "@/components/shared-header";
 import explainerVideo from "@assets/generated_videos/gustafta_promo_24s_web.mp4";
 import explainerPoster from "@assets/generated_videos/gustafta_promo_24s_poster.jpg";
+import overviewVideo from "@assets/generated_videos/gustafta_explainer.mp4";
+import overviewPoster from "@assets/generated_videos/gustafta_explainer_poster.jpg";
 import {
   Rocket, ArrowRight, Check, BookOpen, Wrench, Zap, Lightbulb, TrendingUp,
   MessageCircle, ChevronRight, ShieldCheck, Store, Bot, FileText,
@@ -621,8 +623,34 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* ── VIDEO OVERVIEW ── */}
+      <section className="py-16 px-4 bg-white dark:bg-background" data-testid="section-video-overview">
+        <div className="max-w-3xl mx-auto text-center">
+          <p className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-2">Kenali Lebih Dekat</p>
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-3">
+            Bagaimana Gustafta Bekerja
+          </h2>
+          <p className="text-sm md:text-base text-gray-600 dark:text-gray-400 mb-8 max-w-2xl mx-auto">
+            Tonton penjelasan lengkap tentang cara mengubah pengetahuan Anda menjadi AI yang benar-benar bekerja.
+          </p>
+          <div className="relative rounded-2xl overflow-hidden ring-1 ring-gray-200 dark:ring-white/10 shadow-2xl bg-black/5 dark:bg-black/30">
+            <video
+              src={overviewVideo}
+              poster={overviewPoster}
+              controls
+              muted
+              loop
+              playsInline
+              preload="metadata"
+              className="w-full aspect-video"
+              data-testid="video-overview-explainer"
+            />
+          </div>
+        </div>
+      </section>
+
       {/* ── DUA DUNIA ── */}
-      <section className="py-16 px-4 bg-white dark:bg-background">
+      <section className="py-16 px-4 bg-slate-50 dark:bg-background">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
             <p className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-2">Dari Mana Pun Anda Berasal</p>
