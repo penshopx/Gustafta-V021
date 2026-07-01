@@ -90,6 +90,7 @@ import type {
   AppliedInviteGrant,
   Notification,
   InsertNotification,
+  CertificationAudit,
 } from "@shared/schema";
 
 export type CollaboratorView = AgentCollaborator & {
@@ -167,6 +168,8 @@ export interface IStorage {
   // Pending agent invites (share with email that has no account yet)
   addOrUpdatePendingInvite(data: { agentId: string; email: string; role: CollaboratorRole; invitedBy: string }): Promise<PendingAgentInvite>;
   listPendingInvitesForAgent(agentId: string): Promise<PendingAgentInvite[]>;
+  addCertificationAudit(data: { agentId: string; certified: boolean; adminId: string }): Promise<CertificationAudit>;
+  listCertificationAudits(agentId: string): Promise<CertificationAudit[]>;
   removePendingInvite(agentId: string, email: string): Promise<boolean>;
   applyPendingInvitesForUser(userId: string, email: string): Promise<AppliedInviteGrant[]>;
 
@@ -479,6 +482,8 @@ export class MemStorage implements IStorage {
   private collaboratorIdSeq = 0;
   private pendingInvitesMap: Map<string, PendingAgentInvite & { rawAgentId: string }> = new Map();
   private pendingInviteIdSeq = 0;
+  private certificationAuditList: (CertificationAudit & { rawAgentId: string })[] = [];
+  private certificationAuditIdSeq = 0;
   private notificationsMap: Map<number, Notification> = new Map();
   private notificationIdSeq = 0;
 
@@ -1217,6 +1222,28 @@ export class MemStorage implements IStorage {
 
   async removePendingInvite(agentId: string, email: string): Promise<boolean> {
     return this.pendingInvitesMap.delete(this.pendingInviteKey(agentId, email));
+  }
+
+  async addCertificationAudit(data: { agentId: string; certified: boolean; adminId: string }): Promise<CertificationAudit> {
+    const rec: CertificationAudit & { rawAgentId: string } = {
+      id: ++this.certificationAuditIdSeq,
+      // Numerik hanya bermakna bila id agen integer; UUID → 0 deterministik.
+      agentId: /^\d+$/.test(data.agentId) ? parseInt(data.agentId, 10) : 0,
+      rawAgentId: data.agentId,
+      certified: data.certified === true,
+      adminId: data.adminId || "",
+      createdAt: new Date(),
+    };
+    this.certificationAuditList.push(rec);
+    const { rawAgentId: _omit, ...out } = rec;
+    return out as CertificationAudit;
+  }
+
+  async listCertificationAudits(agentId: string): Promise<CertificationAudit[]> {
+    return this.certificationAuditList
+      .filter((r) => r.rawAgentId === agentId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .map(({ rawAgentId: _omit, ...out }) => out as CertificationAudit);
   }
 
   async applyPendingInvitesForUser(userId: string, email: string): Promise<AppliedInviteGrant[]> {

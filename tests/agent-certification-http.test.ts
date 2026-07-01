@@ -58,7 +58,18 @@ app.post("/api/admin/agents/:id/certification", requireAdmin, async (req: any, r
   }
   const certified = req.body.certified === true;
   const updated = await storage.updateAgent(agentId, { isCertified: certified } as any);
+  const adminUid = (req.user as any)?.id || "unknown";
+  try {
+    await storage.addCertificationAudit({ agentId, certified, adminId: String(adminUid) });
+  } catch { /* fire-and-forget: audit gagal tak boleh batalkan sertifikasi */ }
   res.json({ success: true, id: agentId, isCertified: (updated as any)?.isCertified === true });
+});
+
+// Mirror GET /api/admin/agents/:id/certification/history
+app.get("/api/admin/agents/:id/certification/history", requireAdmin, async (req: any, res) => {
+  const agentId = String(req.params.id);
+  const history = await storage.listCertificationAudits(agentId);
+  res.json({ agentId, history });
 });
 
 // Mirror PATCH /api/agents/:id strip (owner boleh mutasi, tapi isCertified di-strip
@@ -182,4 +193,27 @@ test("POST HTTP: admin create isCertified:true → tersimpan true", async () => 
   assert.equal(r.status, 201);
   const j = await r.json();
   assert.equal(j.isCertified, true);
+});
+
+// ── Riwayat jejak audit sertifikasi (GET history) ─────────────────────────────
+test("history HTTP: anonim 401", async () => {
+  const r = await req("GET", `/api/admin/agents/${creatorAgentId}/certification/history`);
+  assert.equal(r.status, 401);
+});
+test("history HTTP: non-admin 403", async () => {
+  const r = await req("GET", `/api/admin/agents/${creatorAgentId}/certification/history`, { user: ownerId });
+  assert.equal(r.status, 403);
+});
+test("history HTTP: admin 200 + urutan terbaru dulu setelah grant→cabut", async () => {
+  const fresh = await storage.createAgent({ name: "Bot Riwayat", userId: ownerId } as any);
+  await req("POST", `/api/admin/agents/${fresh.id}/certification`, { user: adminId, body: { certified: true } });
+  await new Promise((r) => setTimeout(r, 5));
+  await req("POST", `/api/admin/agents/${fresh.id}/certification`, { user: adminId, body: { certified: false } });
+  const r = await req("GET", `/api/admin/agents/${fresh.id}/certification/history`, { user: adminId });
+  assert.equal(r.status, 200);
+  const j = await r.json();
+  assert.equal(j.history.length, 2);
+  assert.equal(j.history[0].certified, false, "terbaru dulu: pencabutan di indeks 0");
+  assert.equal(j.history[1].certified, true);
+  assert.equal(j.history[0].adminId, adminId);
 });
