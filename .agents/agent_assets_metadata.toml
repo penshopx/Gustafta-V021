@@ -161,3 +161,9 @@ id = "5KM3CUnZesClaCHsgdw2v"
 uri = "file://attached_assets/generated_videos/gustafta_explainer_vertical.mp4"
 type = "video"
 title = "Gustafta — Versi Vertikal 9:16 (Reels/TikTok/Shorts)"
+
+[[outputs]]
+id = "jZwL43rttnfugjoKIRovS"
+uri = "file://attached_assets/generated_videos/gustafta_promo_24s.mp4"
+type = "video"
+title = "Gustafta — Animated Promo (24s)"
