@@ -66,7 +66,8 @@ Trilogi Gustafta = framework berpikir di baliknya: **Dialog → Kolaborasi → K
 | 37 | Simpan & kelola rancangan tim server-side (tabel `organization_drafts`, CRUD owner-scoped `/api/organization/drafts*`, UI "Simpan ke akun" + kartu rancangan tersimpan) | Ya | ✅ SELESAI |
 | 38 | Perbarui vs simpan-baru rancangan tim (cegah duplikat) — lacak `activeDraftId` rancangan yang sedang dibuka; tombol "Perbarui rancangan" (PUT) vs "Simpan sebagai baru" (POST); badge "Sedang dibuka"; tautan dilepas di tiap jalur ganti-konten (template/impor/reset/susun-ulang) | Ya | ✅ SELESAI |
 | 39 | **Dialog org-level terpandu (tanya-jawab)** — menyambungkan engine dialog org (Tahap 23, murni) ke wizard `/organization-builder` sebagai mode "Dipandu langkah demi langkah" di step intro. Route tipis read-only `POST /api/organization/dialogue` (auth-gated) body `{name?, mission?}` → bangun org minimal `createEmptyOrganizationBlueprint()` + isi `meta.name`/`meta.mission` → `getOrgDialogueState(org)` (`nextQuestions`: misi prioritas 1, nama prioritas 2 + `readyToCompose`). Kartu `card-guided`: tombol `btn-start-guided` → tanya SATU pertanyaan/giliran (`guidedQs[0]`, why-text, textarea utk misi / input utk nama). **Jawaban diikat ke state `mission`/`orgName` YANG SAMA dengan jalur manual** (tak ada source-of-truth baru → kedua jalur selalu sinkron); `btn-guided-next` panggil `refreshGuided()` lagi (field terisi → engine buang pertanyaan itu, kirim berikutnya/empty); saat habis → `guided-ready` + `btn-guided-compose` panggil `composeFromMission()` lama (yang sudah lepas `activeDraftId` Tahap 38 = desain baru). `btn-guided-close` tutup panduan. Murni aditif; flow manual/template/auto-compose/infer/analyze→preview→create utuh. **Buku II (KOLABORASI) SELESAI.** | Ya (route read-only + UI; flow lama utuh) | ✅ SELESAI — `POST /api/organization/dialogue` + `card-guided`/`btn-start-guided`/`refreshGuided()` di `organization-builder.tsx` |
-| 40+ | (Buku III KREASI — studio kreator) — lihat **Fase 4** di bawah untuk pemetaan audit & kandidat tahap | Ya | ⏳ BELUM |
+| **40** | **Blueprint Studio Visual Hibrida (Buku III Bab 6)** — kartu kreator baru `studio-visual` (Desainer/Arsitek/Seniman + 4 agen: Eksplorasi Visual, Layer Generatif, Riset & Arsip Visual, Distribusi & Klien). Aditif murni pola dual-entry: kartu klien di `KREASI_BLUEPRINTS` (`tutor-builder.tsx`) + entri server `TUTOR_BLUEPRINTS["studio-visual"]` (`server/routes.ts`) yang dibaca `POST /api/tutor-builder/create-team` untuk spawn 4 spesialis + 1 orchestrator. Prompt menanamkan 7 prinsip Studio Visual Hibrida + Gerbang Manusia (◆): tangan manusia di tiap karya, data training milik sendiri/berizin (no scraping), process log wajib, mulai dari sketsa tangan, tolak klien tak sesuai. Tak mengubah blueprint/endpoint lama. | Ya (aditif; blueprint lama utuh) | ✅ SELESAI — `studio-visual` di `tutor-builder.tsx` + `server/routes.ts`; API `agentCount:5`; architect PASS |
+| 41+ | (Buku III KREASI — lanjutan studio kreator) — lihat **Fase 4** di bawah untuk kandidat tahap tersisa | Ya | ⏳ BELUM |
 
 ## Fase 4 — Buku III KREASI (Studio Kreator) — PEMETAAN AUDIT (01 Juli 2026)
 
@@ -81,13 +82,13 @@ Trilogi Gustafta = framework berpikir di baliknya: **Dialog → Kolaborasi → K
 | 3 — Pipeline Konten Multi-Platform (Naya) | 4 agen: Riset→Naskah→Visual→Distribusi | ✅ BUILT | kreasi tab `pipeline-konten` → `POST /api/tutor-builder/create-team` (`tutor-builder.tsx`) |
 | 4 — Penerbit Mikro (Bu Rahma) | 5 agen: Arsip, Sparring, Editorial, Visual, Distribusi | ✅ BUILT | kreasi tab `penerbit-mikro` |
 | 5 — Studio Audio Mikro (Pak Joko) | 4 agen: Transkripsi, Editor Audio, Shownotes, Snippet | ✅ BUILT | kreasi tab `studio-audio` |
-| 6 — Studio Visual Hibrida (Mira+Bayu) | 4 agen: Eksplorasi Visual, Layer Generatif, Riset & Arsip, Distribusi & Klien | ❌ MISSING | Belum ada blueprint |
+| 6 — Studio Visual Hibrida (Mira+Bayu) | 4 agen: Eksplorasi Visual, Layer Generatif, Riset & Arsip, Distribusi & Klien | ✅ BUILT (Tahap 40) | kreasi tab `studio-visual` → `POST /api/tutor-builder/create-team` |
 | 7 — Kreator Komunitas (Lulu) | 5 agen: Penyambut, FAQ, Kurator Diskusi, Kohort, Krisis (triase) | ✅ BUILT | kreasi tab `komunitas-builder` |
 
 **Infra pendukung yang SUDAH ada:** Studio Kompetensi (`studio-panel.tsx` — import dokumen ↔ export 5 produk kompetensi), Chatbot Store + panel Revenue/Affiliate/Voucher, rute `/affiliate` & `/packs`, engine org-builder (gates ◆, template siap-pakai, operating brief, draft server-side).
 
-**Celah utama (kandidat Tahap 40+, urutan final saat user "lanjut"):**
-1. **Bab 6** — blueprint Studio Visual Hibrida (4 agen) — belum ada.
+**Celah utama (kandidat Tahap 41+, urutan final saat user "lanjut"):**
+1. ~~**Bab 6** — blueprint Studio Visual Hibrida (4 agen)~~ — ✅ SELESAI Tahap 40.
 2. **Bab 2** — template Studio Personal (5 agen) — belum ada.
 3. **Bab 1** — pemilih profil kreator (pengarah ke blueprint yang tepat).
 4. **Bab 7** — gerbang krisis (triase) & "dua janji" transparansi sebagai gates ◆ pre-terisi di template kreator.

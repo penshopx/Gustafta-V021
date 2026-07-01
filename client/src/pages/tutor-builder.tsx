@@ -290,6 +290,25 @@ const KREASI_BLUEPRINTS: BlueprintMeta[] = [
       { name: "PENJAGA", role: "Krisis & Eskalasi", icon: <Shield className="w-3.5 h-3.5" />, color: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" },
     ],
   },
+  {
+    id: "studio-visual",
+    label: "Studio Visual Hibrida — Desainer, Arsitek & Seniman",
+    tagline: "AI adalah kuas baru — tangan & niat manusia tetap di pusat karya",
+    description:
+      "Empat agen melipat eksekusi teknis agar seniman kembali ke bagian yang paling manusiawi: Eksplorasi Visual menghasilkan puluhan variasi referensi untuk memantik ide, Layer Generatif membuat tekstur & latar yang konsisten dari data milik sendiri (bukan hasil scrape), Riset & Arsip menemukan referensi dari arsip pribadi dalam hitungan detik, dan Distribusi & Klien mengurus admin agar kreator fokus pada creative direction. Setiap karya tetap melewati tangan manusia + process log yang transparan.",
+    useCase: "Desainer grafis, arsitek, ilustrator, seniman visual hibrida",
+    color: "fuchsia",
+    bgGradient: "from-fuchsia-50 to-purple-50 dark:from-fuchsia-950/30 dark:to-purple-950/30",
+    icon: <PenLine className="w-6 h-6" />,
+    sourceChapter: "Buku III Bab 6 — Studio Visual Hibrida (Mira & Bayu)",
+    agentCount: 5,
+    specialists: [
+      { name: "EKSPLORASI", role: "Eksplorasi Visual", icon: <Sparkles className="w-3.5 h-3.5" />, color: "bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-900/40 dark:text-fuchsia-300" },
+      { name: "LAYER", role: "Layer Generatif", icon: <Layers className="w-3.5 h-3.5" />, color: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300" },
+      { name: "ARSIP", role: "Riset & Arsip Visual", icon: <Archive className="w-3.5 h-3.5" />, color: "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300" },
+      { name: "DISTRIBUSI", role: "Distribusi & Klien", icon: <Globe className="w-3.5 h-3.5" />, color: "bg-pink-100 text-pink-700 dark:bg-pink-900/40 dark:text-pink-300" },
+    ],
+  },
 ];
 
 const TABS: TabDef[] = [
