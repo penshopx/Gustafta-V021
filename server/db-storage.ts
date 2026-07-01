@@ -72,6 +72,7 @@ import type {
   InsertOrganizationDraft,
 } from "@shared/schema";
 import { applyDefaultPolicies } from "./lib/agent-policies";
+import { isPremiumClass, priceForClass } from "@shared/premium-classes";
 import type { IStorage, CollaboratorView } from "./storage";
 import type { ConfigStorage } from "./services/blueprint-engine/configuration-engine";
 import type { AgentCollaborator, CollaboratorRole, PendingAgentInvite, AppliedInviteGrant, Notification, InsertNotification, CertificationAudit } from "@shared/schema";
@@ -1022,6 +1023,14 @@ export class DatabaseStorage implements IStorage {
       qualityBar: filled.qualityBar,
       riskCompliance: filled.riskCompliance,
       orchestratorConfig: (filled as any).orchestratorConfig ?? {},
+      // Sumbu harga TERPISAH: licenseClass/licensePrice (lisensi sekali bayar) vs monthlyPrice
+      // (bulanan hosting/token). Bila berkelas premium, licensePrice DIIKAT ke band kelas.
+      licenseClass: insertAgent.licenseClass ?? null,
+      licensePrice: isPremiumClass(insertAgent.licenseClass ?? null)
+        ? priceForClass(insertAgent.licenseClass as number)
+        : (insertAgent.licensePrice ?? null),
+      monthlyPrice: insertAgent.monthlyPrice ?? 0,
+      paymentUrl: insertAgent.paymentUrl ?? "",
       isActive: true,
       slug: (insertAgent as any).slug || null,
     }).returning();
@@ -1087,7 +1096,23 @@ export class DatabaseStorage implements IStorage {
         }
       }
     });
-    
+
+    // Backstop harga lisensi (cover seed/admin/jalur langsung). Pakai kelas EFEKTIF:
+    // kelas dari patch bila ada, jika tidak baca kelas tersimpan agen. Ini mencegah
+    // pemanggil non-route mengubah HANYA licensePrice pada agen berkelas untuk melewati band.
+    const touchesPricing = updateData.licenseClass !== undefined || updateData.licensePrice !== undefined;
+    if (touchesPricing) {
+      let effectiveClass = updateData.licenseClass;
+      if (effectiveClass === undefined) {
+        const existing = await exec.select({ licenseClass: agents.licenseClass })
+          .from(agents).where(eq(agents.id, parseInt(id))).limit(1);
+        effectiveClass = existing[0]?.licenseClass ?? null;
+      }
+      if (isPremiumClass(effectiveClass)) {
+        updateData.licensePrice = priceForClass(effectiveClass as number);
+      }
+    }
+
     const result = await exec.update(agents)
       .set(updateData)
       .where(eq(agents.id, parseInt(id)))
@@ -1593,6 +1618,8 @@ export class DatabaseStorage implements IStorage {
       trialEnabled: row.trialEnabled ?? true,
       trialDays: row.trialDays ?? 7,
       monthlyPrice: row.monthlyPrice ?? 0,
+      licenseClass: (row as any).licenseClass ?? null,
+      licensePrice: (row as any).licensePrice ?? null,
       messageQuotaDaily: row.messageQuotaDaily ?? 50,
       messageQuotaMonthly: row.messageQuotaMonthly ?? 1000,
       requireRegistration: row.requireRegistration ?? false,

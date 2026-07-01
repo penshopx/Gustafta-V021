@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { PREMIUM_CLASSES, PREMIUM_CLASS_IDS, priceForClass } from "@shared/premium-classes";
+import { PREMIUM_CLASSES, PREMIUM_CLASS_IDS, priceForClass, resolveLicensePrice } from "@shared/premium-classes";
 
 const formatCurrency = (amount: number) =>
   new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(amount);
@@ -28,6 +28,7 @@ export function ProductSettingsPanel({ agent }: { agent: any }) {
     productTargetUser: agent.productTargetUser || "",
     productProblem: agent.productProblem || "",
     licenseClass: (agent.licenseClass ?? null) as number | null,
+    licensePrice: (agent.licensePrice ?? 0) as number,
     monthlyPrice: agent.monthlyPrice ?? 0,
     paymentUrl: agent.paymentUrl || "",
     trialEnabled: agent.trialEnabled ?? true,
@@ -42,13 +43,17 @@ export function ProductSettingsPanel({ agent }: { agent: any }) {
 
   const set = (key: string, val: any) => setSettings(s => ({ ...s, [key]: val }));
 
+  // Harga LISENSI efektif (sekali bayar): band kelas bila premium, jika tidak harga bebas.
+  // Sumbu ini TERPISAH dari monthlyPrice (biaya bulanan hosting/token).
+  const salePrice = resolveLicensePrice(settings.licenseClass, settings.licensePrice);
+
   // Kelas Premium menentukan harga lisensi. Pilih kelas → harga otomatis; "Bukan Premium" → harga bebas.
   const setLicenseClass = (val: string) => {
     if (val === "none") {
       setSettings(s => ({ ...s, licenseClass: null }));
     } else {
       const n = parseInt(val, 10);
-      setSettings(s => ({ ...s, licenseClass: n, monthlyPrice: priceForClass(n) ?? s.monthlyPrice }));
+      setSettings(s => ({ ...s, licenseClass: n }));
     }
   };
 
@@ -59,11 +64,12 @@ export function ProductSettingsPanel({ agent }: { agent: any }) {
 
   const generateMayarLinkMutation = useMutation({
     mutationFn: async () => {
-      if (!settings.monthlyPrice || settings.monthlyPrice <= 0) throw new Error("Isi harga dulu sebelum generate link.");
+      const amount = resolveLicensePrice(settings.licenseClass, settings.licensePrice);
+      if (!amount || amount <= 0) throw new Error("Isi harga dulu sebelum generate link.");
       const res = await apiRequest("POST", "/api/mayar/create-chatbot-link", {
         agentId: agent.id,
         agentName: agent.name,
-        amount: settings.monthlyPrice,
+        amount,
       });
       return res.json();
     },
@@ -94,6 +100,7 @@ export function ProductSettingsPanel({ agent }: { agent: any }) {
       productTargetUser: agent.productTargetUser || "",
       productProblem: agent.productProblem || "",
       licenseClass: (agent.licenseClass ?? null) as number | null,
+      licensePrice: (agent.licensePrice ?? 0) as number,
       monthlyPrice: agent.monthlyPrice ?? 0,
       paymentUrl: agent.paymentUrl || "",
       trialEnabled: agent.trialEnabled ?? true,
@@ -358,20 +365,20 @@ export function ProductSettingsPanel({ agent }: { agent: any }) {
                   <div className="space-y-1.5">
                     <Input
                       type="number"
-                      value={settings.monthlyPrice}
-                      onChange={(e) => setSettings({ ...settings, monthlyPrice: parseInt(e.target.value) || 0 })}
+                      value={settings.licensePrice}
+                      onChange={(e) => setSettings({ ...settings, licensePrice: parseInt(e.target.value) || 0 })}
                       placeholder="0"
                       min={0}
-                      data-testid="input-monthly-price"
+                      data-testid="input-license-price"
                     />
                     <p className="text-xs text-muted-foreground">
-                      Harga saat ini: {formatCurrency(settings.monthlyPrice)}. Pilih Kelas Premium di atas untuk harga lisensi seragam.
+                      Harga lisensi (sekali bayar): {formatCurrency(salePrice)}. Pilih Kelas Premium di atas untuk harga seragam. Biaya bulanan tetap terpisah.
                     </p>
                   </div>
                 )}
               </div>
 
-              {settings.monthlyPrice > 0 && (
+              {salePrice > 0 && (
                 <div className="space-y-2">
                   <Label className="flex items-center gap-1.5">
                     <Link2 className="w-3.5 h-3.5 text-primary" />
@@ -391,7 +398,7 @@ export function ProductSettingsPanel({ agent }: { agent: any }) {
                       variant="outline"
                       className="shrink-0 gap-1.5 text-xs border-green-500 text-green-700 hover:bg-green-50 dark:border-green-600 dark:text-green-400 dark:hover:bg-green-950/30"
                       onClick={() => generateMayarLinkMutation.mutate()}
-                      disabled={generateMayarLinkMutation.isPending || !settings.monthlyPrice}
+                      disabled={generateMayarLinkMutation.isPending || !salePrice}
                       data-testid="button-generate-mayar-link"
                       title="Generate link pembayaran Mayar otomatis dari harga di atas"
                     >

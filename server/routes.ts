@@ -28,7 +28,7 @@ import {
   type MiniApp,
   type MiniAppType,
 } from "@shared/schema";
-import { priceForClass, isPremiumClass } from "@shared/premium-classes";
+import { priceForClass, isPremiumClass, resolveLicensePrice, DEFAULT_LICENSE_PRICE } from "@shared/premium-classes";
 import { z } from "zod";
 import multer from "multer";
 import path from "path";
@@ -1824,15 +1824,14 @@ export async function registerRoutes(
       if (!isAdminCreate && parsed.data && Object.prototype.hasOwnProperty.call(parsed.data, "isCertified")) {
         delete (parsed.data as any).isCertified;
       }
-      // Kelas Premium 1–4 = band harga LISENSI otoritatif. Bila licenseClass di-set,
-      // paksa monthlyPrice = harga kelas (abaikan harga bebas kiriman klien). null = lepas kelas.
+      // Kelas Premium 1–4 hanya divalidasi rentang di sini. Harga lisensi otoritatif
+      // (licensePrice = band kelas) dienforce di storage.updateAgent — TIDAK menyentuh
+      // monthlyPrice (biaya bulanan) yang kini sumbu terpisah. null = lepas kelas.
       if (parsed.data && Object.prototype.hasOwnProperty.call(parsed.data, "licenseClass")) {
         const lc = (parsed.data as any).licenseClass;
         if (lc == null) {
           (parsed.data as any).licenseClass = null;
-        } else if (isPremiumClass(lc)) {
-          (parsed.data as any).monthlyPrice = priceForClass(lc);
-        } else {
+        } else if (!isPremiumClass(lc)) {
           return res.status(400).json({ error: "invalid_license_class", message: "Kelas Premium harus 1–4 atau kosong." });
         }
       }
@@ -1868,7 +1867,8 @@ export async function registerRoutes(
         delete (req.body as any).isCertified;
       }
       // Kelas Premium 1–4 = band harga LISENSI otoritatif. Kelas efektif = nilai baru bila
-      // dikirim, jika tidak pakai yang tersimpan — cegah bypass via PATCH monthlyPrice saja.
+      // dikirim, jika tidak pakai yang tersimpan — cegah bypass via PATCH licensePrice saja.
+      // Harga lisensi (licensePrice) diikat ke band; monthlyPrice TIDAK disentuh.
       {
         const bodyHasClass = req.body && Object.prototype.hasOwnProperty.call(req.body, "licenseClass");
         if (bodyHasClass) {
@@ -1878,8 +1878,8 @@ export async function registerRoutes(
         }
         const effectiveClass = bodyHasClass ? (req.body as any).licenseClass : (existingForUpdate as any).licenseClass;
         if (isPremiumClass(effectiveClass)) {
-          // Produk berkelas: harga lisensi SELALU ikut kelas, apa pun monthlyPrice kiriman klien.
-          (req.body as any).monthlyPrice = priceForClass(effectiveClass);
+          // Produk berkelas: harga lisensi SELALU ikut band kelas, abaikan licensePrice kiriman.
+          (req.body as any).licensePrice = priceForClass(effectiveClass);
         }
       }
       const agent = await storage.updateAgent(req.params.id as string, req.body);
@@ -5537,6 +5537,7 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
         isListed: agentsTable.isListed,
         isCertified: agentsTable.isCertified,
         licenseClass: agentsTable.licenseClass,
+        licensePrice: agentsTable.licensePrice,
       }).from(agentsTable).where(agentWhere).orderBy(agentsTable.id);
 
       // Count direct child agents per parent for accurate team-size pricing
@@ -5597,9 +5598,8 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
           const subCount = Array.isArray(a.agenticSubAgents) ? a.agenticSubAgents.length : 0;
           const childCount = childCountMap.get(a.id) ?? 0;
           const effectiveTotal = 1 + Math.max(subCount, childCount);
-          // Bila produk ber-Kelas Premium 1–4, harga lisensi otoritatif dari band kelas;
-          // selain itu pakai harga default lama (299rb).
-          const price = priceForClass(a.licenseClass) ?? 299000;
+          // Harga lisensi efektif: band kelas (berkelas) atau harga bebas / DEFAULT (non-kelas).
+          const price = resolveLicensePrice(a.licenseClass, (a as any).licensePrice);
           return {
             id: `ag-${a.id}`,
             agentId: a.id,
@@ -5804,25 +5804,26 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
         return res.status(400).json({ error: "agentId atau productId wajib diisi" });
       }
 
-      const DEFAULT_PRICE = 299000;
       let itemName = "";
-      let itemPrice = DEFAULT_PRICE;
+      let itemPrice = DEFAULT_LICENSE_PRICE;
       let resolvedAgentId: number | null = null;
       let resolvedProductId: number = 0;
+      let creatorUserId: string | null = null;
 
       if (agentId) {
         const { db } = await import("./db");
         const { agents: agentsTable } = await import("@shared/schema");
         const { eq } = await import("drizzle-orm");
-        const rows = await db.select({ id: agentsTable.id, name: agentsTable.name, isActive: agentsTable.isActive, monthlyPrice: agentsTable.monthlyPrice, licenseClass: agentsTable.licenseClass })
+        const rows = await db.select({ id: agentsTable.id, name: agentsTable.name, isActive: agentsTable.isActive, userId: agentsTable.userId, licensePrice: agentsTable.licensePrice, licenseClass: agentsTable.licenseClass })
           .from(agentsTable).where(eq(agentsTable.id, Number(agentId))).limit(1);
         const agent = rows[0];
         if (!agent || !agent.isActive) return res.status(404).json({ error: "Agen tidak ditemukan" });
         itemName = agent.name;
-        // Kelas Premium = harga lisensi otoritatif; fallback ke monthlyPrice lalu DEFAULT_PRICE.
-        itemPrice = priceForClass(agent.licenseClass)
-          ?? ((agent.monthlyPrice && agent.monthlyPrice > 0) ? agent.monthlyPrice : DEFAULT_PRICE);
+        // Harga lisensi efektif (band kelas / harga bebas / DEFAULT) — TERPISAH dari monthlyPrice.
+        itemPrice = resolveLicensePrice(agent.licenseClass, agent.licensePrice);
         resolvedAgentId = agent.id;
+        // Produk buatan kreator (userId non-kosong) → catat untuk bagi hasil 80/20.
+        creatorUserId = (agent.userId ?? "").trim() || null;
       } else {
         const product = await storage.getStoreProduct(Number(productId));
         if (!product || !product.isActive) return res.status(404).json({ error: "Produk tidak ditemukan" });
@@ -5830,7 +5831,26 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
         itemPrice = product.price;
         resolvedAgentId = product.agentId ?? null;
         resolvedProductId = product.id;
+        // Bila produk memetakan ke agen (buatan kreator), pakai harga LISENSI efektif agen
+        // dan catat kreator untuk bagi hasil 80/20 — konsisten dengan jalur agentId.
+        if (resolvedAgentId) {
+          const { db } = await import("./db");
+          const { agents: agentsTable } = await import("@shared/schema");
+          const { eq } = await import("drizzle-orm");
+          const rows = await db.select({ userId: agentsTable.userId, licensePrice: agentsTable.licensePrice, licenseClass: agentsTable.licenseClass })
+            .from(agentsTable).where(eq(agentsTable.id, resolvedAgentId)).limit(1);
+          const agent = rows[0];
+          if (agent) {
+            itemPrice = resolveLicensePrice(agent.licenseClass, agent.licensePrice);
+            creatorUserId = (agent.userId ?? "").trim() || null;
+          }
+        }
       }
+
+      // Bagi hasil marketplace: LISENSI dibagi 80% kreator / 20% platform bila produk
+      // buatan kreator; produk resmi Gustafta (tanpa kreator) → 100% platform.
+      const creatorShare = creatorUserId ? Math.round(itemPrice * 0.8) : 0;
+      const platformShare = itemPrice - creatorShare;
 
       const { randomUUID } = await import("crypto");
       const orderId = `STORE-${Date.now()}-${randomUUID().split("-")[0].toUpperCase()}`;
@@ -5838,22 +5858,18 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
 
       const order = await storage.createStoreOrder({
         productId: resolvedProductId,
+        agentId: resolvedAgentId,
         customerName: name,
         customerEmail: email,
         customerPhone: phone || "",
         amount: itemPrice,
+        creatorUserId,
+        creatorShare,
+        platformShare,
         midtransOrderId: orderId,
         accessToken,
         status: "pending",
       });
-
-      // Save agentId to store_orders if purchasing by agent
-      if (resolvedAgentId) {
-        const { db } = await import("./db");
-        const { storeOrders } = await import("@shared/schema");
-        const { eq } = await import("drizzle-orm");
-        await db.update(storeOrders).set({ agentId: resolvedAgentId } as any).where(eq(storeOrders.id, order.id));
-      }
 
       const waMsg = encodeURIComponent(
         `Halo, saya ingin memesan:\n*${itemName}*\nOrder ID: ${orderId}\nHarga: Rp ${itemPrice.toLocaleString("id-ID")}\nNama: ${name}\nEmail: ${email}\n\nMohon info cara pembayaran via Scalev.`
@@ -6029,11 +6045,11 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
       }
 
       const { db } = await import("./db");
-      const { agents: agentsTable, storeOrders } = await import("@shared/schema");
+      const { agents: agentsTable } = await import("@shared/schema");
       const { eq } = await import("drizzle-orm");
       const { randomUUID } = await import("crypto");
 
-      const rows = await db.select({ id: agentsTable.id, name: agentsTable.name, monthlyPrice: agentsTable.monthlyPrice, licenseClass: agentsTable.licenseClass })
+      const rows = await db.select({ id: agentsTable.id, name: agentsTable.name, userId: agentsTable.userId, licensePrice: agentsTable.licensePrice, licenseClass: agentsTable.licenseClass })
         .from(agentsTable).where(eq(agentsTable.id, Number(agentId))).limit(1);
       const agent = rows[0];
       if (!agent) return res.status(404).json({ error: "Agen tidak ditemukan" });
@@ -6041,19 +6057,27 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
       const orderId = `MANUAL-${Date.now()}-${randomUUID().split("-")[0].toUpperCase()}`;
       const accessToken = randomUUID();
 
+      // Harga lisensi efektif (band kelas / harga bebas / DEFAULT) — TERPISAH dari monthlyPrice.
+      const manualAmount = resolveLicensePrice(agent.licenseClass, agent.licensePrice);
+      // Bagi hasil 80/20 dari lisensi bila produk buatan kreator; jika tidak 100% platform.
+      const manualCreatorUserId = (agent.userId ?? "").trim() || null;
+      const manualCreatorShare = manualCreatorUserId ? Math.round(manualAmount * 0.8) : 0;
+      const manualPlatformShare = manualAmount - manualCreatorShare;
+
       const order = await storage.createStoreOrder({
         productId: 0,
+        agentId: agent.id,
         customerName: name,
         customerEmail: email,
         customerPhone: phone || "",
-        // Kelas Premium = harga lisensi otoritatif; fallback ke monthlyPrice.
-        amount: priceForClass(agent.licenseClass) ?? (agent.monthlyPrice || 0),
+        amount: manualAmount,
+        creatorUserId: manualCreatorUserId,
+        creatorShare: manualCreatorShare,
+        platformShare: manualPlatformShare,
         midtransOrderId: orderId,
         accessToken,
         status: "paid",
       });
-
-      await db.update(storeOrders).set({ agentId: agent.id } as any).where(eq(storeOrders.id, order.id));
 
       const accessUrl = `${getServerBaseUrl(req)}/store/access/${accessToken}`;
       res.json({ success: true, accessToken, accessUrl, orderId, agentName: agent.name });
