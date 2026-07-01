@@ -11,7 +11,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   BookOpen, ClipboardList, Play, RefreshCw, CheckCircle2,
   XCircle, Loader2, AlertTriangle, Database, BarChart3,
-  ChevronDown, ChevronUp, Cpu, Wand2, ShieldCheck, ShieldOff,
+  ChevronDown, ChevronUp, Cpu, Wand2, ShieldCheck, ShieldOff, History,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -129,8 +129,27 @@ export function AdminAgentsPanel() {
         title: data?.isCertified ? "Ditandai Bersertifikat" : "Sertifikat dicabut",
         description: data?.message || `Agen #${data?.id}`,
       });
+      // Segarkan riwayat agar aksi baru langsung muncul (prefix match).
+      qc.invalidateQueries({ queryKey: ["/api/admin/agents/certification-history"] });
     },
     onError: (e: any) => toast({ title: "Gagal ubah sertifikasi", description: e.message, variant: "destructive" }),
+  });
+
+  const [showCertHistory, setShowCertHistory] = useState(false);
+  const { data: certHistory, isLoading: certHistoryLoading, isError: certHistoryError } = useQuery<{
+    agentId: string;
+    history: Array<{ id: number; agentId: number; certified: boolean; adminId: string; createdAt: string }>;
+  }>({
+    queryKey: ["/api/admin/agents/certification-history", certAgentId.trim()],
+    queryFn: async () => {
+      const res = await fetch(
+        `/api/admin/agents/${encodeURIComponent(certAgentId.trim())}/certification/history`,
+        { credentials: "include" },
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    },
+    enabled: showCertHistory && !!certAgentId.trim(),
   });
 
   const { data: jobs, refetch } = useQuery<AgentJobs>({
@@ -323,6 +342,62 @@ export function AdminAgentsPanel() {
           <p className="text-xs text-gray-500">
             Chatbot bersertifikat tampil dengan badge hijau "Bersertifikat" di Store, menggantikan badge "Pra-Sertifikasi".
           </p>
+
+          {/* Riwayat jejak audit sertifikasi (grant/cabut) */}
+          <div className="pt-1">
+            <button
+              onClick={() => setShowCertHistory((v) => !v)}
+              disabled={!certAgentId.trim()}
+              className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-green-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              data-testid="button-toggle-cert-history"
+            >
+              <History className="h-3.5 w-3.5" />
+              {showCertHistory ? "Sembunyikan riwayat sertifikasi" : "Lihat riwayat sertifikasi"}
+              {showCertHistory ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            </button>
+
+            {showCertHistory && certAgentId.trim() && (
+              <div className="mt-2 rounded-lg border border-white/10 bg-black/20 p-2" data-testid="list-cert-history">
+                {certHistoryLoading ? (
+                  <div className="flex items-center gap-2 text-xs text-gray-500 py-2">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> Memuat riwayat…
+                  </div>
+                ) : certHistoryError ? (
+                  <p className="flex items-center gap-1.5 text-xs text-red-400 py-2" data-testid="text-cert-history-error">
+                    <AlertTriangle className="h-3.5 w-3.5" /> Gagal memuat riwayat sertifikasi. Coba lagi.
+                  </p>
+                ) : !certHistory?.history?.length ? (
+                  <p className="text-xs text-gray-500 py-2" data-testid="text-cert-history-empty">
+                    Belum ada riwayat sertifikasi untuk chatbot #{certAgentId.trim()}.
+                  </p>
+                ) : (
+                  <ul className="space-y-1.5">
+                    {certHistory.history.map((h) => (
+                      <li
+                        key={h.id}
+                        className="flex items-center gap-2 text-xs"
+                        data-testid={`row-cert-history-${h.id}`}
+                      >
+                        {h.certified ? (
+                          <Badge className="bg-green-500/20 text-green-400 border-green-500/30 shrink-0">
+                            <ShieldCheck className="h-3 w-3 mr-1" /> Diberi
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="shrink-0">
+                            <ShieldOff className="h-3 w-3 mr-1" /> Dicabut
+                          </Badge>
+                        )}
+                        <span className="text-gray-400">
+                          {new Date(h.createdAt).toLocaleString("id-ID")}
+                        </span>
+                        <span className="text-gray-600 truncate">oleh {h.adminId || "—"}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 
