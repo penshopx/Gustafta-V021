@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { NOTIFICATION_TYPES } from "@shared/schema";
 
 type NotificationItem = {
   id: number;
@@ -36,9 +37,9 @@ type NotificationsResponse = {
 const GRANT_VISUAL = { Icon: ShieldCheck, wrap: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" };
 const REVOKE_VISUAL = { Icon: ShieldX, wrap: "bg-muted text-muted-foreground" };
 function visualFor(n: NotificationItem): { Icon: LucideIcon; wrap: string } {
-  if (n.type === "agent_certification_granted") return GRANT_VISUAL;
-  if (n.type === "agent_certification_revoked") return REVOKE_VISUAL;
-  if (n.type === "agent_certification") {
+  if (n.type === NOTIFICATION_TYPES.AGENT_CERTIFICATION_GRANTED) return GRANT_VISUAL;
+  if (n.type === NOTIFICATION_TYPES.AGENT_CERTIFICATION_REVOKED) return REVOKE_VISUAL;
+  if (n.type === NOTIFICATION_TYPES.AGENT_CERTIFICATION_LEGACY) {
     return /dicabut/i.test(n.title) ? REVOKE_VISUAL : GRANT_VISUAL;
   }
   return { Icon: Share2, wrap: "bg-primary/10 text-primary" };

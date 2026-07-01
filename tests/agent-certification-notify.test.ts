@@ -14,6 +14,7 @@ import assert from "node:assert/strict";
 import express from "express";
 import type { Server } from "node:http";
 import { MemStorage } from "../server/storage";
+import { NOTIFICATION_TYPES } from "../shared/schema";
 
 const storage = new MemStorage();
 
@@ -61,7 +62,7 @@ app.post("/api/admin/agents/:id/certification", requireAdmin, async (req: any, r
     try {
       await storage.createNotification({
         userId: String(ownerUserId),
-        type: certified ? "agent_certification_granted" : "agent_certification_revoked",
+        type: certified ? NOTIFICATION_TYPES.AGENT_CERTIFICATION_GRANTED : NOTIFICATION_TYPES.AGENT_CERTIFICATION_REVOKED,
         title: certified
           ? `Chatbot "${agentName}" kini Bersertifikat`
           : `Status Bersertifikat "${agentName}" dicabut`,
@@ -120,7 +121,7 @@ test("notify: grant agen kreator → 1 notifikasi in-app ke pemilik", async () =
   const after = await storage.listNotificationsForUser(ownerId, 100);
   assert.equal(after.length, before.length + 1, "tepat 1 notifikasi baru");
   const n = after[0];
-  assert.equal(n.type, "agent_certification_granted");
+  assert.equal(n.type, NOTIFICATION_TYPES.AGENT_CERTIFICATION_GRANTED);
   assert.equal(n.userId, ownerId);
   assert.match(n.title, /Bersertifikat/);
 });
@@ -131,7 +132,7 @@ test("notify: cabut agen kreator → notifikasi bernada 'dicabut'", async () => 
   assert.equal(r.status, 200);
   const after = await storage.listNotificationsForUser(ownerId, 100);
   assert.equal(after.length, before.length + 1, "tepat 1 notifikasi baru");
-  assert.equal(after[0].type, "agent_certification_revoked");
+  assert.equal(after[0].type, NOTIFICATION_TYPES.AGENT_CERTIFICATION_REVOKED);
   assert.match(after[0].title, /dicabut/i);
 });
 
