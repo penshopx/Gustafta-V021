@@ -50,7 +50,7 @@ import { processKnowledgeBaseForRAG, searchKnowledgeBase } from "./lib/rag-servi
 import { buildFinalSystemPrompt, buildAgenticPrinciplesBlock } from "./lib/build-final-system-prompt";
 import { decideAgentMutation, decideAgentReadAccess, type AgentAuthzResult } from "./lib/agent-authz";
 import { makeAgentAccessGuards } from "./lib/agent-access-guards";
-import { sendAgentShareNotification, sendAgentInviteToSignup } from "./lib/email";
+import { sendAgentShareNotification, sendAgentInviteToSignup, sendAgentCertificationNotification } from "./lib/email";
 import { getDefaultPoliciesForSeries, type AgentPolicySet } from "./lib/agent-policies";
 import { importDocumentToProposal, mergeProposalIntoAgent, type ApplyMode } from "./lib/document-importer";
 import { buildEbookMarkdown, buildEbookHtml, stripMarkdownToPlainText, buildEbookTables } from "./lib/ebook-generator";
@@ -1926,6 +1926,43 @@ export async function registerRoutes(
         await storage.addCertificationAudit({ agentId, certified, adminId: String(adminId) });
       } catch (auditErr: any) {
         console.error("[certification] gagal tulis jejak audit:", auditErr?.message);
+      }
+      // Beri tahu kreator pemilik agen (in-app + email). Hanya untuk agen milik
+      // kreator (userId terisi) — agen resmi/seeded (userId="") dilewati. Semua
+      // fire-and-forget: kegagalan notifikasi TAK boleh membatalkan sertifikasi.
+      const ownerUserId = (existing as any).userId;
+      if (ownerUserId && String(ownerUserId).trim() !== "") {
+        const agentName = updated?.name ?? existing.name ?? "Chatbot";
+        try {
+          await storage.createNotification({
+            userId: String(ownerUserId),
+            type: "agent_certification",
+            title: certified
+              ? `Chatbot "${agentName}" kini Bersertifikat`
+              : `Status Bersertifikat "${agentName}" dicabut`,
+            message: certified
+              ? `Admin menandai chatbot kamu sebagai "Bersertifikat" di Store.`
+              : `Status "Bersertifikat" untuk chatbot kamu telah dicabut admin.`,
+            link: "/dashboard",
+            agentId: Number(agentId) || null,
+          });
+        } catch (notifyErr: any) {
+          console.error("[certification] gagal buat notifikasi in-app:", notifyErr?.message);
+        }
+        try {
+          const owner = await storage.getUser(String(ownerUserId));
+          if (owner?.email) {
+            const ownerName = [(owner as any).firstName, (owner as any).lastName].filter(Boolean).join(" ").trim();
+            void sendAgentCertificationNotification({
+              to: owner.email,
+              recipientName: ownerName || null,
+              agentName,
+              certified,
+            });
+          }
+        } catch (emailErr: any) {
+          console.error("[certification] gagal kirim email notifikasi:", emailErr?.message);
+        }
       }
       res.json({
         success: true,

@@ -218,3 +218,84 @@ Kamu menerima email ini karena seseorang ingin membagikan agen dengan alamat ema
     tags: ["agent-invite", "transactional"],
   });
 }
+
+interface CertificationNotificationOptions {
+  to: string;
+  recipientName?: string | null;
+  agentName: string;
+  certified: boolean;
+  appUrl?: string;
+}
+
+// Notifies a chatbot creator that an admin granted/revoked the "Bersertifikat"
+// status for their agent. Never throws — returns the SendEmailResult.
+export async function sendAgentCertificationNotification(opts: CertificationNotificationOptions): Promise<SendEmailResult> {
+  const greetName = opts.recipientName?.trim() || "Halo";
+  const dashboardUrl =
+    opts.appUrl ||
+    (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}/dashboard` : "");
+
+  const intro = opts.certified
+    ? `Selamat! Chatbot kamu kini berstatus <b>Bersertifikat</b> di Gustafta Store.`
+    : `Status <b>Bersertifikat</b> untuk chatbot kamu telah dicabut oleh admin.`;
+  const introText = opts.certified
+    ? `Selamat! Chatbot kamu kini berstatus Bersertifikat di Gustafta Store.`
+    : `Status Bersertifikat untuk chatbot kamu telah dicabut oleh admin.`;
+  const statusLabel = opts.certified ? "Bersertifikat" : "Dicabut";
+  const statusColor = opts.certified ? "#16a34a" : "#6b7280";
+
+  const ctaButton = dashboardUrl
+    ? `<div style="text-align:center;margin:0 0 24px"><a href="${dashboardUrl}" style="display:inline-block;background:#6366f1;color:#fff;text-decoration:none;font-size:15px;font-weight:600;padding:12px 28px;border-radius:8px">Buka Dashboard</a></div>`
+    : "";
+
+  const html = `<!DOCTYPE html>
+<html lang="id">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f3f4f6">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:32px 0">
+    <tr><td align="center">
+      <table width="480" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;padding:40px;font-family:Arial,sans-serif;color:#111">
+        <tr><td>
+          <p style="margin:0 0 4px;font-size:22px;font-weight:700;color:#6366f1">Gustafta</p>
+          <hr style="border:none;border-top:1px solid #e5e7eb;margin:16px 0">
+          <p style="font-size:16px;margin:0 0 8px">Halo <b>${greetName}</b>,</p>
+          <p style="font-size:15px;color:#374151;margin:0 0 16px">${intro}</p>
+          <div style="padding:20px;background:#f9fafb;border-radius:8px;border:1px solid #e5e7eb;margin:0 0 24px">
+            <p style="font-size:13px;color:#6b7280;margin:0 0 4px">Nama Chatbot</p>
+            <p style="font-size:18px;font-weight:700;color:#111;margin:0 0 16px">${opts.agentName}</p>
+            <p style="font-size:13px;color:#6b7280;margin:0 0 4px">Status</p>
+            <p style="font-size:15px;font-weight:700;color:${statusColor};margin:0">${statusLabel}</p>
+          </div>
+          ${ctaButton}
+          <hr style="border:none;border-top:1px solid #e5e7eb;margin:0 0 16px">
+          <p style="font-size:12px;color:#9ca3af;margin:0">Kamu menerima email ini karena status sertifikasi chatbot di akun Gustafta kamu berubah.</p>
+          <p style="font-size:12px;color:#9ca3af;margin:8px 0 0">© 2025 Gustafta. Seluruh hak dilindungi.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  const textContent = `Halo ${greetName},
+
+${introText}
+
+Nama Chatbot: ${opts.agentName}
+Status: ${statusLabel}
+${dashboardUrl ? `\nBuka dashboard: ${dashboardUrl}\n` : ""}
+Kamu menerima email ini karena status sertifikasi chatbot di akun Gustafta kamu berubah.
+
+— Tim Gustafta`;
+
+  return sendEmail({
+    to: opts.to,
+    toName: opts.recipientName || undefined,
+    subject: opts.certified
+      ? `Chatbot kamu kini Bersertifikat: ${opts.agentName}`
+      : `Status Bersertifikat dicabut: ${opts.agentName}`,
+    htmlContent: html,
+    textContent,
+    tags: ["agent-certification", "transactional"],
+  });
+}
