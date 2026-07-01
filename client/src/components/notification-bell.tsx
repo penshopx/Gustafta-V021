@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { Bell, Check, Share2 } from "lucide-react";
+import { Bell, Check, Share2, ShieldCheck, ShieldX, type LucideIcon } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,18 @@ type NotificationsResponse = {
   items: NotificationItem[];
   unread: number;
 };
+
+// Ikon + warna per jenis notifikasi. Sertifikasi (Tahap 55) pakai perisai:
+// hijau "diberi", abu "dicabut" (dibedakan dari judul). Selain itu → Share2.
+function visualFor(n: NotificationItem): { Icon: LucideIcon; wrap: string } {
+  if (n.type === "agent_certification") {
+    const revoked = /dicabut/i.test(n.title);
+    return revoked
+      ? { Icon: ShieldX, wrap: "bg-muted text-muted-foreground" }
+      : { Icon: ShieldCheck, wrap: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" };
+  }
+  return { Icon: Share2, wrap: "bg-primary/10 text-primary" };
+}
 
 function timeAgo(dateStr: string): string {
   const date = new Date(dateStr);
@@ -126,7 +138,9 @@ export function NotificationBell() {
             </div>
           ) : (
             <ul className="divide-y divide-border">
-              {items.map((n) => (
+              {items.map((n) => {
+                const { Icon, wrap } = visualFor(n);
+                return (
                 <li key={n.id}>
                   <button
                     type="button"
@@ -138,8 +152,8 @@ export function NotificationBell() {
                     data-testid={`item-notification-${n.id}`}
                   >
                     <div className="mt-0.5 shrink-0">
-                      <span className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center">
-                        <Share2 className="h-3.5 w-3.5" />
+                      <span className={cn("w-7 h-7 rounded-full flex items-center justify-center", wrap)}>
+                        <Icon className="h-3.5 w-3.5" />
                       </span>
                     </div>
                     <div className="min-w-0 flex-1">
@@ -158,7 +172,8 @@ export function NotificationBell() {
                     )}
                   </button>
                 </li>
-              ))}
+                );
+              })}
             </ul>
           )}
         </ScrollArea>
