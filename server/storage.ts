@@ -946,6 +946,7 @@ export class MemStorage implements IStorage {
       widgetWelcomeMessage: insertAgent.widgetWelcomeMessage || "",
       widgetButtonIcon: insertAgent.widgetButtonIcon || "chat",
       isListed: insertAgent.isListed ?? false,
+      isCertified: (insertAgent as any).isCertified ?? false,
       productSummary: insertAgent.productSummary || "",
       productFeatures: insertAgent.productFeatures || [],
       productPricing: insertAgent.productPricing || {},
@@ -1047,6 +1048,7 @@ export class MemStorage implements IStorage {
       imageHookPrompts: (data as any).imageHookPrompts !== undefined ? (data as any).imageHookPrompts : (agent as any).imageHookPrompts,
       videoReelPrompts: (data as any).videoReelPrompts !== undefined ? (data as any).videoReelPrompts : (agent as any).videoReelPrompts,
       metaPixelId: (data as any).metaPixelId !== undefined ? (data as any).metaPixelId : (agent as any).metaPixelId,
+      isCertified: (data as any).isCertified !== undefined ? (data as any).isCertified : (agent as any).isCertified,
     };
     
     this.agents.set(id, updated);
