@@ -5294,6 +5294,7 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
         productSummary: agentsTable.productSummary, productFeatures: agentsTable.productFeatures,
         agenticSubAgents: agentsTable.agenticSubAgents,
         parentAgentId: agentsTable.parentAgentId,
+        userId: agentsTable.userId,
       }).from(agentsTable).where(agentWhere).orderBy(agentsTable.id);
 
       // Count direct child agents per parent for accurate team-size pricing
@@ -5364,6 +5365,9 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
             originalPrice: calcOriginalPrice(effectiveTotal),
             agentCount: effectiveTotal,
             isGustafta: false,
+            // Kreator independen (punya user_id nyata) vs agen resmi/seeded Gustafta (user_id = "").
+            // Dipakai untuk badge transparansi "Pra-Sertifikasi" di kartu Store.
+            isCreatorMade: (a.userId ?? "").trim() !== "",
             type: "agent",
           };
         });

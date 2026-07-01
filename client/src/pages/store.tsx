@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Loader2, Bot, ShoppingCart, Smartphone, Search,
   ChevronLeft, ChevronRight, Layers, CheckCircle2, Info, X, MessageCircle,
-  Wrench, Sparkles,
+  Wrench, Sparkles, ShieldAlert,
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { trackViewContent, trackInitiateCheckout } from "@/lib/meta-pixel";
@@ -54,6 +54,7 @@ interface AgentProduct {
   originalPrice?: number | null;
   agentId?: number | null;
   agentCount?: number;
+  isCreatorMade?: boolean;
   type?: string;
 }
 
@@ -806,6 +807,12 @@ function AgentCard({ agent, onBuy, onDetail }: { agent: AgentProduct; onBuy: (a:
             <Badge className={`text-xs px-2 py-0 border ${tier.className}`}>
               {tier.label}
             </Badge>
+            {agent.isCreatorMade && (
+              <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-xs px-2 py-0 flex items-center gap-1"
+                data-testid={`badge-pra-sertifikasi-${agent.id}`} title="Dibuat kreator independen — belum bersertifikat. Periksa dulu sebelum membeli.">
+                <ShieldAlert className="h-2.5 w-2.5" />Pra-Sertifikasi
+              </Badge>
+            )}
           </div>
         </div>
 
