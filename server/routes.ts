@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { parseSubAgentsValue } from "./db-storage";
 import { db } from "./db";
 import { customDomains, trialRequests, subscriptionsTable, vouchers, series as seriesTable, bigIdeas as bigIdeasTable, toolboxes as toolboxesTable, agents as agentsTable, cores as coresTable, systemConfig, clientSubscriptions } from "@shared/schema";
 import { users } from "@shared/models/auth";
@@ -5489,7 +5490,7 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
           id: agentsTable.id,
           agenticSubAgents: agentsTable.agenticSubAgents,
         }).from(agentsTable).where(inArray(agentsTable.id, spLinkedAgentIds));
-        for (const r of linkedAgentRows) agentSubMap.set(r.id, r.agenticSubAgents);
+        for (const r of linkedAgentRows) agentSubMap.set(r.id, parseSubAgentsValue(r.agenticSubAgents));
       }
 
       const storeProductItems = spRows.map((p) => {
@@ -5584,7 +5585,7 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
           if (spAgentIds.has(a.id)) return false;
           if (a.parentAgentId != null) return false;
           // Only include chatbot bundles (2+ components) — single agents not sold standalone
-          const subCount = Array.isArray(a.agenticSubAgents) ? a.agenticSubAgents.length : 0;
+          const subCount = parseSubAgentsValue(a.agenticSubAgents).length;
           const childCount = childCountMap.get(a.id) ?? 0;
           if ((1 + Math.max(subCount, childCount)) < 2) return false;
           // Gerbang persetujuan publikasi: agen buatan kreator independen (punya user_id nyata)
@@ -5595,7 +5596,7 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
           return true;
         })
         .map((a) => {
-          const subCount = Array.isArray(a.agenticSubAgents) ? a.agenticSubAgents.length : 0;
+          const subCount = parseSubAgentsValue(a.agenticSubAgents).length;
           const childCount = childCountMap.get(a.id) ?? 0;
           const effectiveTotal = 1 + Math.max(subCount, childCount);
           // Harga lisensi efektif: band kelas (berkelas) atau harga bebas / DEFAULT (non-kelas).
@@ -5706,12 +5707,12 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
           .filter((a) => {
             if (spAgentIds.has(a.id)) return false;
             if (a.parentAgentId != null) return false;
-            const sub = Array.isArray(a.agenticSubAgents) ? a.agenticSubAgents.length : 0;
+            const sub = parseSubAgentsValue(a.agenticSubAgents).length;
             return sub >= 1;
           })
           .slice(0, FEATURED_LIMIT - mitraSpItems.length)
           .map((a) => {
-            const sub = Array.isArray(a.agenticSubAgents) ? a.agenticSubAgents.length : 0;
+            const sub = parseSubAgentsValue(a.agenticSubAgents).length;
             return {
               id: `ag-${a.id}`,
               agentId: a.id,
@@ -19932,7 +19933,7 @@ POLA KERJA: ELICIT (pahami tahap & niat) → DISPATCH (agen sesuai kebutuhan) �
         )
         .orderBy(desc(agentsTable.id));
 
-      res.json(teams);
+      res.json(teams.map((t) => ({ ...t, agenticSubAgents: parseSubAgentsValue(t.agenticSubAgents) })));
     } catch (err: any) {
       console.error("[/api/tutor-builder/teams]", err);
       res.status(500).json({ error: err.message || "Gagal mengambil daftar tim" });
