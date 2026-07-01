@@ -29,6 +29,7 @@ import SeriesDetail from "@/pages/series-detail";
 import SectorLanding from "@/pages/sector-landing";
 import ProductLanding from "@/pages/product-landing";
 import EkosistemLanding from "@/pages/ekosistem-landing";
+import DocgenStudio from "@/pages/docgen-studio";
 import ModulChat from "@/pages/modul-chat";
 import PacksPage from "@/pages/packs";
 import WorkshopPage from "@/pages/workshop";
@@ -423,6 +424,7 @@ function Router() {
       <Route path="/series" component={SeriesCatalog} />
       <Route path="/series/:slug" component={SeriesDetail} />
       <Route path="/sector/:sectorId" component={SectorLanding} />
+      <Route path="/docgen/:agentId" component={DocgenStudio} />
       <Route path="/product/:agentId/:product" component={EkosistemLanding} />
       <Route path="/product/:agentId" component={ProductLanding} />
       <Route path="/modul/:bigIdeaId" component={ModulChat} />

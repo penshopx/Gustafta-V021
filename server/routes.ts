@@ -8199,6 +8199,90 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
     }
   });
 
+  // ─── DocGen Studio: eksekusi generator dokumen berbasis KB agen (SSE) ─────
+  app.post("/api/agents/:id/docgen/generate", async (req: any, res) => {
+    try {
+      const agentId = req.params.id as string;
+      const agent = await storage.getAgent(agentId);
+      if (!agent) return res.status(404).json({ error: "Agent tidak ditemukan" });
+
+      const auth = assertCanPreviewAgentPrompt(req, agent);
+      if (!auth.ok && (agent as any).isPublic !== true) {
+        return res.status(403).json({ error: "Forbidden: agen ini tidak publik" });
+      }
+      if ((agent as any).isEnabled === false) {
+        return res.status(503).json({ error: "Chatbot sedang tidak aktif.", disabled: true });
+      }
+
+      const { docType, context } = req.body as { docType?: string; context?: string };
+      if (!docType || typeof docType !== "string" || !context || typeof context !== "string" || context.trim().length < 10) {
+        return res.status(400).json({ error: "docType dan context (min. 10 karakter) wajib diisi" });
+      }
+
+      const kbs = await storage.getKnowledgeBases(agentId);
+      let kbRef = "";
+      let used = 0;
+      for (const kb of kbs) {
+        const content = String((kb as any).content || "").trim();
+        if (!content) continue;
+        const chunk = content.slice(0, 1500);
+        if (used + chunk.length > 6000) break;
+        kbRef += `\n\n[Referensi: ${(kb as any).name || "KB"}]\n${chunk}`;
+        used += chunk.length;
+      }
+
+      const userPrompt = `Buat dokumen "${docType.slice(0, 120)}" yang lengkap dan profesional untuk domain "${agent.name}".
+
+Konteks/kebutuhan dari pengguna:
+${context.trim().slice(0, 3000)}
+${kbRef ? `\nGunakan referensi Knowledge Base berikut sebagai dasar substansi (regulasi, istilah, prosedur):${kbRef}` : ""}
+
+Instruksi:
+- Format Markdown rapi dengan heading yang sesuai
+- Untuk checklist/form gunakan tabel Markdown (No | Item | Status | Keterangan)
+- Untuk surat/berita acara: kop (placeholder), nomor, tanggal, isi lengkap, blok tanda tangan
+- Bahasa Indonesia formal, sesuai standar konstruksi/profesi Indonesia
+- Dokumen komprehensif dan siap pakai — jangan biarkan bagian kosong`;
+
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
+      res.setHeader("X-Accel-Buffering", "no");
+      res.flushHeaders();
+
+      const { OpenAI } = await import("openai");
+      const openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const abortController = new AbortController();
+      req.on("close", () => abortController.abort());
+      const stream = await openaiClient.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: `Kamu adalah asisten dokumen profesional untuk domain ${agent.name}. Hasilkan dokumen kerja Indonesia berkualitas tinggi, lengkap, dan siap pakai.` },
+          { role: "user", content: userPrompt },
+        ],
+        max_tokens: 3500,
+        stream: true,
+      }, { signal: abortController.signal });
+
+      for await (const chunk of stream) {
+        if (abortController.signal.aborted) break;
+        const content = chunk.choices[0]?.delta?.content ?? "";
+        if (content) res.write(`data: ${JSON.stringify({ choices: [{ delta: { content } }] })}\n\n`);
+      }
+      if (!abortController.signal.aborted) {
+        res.write("data: [DONE]\n\n");
+        res.end();
+      }
+    } catch (err: any) {
+      console.error("[/api/agents/:id/docgen/generate]", err);
+      if (res.headersSent) {
+        res.write(`data: ${JSON.stringify({ error: err?.message || "Gagal generate dokumen" })}\n\n`);
+        return res.end();
+      }
+      return res.status(500).json({ error: err?.message || "Gagal generate dokumen." });
+    }
+  });
+
   // ==================== AI Marketing Tools ====================
 
   app.post("/api/agents/:id/marketing/generate", isAuthenticated, async (req: any, res) => {
@@ -14058,7 +14142,16 @@ Jika informasi tidak ditemukan, isi dengan string kosong "".
 
       res.json({ total: data.recordsTotal || rows.length, data: result });
     } catch (err: any) {
-      res.status(500).json({ error: err.message, data: [] });
+      const msg = String(err?.message || "");
+      const isNetwork = /fetch failed|timeout|abort|ENOTFOUND|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN/i.test(msg) || err?.name === "TimeoutError" || err?.name === "AbortError";
+      if (isNetwork) {
+        return res.status(503).json({
+          error: "Sumber data SIRUP LKPP sedang tidak dapat dijangkau dari server. Coba lagi nanti atau kunjungi sirup.lkpp.go.id langsung.",
+          sourceUnreachable: true,
+          data: [],
+        });
+      }
+      res.status(500).json({ error: msg, data: [] });
     }
   });
 

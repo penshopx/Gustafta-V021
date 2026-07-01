@@ -27,4 +27,5 @@
 - [KB endpoint authz parity](kb-endpoint-authz.md) — every /api/knowledge-base/* gates on OWNING AGENT (read=assertCanAccessAgentChat, mutate=assertCanMutateAgent), never isAuthenticated-only; add to agent-authz-guard.test.ts.
 - [Conversation/voice API authz](conversation-api-authz.md) — Replit chat/audio integration ships /api/conversations* with NO auth + NO owner column (IDOR); must add userId, isAuthenticated, ownership checks on import.
 - [AI Organization Blueprint](organization-blueprint.md) — Fase 3: Blueprint flow designs a TEAM of agents; members ref each other by localId (not agentId), wiring source-of-truth = org structure.edges, resolved to agenticSubAgents at config time.
+- [Public-agent SSE authz](public-agent-sse-authz.md) — deny gate must be `isPublic !== true`, never userId-based (legacy no-owner agents leak); SSE streams need req close → abort upstream LLM.
 - [jsonb double-encoding](jsonb-double-encoding.md) — jsonb column can store a JSON *string*; Array.isArray gates then silently skip orchestration. Normalize at read+write; audit with jsonb_typeof.

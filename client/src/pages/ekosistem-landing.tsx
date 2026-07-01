@@ -634,7 +634,7 @@ function MiniAppsLanding({ agent, agentId }: { agent: AgentPublic; agentId: stri
 
 // ─── DocGen Landing ───────────────────────────────────────────────────────
 function DocgenLanding({ agent, agentId }: { agent: AgentPublic; agentId: string }) {
-  const openUrl = `/api/agents/${agentId}/export/docgen`;
+  const openUrl = `/docgen/${agentId}`;
   const docTypes = [
     { icon: ClipboardList, name: "Checklist Proyek", desc: "Daftar pemeriksaan pekerjaan terstruktur" },
     { icon: FileText, name: "SOP Lapangan", desc: "Prosedur operasional standar kegiatan konstruksi" },
@@ -665,11 +665,11 @@ function DocgenLanding({ agent, agentId }: { agent: AgentPublic; agentId: string
             Generator Dokumen otomatis berbasis AI dari chatbot {agent.name} — SOP, checklist, form, laporan, dan dokumen tender siap unduh.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <a href={openUrl} target="_blank" rel="noopener noreferrer">
+            <Link href={openUrl}>
               <Button className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 text-base gap-2" data-testid="button-open-docgen-hero">
                 <FileText className="w-4 h-4" /> Buat Dokumen Sekarang
               </Button>
-            </a>
+            </Link>
             <Link href={`/bot/${agentId}`}>
               <Button variant="outline" className="border-white/20 text-gray-300 hover:bg-white/10 px-6 py-3 gap-2">
                 <MessageSquare className="w-4 h-4" /> Tanya Chatbot Asisten
@@ -728,11 +728,11 @@ function DocgenLanding({ agent, agentId }: { agent: AgentPublic; agentId: string
         <div className="container mx-auto px-4 max-w-2xl">
           <h2 className="text-3xl font-extrabold mb-4">Buat Dokumen Proyek Anda</h2>
           <p className="text-gray-300 mb-8">Gratis, otomatis, dan siap unduh</p>
-          <a href={openUrl} target="_blank" rel="noopener noreferrer">
+          <Link href={openUrl}>
             <Button className="bg-blue-600 hover:bg-blue-500 px-10 py-4 text-lg font-semibold gap-2" data-testid="button-open-docgen-cta">
               <FileText className="w-5 h-5" /> Generate Dokumen Sekarang
             </Button>
-          </a>
+          </Link>
         </div>
       </section>
 
