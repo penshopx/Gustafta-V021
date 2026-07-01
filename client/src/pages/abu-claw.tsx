@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { AiTransparencyLabel } from "@/components/ai-transparency-label";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -173,6 +174,7 @@ function ChatMessage({ msg }: { msg: Message }) {
             </span>
           ) : <MessageContent text={msg.content} className="text-sm" />}
         </div>
+        <AiTransparencyLabel msg={msg} />
         {msg.subAgents && msg.subAgents.length > 0 && (
           <SubAgentPanel agents={msg.subAgents} />
         )}
