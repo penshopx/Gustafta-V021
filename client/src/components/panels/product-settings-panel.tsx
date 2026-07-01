@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ShoppingBag, Globe, DollarSign, Shield, Tag, Copy, ExternalLink, Check, Plus, Trash2, Target, Lightbulb, CreditCard, Link2, Zap, Loader2 } from "lucide-react";
+import { ShoppingBag, Globe, DollarSign, Shield, ShieldAlert, Tag, Copy, ExternalLink, Check, Plus, Trash2, Target, Lightbulb, CreditCard, Link2, Zap, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -190,15 +190,24 @@ export function ProductSettingsPanel({ agent }: { agent: any }) {
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between gap-2">
                 <div className="space-y-0.5">
-                  <Label>Tampilkan di Marketplace</Label>
-                  <p className="text-xs text-muted-foreground">Chatbot akan muncul di katalog publik</p>
+                  <Label>Terbitkan ke Store</Label>
+                  <p className="text-xs text-muted-foreground">Chatbot akan muncul di katalog Store publik</p>
                 </div>
                 <Switch
                   checked={settings.isListed}
                   onCheckedChange={(checked) => setSettings({ ...settings, isListed: checked })}
-                 
+                  data-testid="switch-terbitkan-store"
                 />
               </div>
+
+              {settings.isListed && (
+                <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20 px-3 py-2.5" data-testid="notice-terbitkan-pra-sertifikasi">
+                  <ShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                  <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+                    Saat tayang, chatbot Anda muncul di Store dengan label <strong>"Pra-Sertifikasi"</strong> sampai Anda mengikuti workshop &amp; lulus sertifikasi Gustafta. Pastikan chatbot sudah Anda uji dan siap dipakai — Anda bertanggung jawab atas isinya.
+                  </p>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label>Ringkasan Produk</Label>
