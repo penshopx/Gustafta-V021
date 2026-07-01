@@ -170,6 +170,9 @@ export const agents = pgTable("agents", {
   widgetButtonIcon: text("widget_button_icon").default("chat"),
   // Product/Monetization Settings
   isListed: boolean("is_listed").default(false),
+  // Status "Bersertifikat" — HANYA boleh dinaikkan admin setelah kreator lulus
+  // workshop & sertifikasi Gustafta. Terpisah dari isListed ("terbit" ≠ "bersertifikat").
+  isCertified: boolean("is_certified").default(false),
   productSummary: text("product_summary").default(""),
   productFeatures: jsonb("product_features").default([]),
   productUseCases: text("product_use_cases").default(""),
@@ -847,6 +850,7 @@ export const insertAgentSchema = z.object({
   widgetButtonIcon: z.enum(["chat", "message", "bot", "help"]).optional().default("chat"),
   // Product/Monetization Settings
   isListed: z.boolean().optional().default(false),
+  isCertified: z.boolean().optional().default(false),
   productSummary: z.string().optional().default(""),
   productFeatures: z.array(z.string()).optional().default([]),
   productUseCases: z.string().optional().default(""),

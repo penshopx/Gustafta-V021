@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ShoppingBag, Globe, DollarSign, Shield, ShieldAlert, Tag, Copy, ExternalLink, Check, Plus, Trash2, Target, Lightbulb, CreditCard, Link2, Zap, Loader2 } from "lucide-react";
+import { ShoppingBag, Globe, DollarSign, Shield, ShieldAlert, ShieldCheck, Tag, Copy, ExternalLink, Check, Plus, Trash2, Target, Lightbulb, CreditCard, Link2, Zap, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -200,11 +200,20 @@ export function ProductSettingsPanel({ agent }: { agent: any }) {
                 />
               </div>
 
-              {settings.isListed && (
+              {settings.isListed && !agent.isCertified && (
                 <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20 px-3 py-2.5" data-testid="notice-terbitkan-pra-sertifikasi">
                   <ShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                   <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
                     Saat tayang, chatbot Anda muncul di Store dengan label <strong>"Pra-Sertifikasi"</strong> sampai Anda mengikuti workshop &amp; lulus sertifikasi Gustafta. Pastikan chatbot sudah Anda uji dan siap dipakai — Anda bertanggung jawab atas isinya.
+                  </p>
+                </div>
+              )}
+
+              {agent.isCertified && (
+                <div className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/20 px-3 py-2.5" data-testid="status-bersertifikat">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                  <p className="text-xs text-emerald-800 dark:text-emerald-300 leading-relaxed">
+                    Chatbot ini sudah <strong>Bersertifikat</strong> — Anda telah lulus workshop &amp; sertifikasi Gustafta. Badge hijau "Bersertifikat" tampil di Store.
                   </p>
                 </div>
               )}
