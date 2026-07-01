@@ -797,7 +797,7 @@ export default function Landing() {
                 badge: "bg-violet-600",
                 title: "Bangun AI Anda Sendiri di GUSTAFTA Builder",
                 desc: "Dengan GUSTAFTA Builder Anda dapat merakit AI Assistant, Chatbot AI, AI Agent, Multi-Agent, Knowledge Base, Mini Apps, Workflow AI, dan OpenClaw Configuration — semuanya secara visual tanpa coding. Teknologi AI terbaru sudah tersedia.",
-                items: ["AI Assistant & Chatbot AI", "AI Agent & Multi-Agent", "Knowledge Base & Mini Apps", "Workflow AI & OpenClaw", "Tanpa coding · Semua via form"],
+                items: ["AI Assistant & Chatbot AI", "AI Agent & Multi-Agent", "Knowledge Base & Mini Apps", "Blueprint Builder — rancang lewat dialog", "Rakit Tim AI — satu misi jadi tim agen", "Kolaborasi & berbagi chatbot dengan tim", "Workflow AI & OpenClaw", "Tanpa coding · Semua via form"],
                 cta: "Masuk ke Builder", href: builderUrl,
               },
               {
@@ -806,7 +806,7 @@ export default function Landing() {
                 badge: "bg-emerald-600",
                 title: "AI yang Anda Rakit Mulai Bekerja",
                 desc: "Gunakan AI untuk membantu pelanggan, menyusun laporan, membuat proposal, menghasilkan dokumen, membuat SOP, menghitung RAB, membuat kontrak, menyusun materi pelatihan. Atau gunakan chatbot siap pakai dari GUSTAFTA Store.",
-                items: ["Bantu pelanggan 24/7", "Generate dokumen & kontrak", "Hitung RAB & estimasi biaya", "Susun materi pelatihan", "Pendamping proses sertifikasi"],
+                items: ["Bantu pelanggan 24/7", "Generate dokumen & kontrak", "Hitung RAB & estimasi biaya", "Susun materi pelatihan", "Pendamping proses sertifikasi", "Chatbot bersertifikat & tepercaya"],
                 cta: "Lihat Chatbot Store", href: "/store",
               },
               {
@@ -871,6 +871,70 @@ export default function Landing() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── BARU DI GUSTAFTA ── */}
+      <section className="py-16 px-4 bg-white dark:bg-background">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-10">
+            <p className="text-xs font-bold text-violet-600 dark:text-violet-400 uppercase tracking-widest mb-2">✨ Baru di Gustafta</p>
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-3">
+              Kini AI Bukan Lagi Kerja Sendirian
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 max-w-xl mx-auto">
+              Rakit tim AI, kerja bareng rekan, dan bangun kepercayaan lewat chatbot bersertifikat — semuanya dalam satu platform.
+            </p>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            {[
+              {
+                emoji: "🤝",
+                accent: "border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/20",
+                title: "Kolaborasi Tim",
+                desc: "Bagikan chatbot ke rekan lewat email dan atur perannya. Undangan otomatis aktif saat mereka mendaftar, lengkap dengan notifikasi di dalam aplikasi.",
+                cta: "Kelola di Dashboard", href: builderUrl,
+              },
+              {
+                emoji: "🧩",
+                accent: "border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/20",
+                title: "Rakit Tim AI",
+                desc: "Cukup ceritakan satu misi — Gustafta menyusunkan satu tim agen AI lengkap yang saling bekerja sama, bukan hanya satu chatbot.",
+                cta: "Coba Rakit Tim AI", href: "/organization-builder",
+              },
+              {
+                emoji: "💬",
+                accent: "border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/20",
+                title: "Blueprint Builder",
+                desc: "Rancang chatbot Anda lewat dialog terpandu. Jawab beberapa pertanyaan, dan konfigurasi siap pakai langsung terbentuk — tanpa teknis.",
+                cta: "Mulai Blueprint", href: "/blueprint-builder",
+              },
+              {
+                emoji: "✅",
+                accent: "border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20",
+                title: "Chatbot Bersertifikat",
+                desc: "Chatbot tepercaya di GUSTAFTA Store kini punya badge \"Bersertifikat\" — jaminan kualitas agar pembeli lebih yakin memilih.",
+                cta: "Lihat di Store", href: "/store",
+              },
+            ].map((f) => (
+              <div key={f.title} className={`rounded-2xl border ${f.accent} p-6 flex flex-col`}>
+                <div className="text-3xl mb-3">{f.emoji}</div>
+                <h3 className="text-base font-bold text-gray-900 dark:text-white mb-2">{f.title}</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed mb-4 flex-1">{f.desc}</p>
+                <Link href={f.href}>
+                  <Button size="sm" variant="outline" className="text-xs h-8 gap-1.5" data-testid={`btn-baru-${f.title.toLowerCase().replace(/\s+/g, "-")}`}>
+                    {f.cta} <ArrowRight className="w-3 h-3" />
+                  </Button>
+                </Link>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-6 flex items-center justify-center gap-2 text-xs text-gray-500 dark:text-gray-400 text-center">
+            <span>🔎</span>
+            <span>Transparan &amp; jujur: setiap jawaban AI diberi label agar Anda tahu mana yang perlu diperiksa sebelum dipakai.</span>
           </div>
         </div>
       </section>
