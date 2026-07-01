@@ -331,6 +331,56 @@ const KREASI_BLUEPRINTS: BlueprintMeta[] = [
   },
 ];
 
+// ─── Creator profiles (Buku III Bab 1 — Lanskap Kreator) ────────────────────
+interface CreatorProfile {
+  id: string;
+  label: string;
+  persona: string;
+  definition: string;
+  medium: string;
+  recommended: string[];
+  icon: React.ReactNode;
+}
+
+const CREATOR_PROFILES: CreatorProfile[] = [
+  {
+    id: "mikro-insidental",
+    label: "Mikro-Insidental",
+    persona: "seperti Bu Yanti",
+    definition: "Berbagi dari keseharian, jangkauan organik, monetisasi belum jadi prioritas. Butuh sistem ringan — bukan tim besar.",
+    medium: "Video pendek / foto harian",
+    recommended: ["studio-personal"],
+    icon: <Zap className="w-5 h-5" />,
+  },
+  {
+    id: "karya-berat",
+    label: "Karya-Berat",
+    persona: "seperti Pak Soni",
+    definition: "Membangun karya durasi panjang (buku, kursus, dokumenter). Output sedikit tapi mendalam — agen menyelamatkan dari 'tidak pernah selesai'.",
+    medium: "Tulisan / buku / kursus",
+    recommended: ["penerbit-mikro"],
+    icon: <BookText className="w-5 h-5" />,
+  },
+  {
+    id: "storyteller",
+    label: "Storyteller",
+    persona: "seperti Dion",
+    definition: "Medium audio-visual (podcast, video), audiens loyal, rilis terjadwal. Agen memangkas 60–70% waktu eksekusi teknis.",
+    medium: "Podcast / video panjang",
+    recommended: ["studio-audio", "pipeline-konten", "studio-visual"],
+    icon: <Radio className="w-5 h-5" />,
+  },
+  {
+    id: "komunitas",
+    label: "Komunitas",
+    persona: "seperti Lulu",
+    definition: "Nilainya bukan konten satu-arah, tapi ruang yang dibangun — komunitas, forum, kursus. Monetisasi paling stabil.",
+    medium: "Komunitas / membership",
+    recommended: ["komunitas-builder"],
+    icon: <Users className="w-5 h-5" />,
+  },
+];
+
 const TABS: TabDef[] = [
   {
     id: "dialog",
@@ -363,13 +413,21 @@ const TABS: TabDef[] = [
 
 // ─── Blueprint Card ─────────────────────────────────────────────────────────
 
-function BlueprintCard({ bp, onSelect }: { bp: BlueprintMeta; onSelect: (bp: BlueprintMeta) => void }) {
+function BlueprintCard({ bp, onSelect, recommended = false }: { bp: BlueprintMeta; onSelect: (bp: BlueprintMeta) => void; recommended?: boolean }) {
   return (
     <div
-      className={`rounded-xl border bg-gradient-to-br ${bp.bgGradient} p-5 flex flex-col gap-3 hover:shadow-md transition-all duration-200 cursor-pointer group`}
+      className={`rounded-xl border bg-gradient-to-br ${bp.bgGradient} p-5 flex flex-col gap-3 hover:shadow-md transition-all duration-200 cursor-pointer group ${recommended ? "ring-2 ring-rose-400 dark:ring-rose-500/60 border-rose-300 dark:border-rose-700" : ""}`}
       onClick={() => onSelect(bp)}
       data-testid={`card-blueprint-${bp.id}`}
     >
+      {recommended && (
+        <span
+          className="inline-flex self-start items-center gap-1 text-[10px] font-semibold text-rose-600 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/50 rounded-full px-2 py-0.5"
+          data-testid={`badge-recommended-${bp.id}`}
+        >
+          <Star className="w-2.5 h-2.5" /> Direkomendasikan untukmu
+        </span>
+      )}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <div className="w-10 h-10 rounded-lg bg-white/70 dark:bg-white/10 flex items-center justify-center shadow-sm shrink-0">
@@ -773,8 +831,18 @@ export default function TutorBuilderPage() {
   const [activeTab, setActiveTab] = useState("dialog");
   const [selectedBlueprint, setSelectedBlueprint] = useState<BlueprintMeta | null>(null);
   const [successState, setSuccessState] = useState<{ orchestratorId: number; teamName: string } | null>(null);
+  const [creatorProfile, setCreatorProfile] = useState<string | null>(null);
 
   const currentTab = TABS.find((t) => t.id === activeTab)!;
+  const activeProfile = activeTab === "kreasi" && creatorProfile
+    ? CREATOR_PROFILES.find((p) => p.id === creatorProfile) ?? null
+    : null;
+  const recommendedIds = new Set(activeProfile?.recommended ?? []);
+  const displayedBlueprints = activeProfile
+    ? [...currentTab.blueprints].sort(
+        (a, b) => (recommendedIds.has(b.id) ? 1 : 0) - (recommendedIds.has(a.id) ? 1 : 0),
+      )
+    : currentTab.blueprints;
   const totalBlueprints = TABS.reduce((acc, t) => acc + t.blueprints.length, 0);
   const totalAgents = TABS.flatMap((t) => t.blueprints).reduce((acc, bp) => acc + bp.agentCount, 0);
 
@@ -897,10 +965,67 @@ export default function TutorBuilderPage() {
                 </div>
               </div>
 
+              {/* Creator profile selector — Kreasi only (Buku III Bab 1) */}
+              {currentTab.id === "kreasi" && (
+                <div className="rounded-xl border bg-muted/20 p-4 space-y-3" data-testid="panel-creator-profile">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-xs font-semibold flex items-center gap-1.5">
+                        <UserCheck className="w-3.5 h-3.5 text-rose-500" /> Kamu kreator seperti apa?
+                      </p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        Sebelum bertanya "agen apa yang harus saya rakit?", kenali dulu profilmu (Buku III Bab 1). Kami tandai blueprint yang paling cocok.
+                      </p>
+                    </div>
+                    {creatorProfile && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-[11px] gap-1 shrink-0"
+                        onClick={() => setCreatorProfile(null)}
+                        data-testid="button-reset-profile"
+                      >
+                        <RotateCcw className="w-3 h-3" /> Reset
+                      </Button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+                    {CREATOR_PROFILES.map((p) => {
+                      const active = creatorProfile === p.id;
+                      return (
+                        <button
+                          key={p.id}
+                          onClick={() => setCreatorProfile(active ? null : p.id)}
+                          data-testid={`button-profile-${p.id}`}
+                          className={`text-left rounded-lg border p-3 transition-all ${
+                            active
+                              ? "border-rose-400 bg-rose-50 dark:bg-rose-950/30 ring-1 ring-rose-300 dark:ring-rose-600"
+                              : "bg-background hover:border-border hover:shadow-sm"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-rose-500">{p.icon}</span>
+                            <span className="text-xs font-semibold">{p.label}</span>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground italic mb-1">{p.persona} · {p.medium}</p>
+                          <p className="text-[10px] text-muted-foreground leading-snug line-clamp-3">{p.definition}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {activeProfile && (
+                    <p className="text-[11px] text-rose-600 dark:text-rose-400 flex items-center gap-1.5" data-testid="text-profile-hint">
+                      <Star className="w-3 h-3 shrink-0" />
+                      Blueprint bertanda "Direkomendasikan" di bawah paling cocok untuk profil {activeProfile.label}.
+                    </p>
+                  )}
+                </div>
+              )}
+
               {/* Blueprint grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {currentTab.blueprints.map((bp) => (
-                  <BlueprintCard key={bp.id} bp={bp} onSelect={setSelectedBlueprint} />
+                {displayedBlueprints.map((bp) => (
+                  <BlueprintCard key={bp.id} bp={bp} onSelect={setSelectedBlueprint} recommended={recommendedIds.has(bp.id)} />
                 ))}
               </div>
             </div>

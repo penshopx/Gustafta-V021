@@ -166,3 +166,8 @@ Menambah tim kreator baru di tab Kreasi `tutor-builder.tsx`. **Pola dual-entry W
 ## Tahap 41 — Blueprint kreator "studio-personal" (Buku III Bab 2, Studio Personal/Rizky)
 Menambah tim kreator solo (1 manusia + 5 agen: Riset, Naskah, Editor Teknis, Komunitas, Analitik) via pola dual-entry yang sama (kartu klien `KREASI_BLUEPRINTS` + entri server `TUTOR_BLUEPRINTS["studio-personal"]`, `agentCount:6`). Prompt menanamkan 5 prinsip + 4 Gerbang Manusia (thumbnail/suara brand, baca eskalasi DM ter-batch, setujui brand deal, label transparansi); tanpa "Agen CEO".
 - **Milestone:** dengan Tahap 41, SEMUA 7 bab Buku III (KREASI) kini punya blueprint kreasi (Bab 1 profil-selector konseptual masih terpisah). Kandidat Tahap 42+ bergeser ke infra lintas-bab: pemilih profil kreator (Bab 1), gerbang krisis (Bab 7), one-click publish Builder→Store (monetisasi), atribusi transparansi.
+
+## Tahap 42 — Pemilih Profil Kreator (Buku III Bab 1)
+Selektor 4 arketipe kreator (Mikro-Insidental, Karya-Berat, Storyteller, Komunitas) di tab Kreasi `tutor-builder.tsx`. **Klien-saja, aditif** — tidak menyentuh server/create-team. Pola: data `CREATOR_PROFILES` (tiap profil punya `recommended[]` id blueprint) → panel selektor hanya render saat `activeTab==="kreasi"` → `BlueprintCard` terima prop opsional `recommended?` (badge + ring). Sort rekomendasi ke depan pakai `[...arr].sort` (non-mutasi source).
+- **Why:** Bab 1 tak punya "tim" sendiri — ia pengarah; jadi bukan blueprint dual-entry, cukup UI klien yang memetakan profil → blueprint yang sudah ada.
+- **How to apply:** kalau tambah blueprint kreasi baru, pertimbangkan tambahkan id-nya ke `recommended[]` profil yang relevan agar muncul di rekomendasi.
