@@ -482,7 +482,7 @@ export default function GustaFtaFrameworkPage() {
                 emoji: "🏢", level: "Perakit Enterprise", cert: "Master AI Assembler",
                 color: "border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/20",
                 badge: "text-orange-700 dark:text-orange-300",
-                ciri: ["Kelola ekosistem AI organisasi", "Trainer & mentor resmi", "Partner & White Label"],
+                ciri: ["Kelola ekosistem AI organisasi", "Trainer & mentor resmi", "Partner Program"],
               },
             ].map((lvl) => (
               <div key={lvl.level} className={`border ${lvl.color} rounded-xl p-5`}>
@@ -531,7 +531,7 @@ export default function GustaFtaFrameworkPage() {
               {
                 icon: "🏗️", num: "P4", label: "AI Studio",
                 sub: "Consulting Division — Kami Rakitkan",
-                desc: "Custom AI, Knowledge Engineering, Onboarding, Prompt Engineering, White Label, Corporate Training.",
+                desc: "Custom AI, Knowledge Engineering, Onboarding, Prompt Engineering, Corporate Training.",
                 color: "border-amber-200 dark:border-amber-800",
               },
               {

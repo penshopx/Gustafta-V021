@@ -33,3 +33,10 @@ Pemilik sempat menyamakan "Starter Kit" sebagai level paling bawah dari tangga t
 **Why:** pemilik ingin menghindari kebingungan harga (orang mengira chatbot jadi kena setup) dan menyaring lead lewat Blueprint sebelum memberi akses gratis.
 
 **How to apply:** saat mengubah copy/CTA/pricing di `landing.tsx` atau `produk.tsx` (atau halaman `/pricing`, `/packs` bila relevan), pastikan tidak menambah tier gratis permanen, tidak melabeli produk chatbot dengan "setup", dan CTA trial tetap lewat Blueprint.
+
+## White-label — DIHAPUS dari produk (belum siap)
+
+Fitur **white-label** (hapus branding Gustafta / merek sendiri) sengaja **dihapus total** dari penawaran karena Gustafta belum siap menyediakannya. Yang dibersihkan: FeatureKey `white_label` di `shared/feature-plans.ts` (type union + semua plan record + FEATURE_LABELS), map ikon di `my-subscription.tsx`, dan semua copy customer-facing (produk/packs/landing/mitra/gustafta-framework + FAQ KB seed).
+
+**Why:** menawarkan fitur yang belum bisa dipenuhi = janji kosong ke pelanggan/mitra.
+**How to apply:** JANGAN tambah kembali `white_label` sebagai fitur berbayar atau copy pemasaran ("white label", "hapus branding", "merek sendiri") sampai pemilik menyatakan siap. Custom Domain tetap ada dan berbeda dari white-label.
