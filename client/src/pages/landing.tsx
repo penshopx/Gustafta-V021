@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useAuth } from "@/hooks/use-auth";
 import { SharedHeader } from "@/components/shared-header";
-import explainerVideo from "@assets/generated_videos/gustafta_promo_24s.mp4";
+import explainerVideo from "@assets/generated_videos/gustafta_promo_24s_web.mp4";
 import explainerPoster from "@assets/generated_videos/gustafta_promo_24s_poster.jpg";
 import {
   Rocket, ArrowRight, Check, BookOpen, Wrench, Zap, Lightbulb, TrendingUp,
