@@ -1919,6 +1919,14 @@ export async function registerRoutes(
       const updated = await storage.updateAgent(agentId, { isCertified: certified } as any);
       const adminId = (req.user as any)?.claims?.sub || (req.user as any)?.id || "unknown";
       console.log(`[CERTIFICATION] agent#${agentId} isCertified=${certified} oleh admin=${adminId}`);
+      // Bukti historis permanen (tabel), pelengkap console.log yang hilang saat
+      // restart. Fire-and-forget: kegagalan tulis audit TIDAK boleh membatalkan
+      // aksi sertifikasi yang sudah berhasil.
+      try {
+        await storage.addCertificationAudit({ agentId, certified, adminId: String(adminId) });
+      } catch (auditErr: any) {
+        console.error("[certification] gagal tulis jejak audit:", auditErr?.message);
+      }
       res.json({
         success: true,
         id: agentId,
@@ -1931,6 +1939,19 @@ export async function registerRoutes(
     } catch (e: any) {
       console.error("[certification] error:", e?.message);
       res.status(500).json({ error: e?.message || "Gagal memperbarui status sertifikasi" });
+    }
+  });
+
+  // Riwayat jejak audit sertifikasi sebuah agen (admin-only). Menampilkan
+  // urutan grant/cabut "Bersertifikat" dari tabel certification_audit_log.
+  app.get("/api/admin/agents/:id/certification/history", requireAdmin, async (req: any, res) => {
+    try {
+      const agentId = String(req.params.id);
+      const history = await storage.listCertificationAudits(agentId);
+      res.json({ agentId, history });
+    } catch (e: any) {
+      console.error("[certification-history] error:", e?.message);
+      res.status(500).json({ error: e?.message || "Gagal memuat riwayat sertifikasi" });
     }
   });
 

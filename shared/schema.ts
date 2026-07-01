@@ -481,6 +481,22 @@ export const insertPendingAgentInviteSchema = createInsertSchema(pendingAgentInv
 export type InsertPendingAgentInvite = z.infer<typeof insertPendingAgentInviteSchema>;
 export type PendingAgentInvite = typeof pendingAgentInvites.$inferSelect;
 
+// Jejak audit sertifikasi (grant/cabut "Bersertifikat") — bukti historis formal
+// agar keputusan admin tercatat permanen di tabel, bukan hanya console.log yang
+// hilang saat restart. Satu baris per aksi POST /api/admin/agents/:id/certification.
+export const certificationAuditLog = pgTable("certification_audit_log", {
+  id: serial("id").primaryKey(),
+  agentId: integer("agent_id").notNull(),
+  certified: boolean("certified").notNull(),
+  adminId: varchar("admin_id", { length: 255 }).notNull().default(""),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertCertificationAuditSchema = createInsertSchema(certificationAuditLog)
+  .omit({ id: true, createdAt: true });
+export type InsertCertificationAudit = z.infer<typeof insertCertificationAuditSchema>;
+export type CertificationAudit = typeof certificationAuditLog.$inferSelect;
+
 // Pending Premium Privat deliveries — a buyer pays (e.g. via Scalev) for a
 // private premium chatbot but has no Gustafta account yet. We can't clone until
 // we have an owner userId, so we persist the intent here. On the buyer's first

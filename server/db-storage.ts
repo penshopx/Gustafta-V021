@@ -46,6 +46,7 @@ import {
   organizationDrafts,
   agentCollaborators,
   pendingAgentInvites,
+  certificationAuditLog,
   pendingPremiumDeliveries,
   notifications,
 } from "@shared/schema";
@@ -73,7 +74,7 @@ import type {
 import { applyDefaultPolicies } from "./lib/agent-policies";
 import type { IStorage, CollaboratorView } from "./storage";
 import type { ConfigStorage } from "./services/blueprint-engine/configuration-engine";
-import type { AgentCollaborator, CollaboratorRole, PendingAgentInvite, AppliedInviteGrant, Notification, InsertNotification } from "@shared/schema";
+import type { AgentCollaborator, CollaboratorRole, PendingAgentInvite, AppliedInviteGrant, Notification, InsertNotification, CertificationAudit } from "@shared/schema";
 import type {
   Agent,
   InsertAgent,
@@ -1350,6 +1351,28 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(pendingAgentInvites.agentId, aId), eq(pendingAgentInvites.email, normalized)))
       .returning();
     return result.length > 0;
+  }
+
+  async addCertificationAudit(data: { agentId: string; certified: boolean; adminId: string }): Promise<CertificationAudit> {
+    const aId = parseInt(data.agentId);
+    const result = await db.insert(certificationAuditLog)
+      .values({
+        agentId: Number.isNaN(aId) ? 0 : aId,
+        certified: data.certified === true,
+        adminId: data.adminId || "",
+      })
+      .returning();
+    return result[0] as CertificationAudit;
+  }
+
+  async listCertificationAudits(agentId: string): Promise<CertificationAudit[]> {
+    const aId = parseInt(agentId);
+    if (Number.isNaN(aId)) return [];
+    const rows = await db.select()
+      .from(certificationAuditLog)
+      .where(eq(certificationAuditLog.agentId, aId))
+      .orderBy(desc(certificationAuditLog.createdAt));
+    return rows as CertificationAudit[];
   }
 
   async applyPendingInvitesForUser(userId: string, email: string): Promise<AppliedInviteGrant[]> {
