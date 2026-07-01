@@ -201,7 +201,13 @@ export function ChaesaWidget() {
                     {msg.role === "user" ? (
                       <p className="whitespace-pre-wrap">{msg.content}</p>
                     ) : msg.content ? (
-                      <MessageContent text={msg.content} className="text-xs" />
+                      <>
+                        <MessageContent text={msg.content} className="text-xs" />
+                        <div className="mt-1.5 flex items-center gap-1 text-[10px] text-muted-foreground/70" data-testid="label-ai-transparency">
+                          <Bot className="w-2.5 h-2.5" />
+                          <span>Disiapkan oleh asisten AI — periksa hal penting sebelum dipakai</span>
+                        </div>
+                      </>
                     ) : (
                       <div className="flex items-center gap-1 text-muted-foreground">
                         <Loader2 className="w-3 h-3 animate-spin" />
