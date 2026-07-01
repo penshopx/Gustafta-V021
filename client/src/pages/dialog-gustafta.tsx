@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import {
   Send, X, RefreshCw, Share2, Copy, MessageCircle,
   Sparkles, ArrowRight, Check, ChevronRight, RotateCcw, Rocket, Loader2,
+  Mic, MicOff, Paperclip,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -184,6 +185,76 @@ export default function DialogGustaftaPage() {
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const recognitionRef = useRef<any>(null);
+  const sendRef = useRef<() => void>(() => {});
+  const [isListening, setIsListening] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+
+  // ── Speech API ───────────────────────────────────────────────────────────
+  useEffect(() => {
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) return;
+    setSpeechSupported(true);
+    const recognition = new SR();
+    recognition.lang = "id-ID";
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    let final = "";
+    recognition.onstart = () => { setIsListening(true); final = ""; };
+    recognition.onresult = (e: any) => {
+      let interim = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript;
+        if (e.results[i].isFinal) final += t; else interim += t;
+      }
+      setInput(final + interim);
+    };
+    recognition.onend = () => {
+      setIsListening(false);
+      if (final.trim()) setTimeout(() => sendRef.current(), 50);
+    };
+    recognition.onerror = () => setIsListening(false);
+    recognitionRef.current = recognition;
+  }, []);
+
+  const toggleMic = () => {
+    if (!recognitionRef.current) return;
+    if (isListening) { recognitionRef.current.stop(); }
+    else { setInput(""); recognitionRef.current.start(); }
+  };
+
+  // ── File upload ──────────────────────────────────────────────────────────
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    setIsUploading(true);
+    try {
+      for (const file of files) {
+        const fd = new FormData();
+        fd.append("file", file);
+        const r = await fetch("/api/chat/upload", { method: "POST", body: fd });
+        if (!r.ok) continue;
+        const data = await r.json();
+        if (data.category === "audio") {
+          try {
+            const tf = new FormData(); tf.append("file", file);
+            const tr = await fetch("/api/chat/transcribe", { method: "POST", body: tf });
+            if (tr.ok) {
+              const td = await tr.json();
+              if (td.transcript) setInput(prev => prev ? `${prev}\n\n${td.transcript}` : td.transcript);
+            }
+          } catch { /* optional */ }
+        } else {
+          setInput(prev => prev ? `${prev}\n[File: ${data.fileName}]` : `[File: ${data.fileName}]`);
+        }
+      }
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   // ── Load saved session on mount ──────────────────────────────────────────
   useEffect(() => {
@@ -202,6 +273,9 @@ export default function DialogGustaftaPage() {
 
   // ── Auto-focus input ─────────────────────────────────────────────────────
   useEffect(() => { if (!showResume) textareaRef.current?.focus(); }, [showResume]);
+
+  // Keep sendRef in sync for the speech onend callback
+  sendRef.current = () => { if (input.trim() && !loading && !processing) sendMessage(); };
 
   // ── Auto-save ────────────────────────────────────────────────────────────
   const persist = useCallback((overrides: Partial<SavedSession> = {}) => {
@@ -788,34 +862,74 @@ export default function DialogGustaftaPage() {
       {/* Input */}
       <div className="flex-shrink-0 px-4 pb-6 pt-3 border-t border-white/10 bg-[#0a1628]/80 backdrop-blur">
         {!isInputBlocked && (
-          <div className="flex gap-2 items-end">
-            <Textarea
-              ref={textareaRef}
-              value={input}
-              onChange={(e) => {
-                setInput(e.target.value);
-                e.target.style.height = "auto";
-                e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
-              }}
-              onKeyDown={handleKeyDown}
-              placeholder={
-                stage === "s1_chat" ? "Ceritakan bidang atau tantanganmu..." :
-                  stage === "s2_chat" ? "Ceritakan lebih dalam..." :
-                    "Gali lebih jauh — detail, pengalaman nyata..."
-              }
-              className="min-h-[48px] max-h-[120px] resize-none text-sm rounded-xl bg-white/10 border-white/20 text-white placeholder:text-white/40 focus-visible:ring-cyan-500"
-              rows={1}
-            />
-            <Button
-              size="icon"
-              onClick={sendMessage}
-              disabled={!input.trim() || loading}
-              className="shrink-0 h-12 w-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-700 hover:from-cyan-600 hover:to-blue-800 border-0 disabled:opacity-40"
-              data-testid="button-send"
-            >
-              <Send className="w-4 h-4" />
-            </Button>
-          </div>
+          <>
+            {isListening && (
+              <div className="flex items-center gap-2 mb-2">
+                <span className="flex h-2 w-2 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+                </span>
+                <span className="text-xs text-red-400 font-medium">Mendengarkan… bicara sekarang</span>
+              </div>
+            )}
+            <div className="flex gap-2 items-end">
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={loading || isUploading || isListening}
+                className="shrink-0 p-2.5 rounded-xl text-white/40 hover:text-white/70 hover:bg-white/10 disabled:opacity-30 transition-all"
+                title="Lampirkan file (PDF, Word, Excel, gambar, audio, video)"
+                data-testid="button-attach-dialog"
+              >
+                {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Paperclip className="w-4 h-4" />}
+              </button>
+              <input ref={fileInputRef} type="file" multiple className="hidden"
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.jpg,.jpeg,.png,.mp3,.wav,.webm,.ogg,.m4a,.mp4,.mov"
+                onChange={handleFileSelect} />
+              <Textarea
+                ref={textareaRef}
+                value={input}
+                onChange={(e) => {
+                  setInput(e.target.value);
+                  e.target.style.height = "auto";
+                  e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
+                }}
+                onKeyDown={handleKeyDown}
+                placeholder={
+                  isListening ? "Mendengarkan suara Anda…" :
+                  stage === "s1_chat" ? "Ceritakan bidang atau tantanganmu..." :
+                    stage === "s2_chat" ? "Ceritakan lebih dalam..." :
+                      "Gali lebih jauh — detail, pengalaman nyata..."
+                }
+                className="min-h-[48px] max-h-[120px] resize-none text-sm rounded-xl bg-white/10 border-white/20 text-white placeholder:text-white/40 focus-visible:ring-cyan-500"
+                rows={1}
+                disabled={isListening}
+              />
+              {speechSupported && (
+                <button
+                  onClick={toggleMic}
+                  disabled={loading || processing}
+                  className={`shrink-0 h-12 w-12 rounded-xl transition-all flex items-center justify-center ${
+                    isListening
+                      ? "bg-red-500/20 text-red-400 hover:bg-red-500/30"
+                      : "text-white/40 hover:text-white/70 hover:bg-white/10 disabled:opacity-30"
+                  }`}
+                  title={isListening ? "Berhenti mendengarkan" : "Rekam suara"}
+                  data-testid="button-mic-dialog-full"
+                >
+                  {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                </button>
+              )}
+              <Button
+                size="icon"
+                onClick={sendMessage}
+                disabled={!input.trim() || loading || isListening}
+                className="shrink-0 h-12 w-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-700 hover:from-cyan-600 hover:to-blue-800 border-0 disabled:opacity-40"
+                data-testid="button-send"
+              >
+                <Send className="w-4 h-4" />
+              </Button>
+            </div>
+          </>
         )}
         <div className="flex items-center justify-between mt-2">
           <p className="text-[10px] text-white/25">
