@@ -1812,12 +1812,18 @@ export async function registerRoutes(
         }
       }
       
-      const agent = await storage.createAgent(parsed.data);
-      await storage.setActiveAgent(String(agent.id));
+      // Status admin SEBELUM create. "isCertified" (status Bersertifikat) HANYA
+      // admin — strip dari input non-admin agar owner tak bisa self-certify saat
+      // membuat agen (konsisten dengan guard di PATCH).
       const userId3 = (req.user as any)?.claims?.sub || (req.user as any)?.id || "";
       const adminIds3 = (process.env.ADMIN_USER_IDS || "").split(",").map((s: string) => s.trim()).filter(Boolean);
       const dbRole3 = await getDbRole(req);
       const isAdminCreate = dbRole3 === "admin" || dbRole3 === "superadmin" || adminIds3.includes(userId3);
+      if (!isAdminCreate && parsed.data && Object.prototype.hasOwnProperty.call(parsed.data, "isCertified")) {
+        delete (parsed.data as any).isCertified;
+      }
+      const agent = await storage.createAgent(parsed.data);
+      await storage.setActiveAgent(String(agent.id));
       res.status(201).json(isAdminCreate ? agent : sanitizeAgentForPublic(agent));
     } catch (error) {
       console.error("Agent creation error:", error);
@@ -1837,14 +1843,20 @@ export async function registerRoutes(
       }
       const authUpd = await assertCanMutateAgent(req, existingForUpdate);
       if (!authUpd.ok) return res.status(authUpd.status).json({ error: authUpd.error });
-      const agent = await storage.updateAgent(req.params.id as string, req.body);
-      if (!agent) {
-        return res.status(404).json({ error: "Agent not found" });
-      }
+      // Tentukan status admin SEBELUM update. Field sensitif "isCertified" (status
+      // Bersertifikat pasca-workshop) HANYA boleh di-set admin — cegah kreator
+      // menyertifikasi agennya sendiri lewat PATCH langsung.
       const userId4 = (req.user as any)?.claims?.sub || (req.user as any)?.id || "";
       const adminIds4 = (process.env.ADMIN_USER_IDS || "").split(",").map((s: string) => s.trim()).filter(Boolean);
       const dbRole4 = await getDbRole(req);
       const isAdminUpdate = dbRole4 === "admin" || dbRole4 === "superadmin" || adminIds4.includes(userId4);
+      if (!isAdminUpdate && req.body && Object.prototype.hasOwnProperty.call(req.body, "isCertified")) {
+        delete (req.body as any).isCertified;
+      }
+      const agent = await storage.updateAgent(req.params.id as string, req.body);
+      if (!agent) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
       res.json(isAdminUpdate ? agent : sanitizeAgentForPublic(agent));
     } catch (error) {
       res.status(500).json({ error: "Failed to update agent" });
@@ -5296,6 +5308,7 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
         parentAgentId: agentsTable.parentAgentId,
         userId: agentsTable.userId,
         isListed: agentsTable.isListed,
+        isCertified: agentsTable.isCertified,
       }).from(agentsTable).where(agentWhere).orderBy(agentsTable.id);
 
       // Count direct child agents per parent for accurate team-size pricing
@@ -5375,6 +5388,9 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
             // Kreator independen (punya user_id nyata) vs agen resmi/seeded Gustafta (user_id = "").
             // Dipakai untuk badge transparansi "Pra-Sertifikasi" di kartu Store.
             isCreatorMade: (a.userId ?? "").trim() !== "",
+            // Status Bersertifikat (admin-only). Bila true, badge hijau "Bersertifikat"
+            // menggantikan badge amber "Pra-Sertifikasi".
+            isCertified: a.isCertified === true,
             type: "agent",
           };
         });
