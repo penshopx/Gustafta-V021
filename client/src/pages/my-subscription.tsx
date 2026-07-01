@@ -15,9 +15,12 @@ import {
   MessageSquare, BookOpen, Blocks, PlaySquare, FileText, Mic,
   Globe, Headphones, Cpu, Bot, Zap, Building2,
   RefreshCw, Phone, ChevronRight, Sparkles, BarChart3, AlertCircle, CheckCircle2,
-  HardHat, Briefcase,
+  HardHat, Briefcase, Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 const FEATURE_ICONS: Record<FeatureKey, typeof Check> = {
   chatbot: MessageSquare,
@@ -60,6 +63,32 @@ export default function MySubscriptionPage() {
   const { user, isAuthenticated } = useAuth();
   const { planInfo, isLoading } = useFeatureAccess();
   const [, navigate] = useLocation();
+  const { toast } = useToast();
+
+  const { data: pendingData } = useQuery<{ pending: any | null }>({
+    queryKey: ["/api/subscriptions/pending"],
+    enabled: isAuthenticated,
+  });
+
+  const upgradeMutation = useMutation({
+    mutationFn: (targetPlan: string) => apiRequest("POST", "/api/subscriptions/upgrade", { plan: targetPlan }),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/subscriptions/pending"] });
+      toast({
+        title: "Permintaan Naik Tier tercatat",
+        description: data?.message ?? "Admin akan mengaktifkan setelah pembayaran dikonfirmasi.",
+      });
+      if (data?.waUrl) window.open(data.waUrl, "_blank");
+    },
+    onError: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/subscriptions/pending"] });
+      toast({
+        title: "Tidak dapat memproses",
+        description: "Mungkin sudah ada permintaan upgrade yang menunggu, atau terjadi kesalahan. Coba lagi.",
+        variant: "destructive",
+      });
+    },
+  });
 
   if (!isAuthenticated) {
     return (
@@ -88,6 +117,8 @@ export default function MySubscriptionPage() {
     if (idx === -1 || idx >= PLAN_ORDER.length - 1) return null;
     return PLAN_ORDER[idx + 1];
   })();
+
+  const pendingUpgrade = pendingData?.pending ?? null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -224,36 +255,69 @@ export default function MySubscriptionPage() {
               </CardContent>
             </Card>
 
-            {/* Upgrade suggestion */}
-            {nextPlanKey && (
-              <Card className="border-primary/20 bg-primary/5">
+            {/* Pending upgrade — menunggu konfirmasi admin */}
+            {pendingUpgrade ? (
+              <Card className="border-amber-500/30 bg-amber-500/5">
                 <CardContent className="p-5 space-y-3">
                   <div className="flex items-center gap-2">
-                    <Zap className="h-4 w-4 text-primary" />
-                    <span className="font-semibold text-sm">Upgrade ke {PLAN_CONFIGS[nextPlanKey]?.name}</span>
+                    <Clock className="h-4 w-4 text-amber-500" />
+                    <span className="font-semibold text-sm">Menunggu Konfirmasi Admin</span>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Dapatkan lebih banyak agent, fitur, dan kapasitas untuk mengembangkan ekosistem Anda.
+                    Permintaan paket{" "}
+                    <span className="font-medium text-foreground">
+                      {PLAN_CONFIGS[pendingUpgrade.plan as keyof typeof PLAN_CONFIGS]?.name ?? pendingUpgrade.plan}
+                    </span>{" "}
+                    sudah tercatat. Selesaikan pembayaran, lalu admin akan mengaktifkannya.
                   </p>
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="text-muted-foreground">Mulai dari</span>
+                  <div className="text-sm">
+                    <span className="text-muted-foreground">Tarif baru: </span>
                     <span className="font-bold text-primary">
-                      {formatPrice(PLAN_CONFIGS[nextPlanKey]?.monthlyFee ?? 0)}/bln
-                    </span>
-                    <span className="text-muted-foreground text-xs">
-                      + setup {formatPrice(PLAN_CONFIGS[nextPlanKey]?.setupFee ?? 0)}
+                      {formatPrice(PLAN_CONFIGS[pendingUpgrade.plan as keyof typeof PLAN_CONFIGS]?.monthlyFee ?? 0)}/bln
                     </span>
                   </div>
-                  <a href={WA(nextPlanKey, user?.email ?? "")} target="_blank" rel="noopener noreferrer">
-                    <Button size="sm" className="w-full gap-2" data-testid="button-upgrade-next">
+                  <a href={WA(pendingUpgrade.plan, user?.email ?? "")} target="_blank" rel="noopener noreferrer">
+                    <Button size="sm" variant="outline" className="w-full gap-2" data-testid="button-complete-payment">
                       <Phone className="h-4 w-4" />
-                      Hubungi untuk Upgrade
-                      <ChevronRight className="h-4 w-4" />
+                      Selesaikan Pembayaran
                     </Button>
                   </a>
                 </CardContent>
               </Card>
-            )}
+            ) : nextPlanKey ? (
+              <Card className="border-primary/20 bg-primary/5">
+                <CardContent className="p-5 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Zap className="h-4 w-4 text-primary" />
+                    <span className="font-semibold text-sm">Naik Tier ke {PLAN_CONFIGS[nextPlanKey]?.name}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Dapatkan lebih banyak agent, fitur, dan kapasitas untuk mengembangkan ekosistem Anda.
+                  </p>
+                  <div className="flex items-baseline gap-2 text-sm">
+                    <span className="font-bold text-primary">
+                      {formatPrice(PLAN_CONFIGS[nextPlanKey]?.monthlyFee ?? 0)}/bln
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-green-600 dark:text-green-400 flex items-center gap-1">
+                    <CheckCircle2 className="h-3 w-3 shrink-0" /> Lisensi tidak ditagih lagi — hanya biaya bulanan
+                  </p>
+                  <Button
+                    size="sm"
+                    className="w-full gap-2"
+                    disabled={upgradeMutation.isPending}
+                    onClick={() => upgradeMutation.mutate(nextPlanKey)}
+                    data-testid="button-upgrade-next"
+                  >
+                    {upgradeMutation.isPending
+                      ? <Loader2 className="h-4 w-4 animate-spin" />
+                      : <Rocket className="h-4 w-4" />}
+                    Naik Tier
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : null}
 
             {/* No plan yet */}
             {!isPaid && (
