@@ -216,13 +216,13 @@ export default function BlueprintSayaPage() {
 
                   {/* Value props */}
                   <div className="bg-amber-50 dark:bg-amber-950/20 rounded-xl p-4 border border-amber-200 dark:border-amber-800">
-                    <p className="text-xs font-bold text-amber-700 dark:text-amber-400 mb-2">Dengan mengaktifkan paket, Anda bisa:</p>
+                    <p className="text-xs font-bold text-amber-700 dark:text-amber-400 mb-2">Dengan Starter Kit, Anda bisa:</p>
                     <div className="space-y-1.5">
                       {[
                         "Akses Blueprint lengkap: persona, fitur, system prompt, langkah",
                         "Import Blueprint 1-klik ke Gustafta Builder",
-                        "Konfigurasi awal chatbot terisi otomatis",
-                        "Rakit dan kembangkan chatbot sesuai kebutuhan",
+                        "Trial platform 7 hari — coba semua fitur",
+                        "3 panduan digital Trilogi Gustafta",
                       ].map((v, i) => (
                         <div key={i} className="flex items-start gap-2">
                           <Check className="h-3 w-3 text-green-500 shrink-0 mt-0.5" />
@@ -235,19 +235,20 @@ export default function BlueprintSayaPage() {
 
                 {/* CTAs */}
                 <div className="px-5 pb-5 space-y-2">
-                  <Link href="/packs">
-                    <Button className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white h-11 font-bold gap-2">
-                      <ShoppingBag className="h-4 w-4" /> Pilih Paket — Unlock Blueprint
+                  <a href="https://dialog.gustafta.my.id/c/checkout?variant_ids=533205&qty=1" target="_blank" rel="noopener noreferrer" className="block">
+                    <Button className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white h-11 font-bold gap-2 shadow-md">
+                      <ShoppingBag className="h-4 w-4" /> Beli Starter Kit — Rp 245.000
                     </Button>
-                  </Link>
-                  <div className="flex gap-2">
+                  </a>
+                  <p className="text-center text-[11px] text-gray-400">Sekali bayar · Termasuk lisensi + trial 7 hari</p>
+                  <div className="flex gap-2 pt-1">
                     <a href={`https://wa.me/6282299417818?text=${waText}`} target="_blank" rel="noopener noreferrer" className="flex-1">
-                      <Button variant="outline" className="w-full h-9 text-sm gap-2 border-amber-300 text-amber-700 hover:bg-amber-50">
-                        <MessageCircle className="h-4 w-4" /> Konsultasi via WA
+                      <Button variant="outline" className="w-full h-9 text-sm gap-2 border-gray-200 text-gray-500 hover:bg-gray-50">
+                        <MessageCircle className="h-4 w-4" /> Tanya via WA
                       </Button>
                     </a>
                     <Link href="/" className="flex-1">
-                      <Button variant="ghost" className="w-full h-9 text-sm gap-1 text-gray-500" onClick={() => window.scrollTo(0, 9999)}>
+                      <Button variant="ghost" className="w-full h-9 text-sm gap-1 text-gray-400">
                         <RefreshCw className="h-3.5 w-3.5" /> Ulangi Dialog
                       </Button>
                     </Link>
