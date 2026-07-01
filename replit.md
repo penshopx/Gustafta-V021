@@ -53,6 +53,7 @@ Gustafta is an AI chatbot builder platform that enables users to create, configu
 - **Dynamic Knowledge Base**: Hierarchical classification, versioning, source attribution, multiple upload types.
 - **Chatbot Templates & Gustafta Store**: Public marketplace with payment integration.
 - **Gustafta Apps Feature Access System**: Plan-gated. Tiers: `free`(0) `starter`(1) `profesional`(2) `bisnis`(3) `enterprise`(4). Source: `shared/feature-plans.ts`. Hook: `use-feature-access.ts`. Gate: `feature-gate.tsx`. Admin activates via `POST /api/subscriptions/activate/:id`.
+- **Kelas Premium 1–4 (band harga LISENSI)**: Sumbu harga lisensi premium berjenjang. Sumber tunggal `shared/premium-classes.ts` (`priceForClass`/`isPremiumClass`). Band K1=Rp1jt · K2=Rp2,5jt · K3=Rp5jt · K4=Rp10jt. Kolom `agents.licenseClass` (int 1–4, nullable; null=non-premium harga bebas lama). Bila berkelas, harga SELALU dari `priceForClass` (server paksa di create/PATCH agen, katalog Store, `/api/store/order`, `/api/store/order/manual`). PATCH pakai kelas EFEKTIF (body∨record) → cegah bypass via ubah `monthlyPrice` saja. Terpisah dari `premiumClass` (standard/private) & 4 tier bulanan. UI: `product-settings-panel.tsx` (Select kelas), badge di `store.tsx`. Detail: `.agents/memory/gustafta-pricing-model.md`.
 
 ## MultiClaw Suite (80 halaman)
 Semua pakai `PremiumPageGuard` feature="advanced_ai_tools" requiredPlan="profesional". SSE streaming, sub-agent panel dots, legend strip, 6 sample prompts.

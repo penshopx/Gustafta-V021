@@ -189,6 +189,10 @@ export const agents = pgTable("agents", {
   // Premium product class: "standard" (satu bot bersama, dikurasi admin, pembeli tak bisa edit)
   //                        "private"  (tiap pembeli dapat salinan sendiri yang bisa ia perkuat)
   premiumClass: text("premium_class").default("standard"),
+  // Kelas Premium 1–4 = band harga LISENSI (sekali bayar). Nullable: bila null,
+  // produk tidak berkelas (perilaku harga lama). Bila 1–4, harga lisensi
+  // OTORITATIF dari shared/premium-classes.ts (server override monthlyPrice).
+  licenseClass: integer("license_class"),
   // Jika agen ini salinan privat, menunjuk ke ID agen master sumbernya.
   clonedFromAgentId: integer("cloned_from_agent_id"),
   paymentUrl: text("payment_url").default(""),
@@ -894,6 +898,7 @@ export const insertAgentSchema = z.object({
   guestMessageLimit: z.number().min(0).optional().default(10),
   requireRegistration: z.boolean().optional().default(false),
   premiumClass: z.enum(["standard", "private"]).optional().default("standard"),
+  licenseClass: z.number().int().min(1).max(4).nullable().optional(),
   brandingName: z.string().optional().default(""),
   brandingLogo: z.string().optional().default(""),
   contextQuestions: z.array(z.object({

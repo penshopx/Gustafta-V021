@@ -7,9 +7,11 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { PREMIUM_CLASSES, PREMIUM_CLASS_IDS, priceForClass } from "@shared/premium-classes";
 
 const formatCurrency = (amount: number) =>
   new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(amount);
@@ -25,6 +27,7 @@ export function ProductSettingsPanel({ agent }: { agent: any }) {
     productUseCases: agent.productUseCases || "",
     productTargetUser: agent.productTargetUser || "",
     productProblem: agent.productProblem || "",
+    licenseClass: (agent.licenseClass ?? null) as number | null,
     monthlyPrice: agent.monthlyPrice ?? 0,
     paymentUrl: agent.paymentUrl || "",
     trialEnabled: agent.trialEnabled ?? true,
@@ -38,6 +41,16 @@ export function ProductSettingsPanel({ agent }: { agent: any }) {
   });
 
   const set = (key: string, val: any) => setSettings(s => ({ ...s, [key]: val }));
+
+  // Kelas Premium menentukan harga lisensi. Pilih kelas → harga otomatis; "Bukan Premium" → harga bebas.
+  const setLicenseClass = (val: string) => {
+    if (val === "none") {
+      setSettings(s => ({ ...s, licenseClass: null }));
+    } else {
+      const n = parseInt(val, 10);
+      setSettings(s => ({ ...s, licenseClass: n, monthlyPrice: priceForClass(n) ?? s.monthlyPrice }));
+    }
+  };
 
   const [newFeature, setNewFeature] = useState("");
   const [copiedMarketplace, setCopiedMarketplace] = useState(false);
@@ -80,6 +93,7 @@ export function ProductSettingsPanel({ agent }: { agent: any }) {
       productUseCases: agent.productUseCases || "",
       productTargetUser: agent.productTargetUser || "",
       productProblem: agent.productProblem || "",
+      licenseClass: (agent.licenseClass ?? null) as number | null,
       monthlyPrice: agent.monthlyPrice ?? 0,
       paymentUrl: agent.paymentUrl || "",
       trialEnabled: agent.trialEnabled ?? true,
@@ -319,18 +333,42 @@ export function ProductSettingsPanel({ agent }: { agent: any }) {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>Harga Bulanan (IDR)</Label>
-                <Input
-                  type="number"
-                  value={settings.monthlyPrice}
-                  onChange={(e) => setSettings({ ...settings, monthlyPrice: parseInt(e.target.value) || 0 })}
-                  placeholder="0"
-                  min={0}
-                  data-testid="input-monthly-price"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Harga saat ini: {formatCurrency(settings.monthlyPrice)}
-                </p>
+                <Label>Kelas Premium (harga lisensi sekali bayar)</Label>
+                <Select
+                  value={settings.licenseClass != null ? String(settings.licenseClass) : "none"}
+                  onValueChange={setLicenseClass}
+                >
+                  <SelectTrigger data-testid="select-license-class">
+                    <SelectValue placeholder="Pilih kelas premium" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Bukan Premium (harga bebas)</SelectItem>
+                    {PREMIUM_CLASS_IDS.map((id) => (
+                      <SelectItem key={id} value={String(id)} data-testid={`option-license-class-${id}`}>
+                        {PREMIUM_CLASSES[id].label} — {formatCurrency(PREMIUM_CLASSES[id].price)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {settings.licenseClass != null ? (
+                  <p className="text-xs text-muted-foreground" data-testid="text-license-class-price">
+                    Lisensi (sekali bayar): <strong>{formatCurrency(priceForClass(settings.licenseClass) ?? 0)}</strong> — otomatis dari kelas. Biaya bulanan tetap terpisah.
+                  </p>
+                ) : (
+                  <div className="space-y-1.5">
+                    <Input
+                      type="number"
+                      value={settings.monthlyPrice}
+                      onChange={(e) => setSettings({ ...settings, monthlyPrice: parseInt(e.target.value) || 0 })}
+                      placeholder="0"
+                      min={0}
+                      data-testid="input-monthly-price"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Harga saat ini: {formatCurrency(settings.monthlyPrice)}. Pilih Kelas Premium di atas untuk harga lisensi seragam.
+                    </p>
+                  </div>
+                )}
               </div>
 
               {settings.monthlyPrice > 0 && (

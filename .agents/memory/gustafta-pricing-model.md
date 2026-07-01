@@ -34,6 +34,15 @@ Pemilik sempat menyamakan "Starter Kit" sebagai level paling bawah dari tangga t
 
 **How to apply:** saat mengubah copy/CTA/pricing di `landing.tsx` atau `produk.tsx` (atau halaman `/pricing`, `/packs` bila relevan), pastikan tidak menambah tier gratis permanen, tidak melabeli produk chatbot dengan "setup", dan CTA trial tetap lewat Blueprint.
 
+## Kelas Premium 1–4 (band harga LISENSI untuk chatbot premium)
+
+Sumbu HARGA LISENSI premium dibuat berjenjang jadi 4 kelas tetap (bukan harga bebas). Sumber tunggal: `shared/premium-classes.ts` (`PREMIUM_CLASSES`, `priceForClass`, `isPremiumClass`). Band: K1=Rp1jt · K2=Rp2,5jt · K3=Rp5jt · K4=Rp10jt. Kolom `agents.licenseClass` (int 1–4, nullable) = penentu. null → produk non-premium, perilaku harga lama (harga bebas/`monthlyPrice`).
+
+- **Kelas = otoritatif.** Bila `licenseClass` 1–4, harga lisensi SELALU diturunkan dari kelas via `priceForClass` — abaikan harga bebas kiriman klien. Ini berlaku di: create/PATCH agen (server paksa `monthlyPrice`), katalog Store, DAN kedua alur order (`/api/store/order`, `/api/store/order/manual`).
+- **Cegah bypass PATCH.** Enforcement pakai KELAS EFEKTIF = `body.licenseClass` bila dikirim, jika tidak dari record tersimpan. Kalau cuma di-PATCH `monthlyPrice` pada agen yang sudah berkelas, server tetap timpa dengan harga kelas. **Why:** kalau hanya cek "licenseClass ada di body", pemilik bisa ubah `monthlyPrice` saja untuk menembus band.
+- **Sumbu terpisah.** Kelas Premium ≠ `premiumClass` (standard/private) ≠ 4 tier bulanan platform. Jangan campur.
+- **How to apply:** JANGAN hardcode harga band di UI/route; selalu lewat `priceForClass`. Setiap jalur baca-harga produk premium (checkout/katalog/invoice) wajib pakai `priceForClass(licenseClass) ?? fallback`, bukan `monthlyPrice` mentah.
+
 ## White-label — DIHAPUS dari produk (belum siap)
 
 Fitur **white-label** (hapus branding Gustafta / merek sendiri) sengaja **dihapus total** dari penawaran karena Gustafta belum siap menyediakannya. Yang dibersihkan: FeatureKey `white_label` di `shared/feature-plans.ts` (type union + semua plan record + FEATURE_LABELS), map ikon di `my-subscription.tsx`, dan semua copy customer-facing (produk/packs/landing/mitra/gustafta-framework + FAQ KB seed).

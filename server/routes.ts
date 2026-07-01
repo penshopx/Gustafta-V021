@@ -28,6 +28,7 @@ import {
   type MiniApp,
   type MiniAppType,
 } from "@shared/schema";
+import { priceForClass, isPremiumClass } from "@shared/premium-classes";
 import { z } from "zod";
 import multer from "multer";
 import path from "path";
@@ -1823,6 +1824,18 @@ export async function registerRoutes(
       if (!isAdminCreate && parsed.data && Object.prototype.hasOwnProperty.call(parsed.data, "isCertified")) {
         delete (parsed.data as any).isCertified;
       }
+      // Kelas Premium 1–4 = band harga LISENSI otoritatif. Bila licenseClass di-set,
+      // paksa monthlyPrice = harga kelas (abaikan harga bebas kiriman klien). null = lepas kelas.
+      if (parsed.data && Object.prototype.hasOwnProperty.call(parsed.data, "licenseClass")) {
+        const lc = (parsed.data as any).licenseClass;
+        if (lc == null) {
+          (parsed.data as any).licenseClass = null;
+        } else if (isPremiumClass(lc)) {
+          (parsed.data as any).monthlyPrice = priceForClass(lc);
+        } else {
+          return res.status(400).json({ error: "invalid_license_class", message: "Kelas Premium harus 1–4 atau kosong." });
+        }
+      }
       const agent = await storage.createAgent(parsed.data);
       await storage.setActiveAgent(String(agent.id));
       res.status(201).json(isAdminCreate ? agent : sanitizeAgentForPublic(agent));
@@ -1853,6 +1866,21 @@ export async function registerRoutes(
       const isAdminUpdate = dbRole4 === "admin" || dbRole4 === "superadmin" || adminIds4.includes(userId4);
       if (!isAdminUpdate && req.body && Object.prototype.hasOwnProperty.call(req.body, "isCertified")) {
         delete (req.body as any).isCertified;
+      }
+      // Kelas Premium 1–4 = band harga LISENSI otoritatif. Kelas efektif = nilai baru bila
+      // dikirim, jika tidak pakai yang tersimpan — cegah bypass via PATCH monthlyPrice saja.
+      {
+        const bodyHasClass = req.body && Object.prototype.hasOwnProperty.call(req.body, "licenseClass");
+        if (bodyHasClass) {
+          const lc = (req.body as any).licenseClass;
+          if (lc == null) (req.body as any).licenseClass = null;
+          else if (!isPremiumClass(lc)) return res.status(400).json({ error: "invalid_license_class", message: "Kelas Premium harus 1–4 atau kosong." });
+        }
+        const effectiveClass = bodyHasClass ? (req.body as any).licenseClass : (existingForUpdate as any).licenseClass;
+        if (isPremiumClass(effectiveClass)) {
+          // Produk berkelas: harga lisensi SELALU ikut kelas, apa pun monthlyPrice kiriman klien.
+          (req.body as any).monthlyPrice = priceForClass(effectiveClass);
+        }
       }
       const agent = await storage.updateAgent(req.params.id as string, req.body);
       if (!agent) {
@@ -5508,6 +5536,7 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
         userId: agentsTable.userId,
         isListed: agentsTable.isListed,
         isCertified: agentsTable.isCertified,
+        licenseClass: agentsTable.licenseClass,
       }).from(agentsTable).where(agentWhere).orderBy(agentsTable.id);
 
       // Count direct child agents per parent for accurate team-size pricing
@@ -5568,7 +5597,9 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
           const subCount = Array.isArray(a.agenticSubAgents) ? a.agenticSubAgents.length : 0;
           const childCount = childCountMap.get(a.id) ?? 0;
           const effectiveTotal = 1 + Math.max(subCount, childCount);
-          const price = 299000;
+          // Bila produk ber-Kelas Premium 1–4, harga lisensi otoritatif dari band kelas;
+          // selain itu pakai harga default lama (299rb).
+          const price = priceForClass(a.licenseClass) ?? 299000;
           return {
             id: `ag-${a.id}`,
             agentId: a.id,
@@ -5590,6 +5621,7 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
             // Status Bersertifikat (admin-only). Bila true, badge hijau "Bersertifikat"
             // menggantikan badge amber "Pra-Sertifikasi".
             isCertified: a.isCertified === true,
+            licenseClass: isPremiumClass(a.licenseClass) ? a.licenseClass : null,
             type: "agent",
           };
         });
@@ -5782,12 +5814,14 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
         const { db } = await import("./db");
         const { agents: agentsTable } = await import("@shared/schema");
         const { eq } = await import("drizzle-orm");
-        const rows = await db.select({ id: agentsTable.id, name: agentsTable.name, isActive: agentsTable.isActive, monthlyPrice: agentsTable.monthlyPrice })
+        const rows = await db.select({ id: agentsTable.id, name: agentsTable.name, isActive: agentsTable.isActive, monthlyPrice: agentsTable.monthlyPrice, licenseClass: agentsTable.licenseClass })
           .from(agentsTable).where(eq(agentsTable.id, Number(agentId))).limit(1);
         const agent = rows[0];
         if (!agent || !agent.isActive) return res.status(404).json({ error: "Agen tidak ditemukan" });
         itemName = agent.name;
-        itemPrice = (agent.monthlyPrice && agent.monthlyPrice > 0) ? agent.monthlyPrice : DEFAULT_PRICE;
+        // Kelas Premium = harga lisensi otoritatif; fallback ke monthlyPrice lalu DEFAULT_PRICE.
+        itemPrice = priceForClass(agent.licenseClass)
+          ?? ((agent.monthlyPrice && agent.monthlyPrice > 0) ? agent.monthlyPrice : DEFAULT_PRICE);
         resolvedAgentId = agent.id;
       } else {
         const product = await storage.getStoreProduct(Number(productId));
@@ -5999,7 +6033,7 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
       const { eq } = await import("drizzle-orm");
       const { randomUUID } = await import("crypto");
 
-      const rows = await db.select({ id: agentsTable.id, name: agentsTable.name, monthlyPrice: agentsTable.monthlyPrice })
+      const rows = await db.select({ id: agentsTable.id, name: agentsTable.name, monthlyPrice: agentsTable.monthlyPrice, licenseClass: agentsTable.licenseClass })
         .from(agentsTable).where(eq(agentsTable.id, Number(agentId))).limit(1);
       const agent = rows[0];
       if (!agent) return res.status(404).json({ error: "Agen tidak ditemukan" });
@@ -6012,7 +6046,8 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
         customerName: name,
         customerEmail: email,
         customerPhone: phone || "",
-        amount: agent.monthlyPrice || 0,
+        // Kelas Premium = harga lisensi otoritatif; fallback ke monthlyPrice.
+        amount: priceForClass(agent.licenseClass) ?? (agent.monthlyPrice || 0),
         midtransOrderId: orderId,
         accessToken,
         status: "paid",

@@ -56,6 +56,7 @@ interface AgentProduct {
   agentCount?: number;
   isCreatorMade?: boolean;
   isCertified?: boolean;
+  licenseClass?: number | null;
   type?: string;
 }
 
@@ -614,7 +615,15 @@ export default function Store() {
 
                 <div className="bg-violet-50 border border-violet-200 rounded-xl p-4 flex items-center justify-between">
                   <div>
-                    <p className="text-xs text-gray-400 mb-0.5">Biaya Lisensi</p>
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <p className="text-xs text-gray-400">Biaya Lisensi</p>
+                      {detailAgent.licenseClass ? (
+                        <Badge className="bg-violet-100 text-violet-700 border-violet-200 text-[10px] px-1.5 py-0 flex items-center gap-0.5"
+                          data-testid={`badge-detail-kelas-premium-${detailAgent.id}`}>
+                          <Sparkles className="h-2.5 w-2.5" />Kelas Premium {detailAgent.licenseClass}
+                        </Badge>
+                      ) : null}
+                    </div>
                     {detailAgent.originalPrice && detailAgent.originalPrice > detailAgent.price && (
                       <p className="text-sm text-gray-400 line-through leading-none mb-0.5">{formatPrice(detailAgent.originalPrice)}</p>
                     )}
@@ -819,6 +828,12 @@ function AgentCard({ agent, onBuy, onDetail }: { agent: AgentProduct; onBuy: (a:
                 <ShieldAlert className="h-2.5 w-2.5" />Pra-Sertifikasi
               </Badge>
             )}
+            {agent.licenseClass ? (
+              <Badge className="bg-violet-100 text-violet-700 border-violet-200 text-xs px-2 py-0 flex items-center gap-1"
+                data-testid={`badge-kelas-premium-${agent.id}`} title="Band harga lisensi premium (sekali bayar).">
+                <Sparkles className="h-2.5 w-2.5" />Kelas Premium {agent.licenseClass}
+              </Badge>
+            ) : null}
           </div>
         </div>
 
