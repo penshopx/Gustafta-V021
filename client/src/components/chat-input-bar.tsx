@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Paperclip, Send, Loader2, X, FileText, Image as ImageIcon, Copy, Check, ThumbsUp, ThumbsDown } from "lucide-react";
+import { Paperclip, Send, Loader2, X, FileText, Image as ImageIcon, Copy, Check, ThumbsUp, ThumbsDown, Mic, MicOff, Music, Video, File } from "lucide-react";
 
 export interface ChatAttachment {
   fileName: string;
@@ -32,8 +32,12 @@ export function ChatInputBar({
   const [input, setInput] = useState("");
   const [pendingFiles, setPendingFiles] = useState<ChatAttachment[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const recognitionRef = useRef<any>(null);
+  const sendRef = useRef<() => void>(() => {});
 
   const autoResize = useCallback(() => {
     const el = textareaRef.current;
@@ -43,6 +47,62 @@ export function ChatInputBar({
   }, []);
 
   useEffect(() => { autoResize(); }, [input, autoResize]);
+
+  // Wire up Web Speech API
+  useEffect(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+    setSpeechSupported(true);
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "id-ID";
+    recognition.continuous = false;
+    recognition.interimResults = true;
+
+    let finalTranscript = "";
+
+    recognition.onstart = () => {
+      setIsListening(true);
+      finalTranscript = "";
+    };
+
+    recognition.onresult = (event: any) => {
+      let interim = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const t = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += t;
+        } else {
+          interim += t;
+        }
+      }
+      setInput(finalTranscript + interim);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+      if (finalTranscript.trim()) {
+        // Trigger send after state has settled
+        setTimeout(() => sendRef.current(), 50);
+      }
+    };
+
+    recognition.onerror = () => {
+      setIsListening(false);
+    };
+
+    recognitionRef.current = recognition;
+  }, []);
+
+  const toggleMic = () => {
+    if (!recognitionRef.current) return;
+    if (isListening) {
+      recognitionRef.current.stop();
+    } else {
+      setInput("");
+      recognitionRef.current.start();
+    }
+  };
 
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files || []);
@@ -58,6 +118,24 @@ export function ChatInputBar({
         const data = await r.json();
         const att: ChatAttachment = { ...data };
         if (data.category === "image") att.previewUrl = URL.createObjectURL(file);
+
+        // Auto-transcribe audio files → inject into input
+        if (data.category === "audio") {
+          try {
+            const tf = new FormData();
+            tf.append("file", file);
+            const tr = await fetch("/api/chat/transcribe", { method: "POST", body: tf });
+            if (tr.ok) {
+              const td = await tr.json();
+              if (td.transcript) {
+                setInput(prev => prev ? `${prev}\n\n${td.transcript}` : td.transcript);
+              }
+            }
+          } catch {
+            // transcription optional — continue
+          }
+        }
+
         uploaded.push(att);
       }
       setPendingFiles(prev => [...prev, ...uploaded]);
@@ -78,7 +156,20 @@ export function ChatInputBar({
     textareaRef.current?.focus();
   }
 
-  const canSend = !disabled && !streaming && (input.trim().length > 0 || pendingFiles.length > 0);
+  // Keep sendRef current so the speech onend callback always calls the latest handleSend
+  sendRef.current = handleSend;
+
+  const canSend = !disabled && !streaming && !isListening && (input.trim().length > 0 || pendingFiles.length > 0);
+
+  const getFileIcon = (category: string) => {
+    switch (category) {
+      case "image": return <ImageIcon className="h-4 w-4 text-blue-400 shrink-0" />;
+      case "audio": return <Music className="h-4 w-4 text-purple-400 shrink-0" />;
+      case "video": return <Video className="h-4 w-4 text-pink-400 shrink-0" />;
+      case "document": return <FileText className="h-4 w-4 text-slate-400 shrink-0" />;
+      default: return <File className="h-4 w-4 text-slate-400 shrink-0" />;
+    }
+  };
 
   return (
     <div className="shrink-0 border-t border-white/10 px-4 pt-3 pb-2 bg-black/30">
@@ -88,9 +179,7 @@ export function ChatInputBar({
             <div key={idx} className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-white/10 border border-white/20 text-xs text-white/70 max-w-[180px]">
               {att.category === "image" && att.previewUrl
                 ? <img src={att.previewUrl} className="h-6 w-6 rounded object-cover shrink-0" alt="" />
-                : att.category === "image"
-                  ? <ImageIcon className="h-4 w-4 text-blue-400 shrink-0" />
-                  : <FileText className="h-4 w-4 text-slate-400 shrink-0" />
+                : getFileIcon(att.category)
               }
               <span className="truncate flex-1">{att.fileName}</span>
               <button onClick={() => setPendingFiles(p => p.filter((_, i) => i !== idx))} className="text-white/30 hover:text-white/80 shrink-0 ml-0.5" data-testid={`button-remove-attachment-${idx}`}>
@@ -101,17 +190,37 @@ export function ChatInputBar({
         </div>
       )}
 
+      {isListening && (
+        <div className="flex items-center gap-2 mb-2 px-1">
+          <span className="flex h-2 w-2 relative">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+          </span>
+          <span className="text-xs text-red-400 font-medium">Mendengarkan… bicara sekarang</span>
+        </div>
+      )}
+
       <div className="flex items-end gap-2 rounded-xl border border-white/15 bg-white/5 px-3 py-2 focus-within:border-white/30 focus-within:ring-1 focus-within:ring-white/10 transition-all max-w-3xl mx-auto">
+        {/* Attach file */}
         <button
           onClick={() => fileInputRef.current?.click()}
-          disabled={disabled || uploading}
+          disabled={disabled || uploading || isListening}
           className="shrink-0 mb-0.5 p-1.5 rounded-lg text-white/40 hover:text-white/70 hover:bg-white/10 disabled:opacity-30 transition-all"
-          title="Lampirkan file"
+          title="Lampirkan file (PDF, Word, Excel, gambar, audio, video)"
           data-testid="button-attach-file"
         >
           {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
         </button>
-        <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf,.doc,.docx,.txt,.xlsx,.csv" className="hidden" onChange={handleFileSelect} />
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.jpg,.jpeg,.png,.gif,.webp,.svg,.mp3,.wav,.webm,.ogg,.m4a,.mp4,.mov,.zip,.rar"
+          className="hidden"
+          onChange={handleFileSelect}
+          data-testid="input-file-upload"
+        />
 
         <textarea
           ref={textareaRef}
@@ -120,13 +229,31 @@ export function ChatInputBar({
           onKeyDown={e => {
             if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
           }}
-          placeholder={placeholder}
-          disabled={disabled && !streaming}
+          placeholder={isListening ? "Mendengarkan suara Anda…" : placeholder}
+          disabled={(disabled && !streaming) || isListening}
           rows={1}
           className="flex-1 bg-transparent border-0 outline-none resize-none text-white placeholder:text-white/30 text-sm leading-relaxed py-0.5 max-h-[160px] overflow-y-auto"
           data-testid="input-message"
         />
 
+        {/* Microphone */}
+        {speechSupported && (
+          <button
+            onClick={toggleMic}
+            disabled={disabled || uploading}
+            className={`shrink-0 mb-0.5 p-1.5 rounded-lg transition-all ${
+              isListening
+                ? "bg-red-500/20 text-red-400 hover:bg-red-500/30"
+                : "text-white/40 hover:text-white/70 hover:bg-white/10 disabled:opacity-30"
+            }`}
+            title={isListening ? "Berhenti mendengarkan" : "Rekam suara"}
+            data-testid="button-mic"
+          >
+            {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+          </button>
+        )}
+
+        {/* Send */}
         <button
           onClick={handleSend}
           disabled={!canSend}
@@ -144,6 +271,7 @@ export function ChatInputBar({
             Bersihkan chat
           </button>
         )}
+        <span className="text-[10px] text-white/15">PDF · Word · Excel · Gambar · Audio · Video</span>
       </div>
     </div>
   );
@@ -182,6 +310,10 @@ export function AttachmentRow({ attachments }: { attachments: ChatAttachment[] }
             ? <img src={att.previewUrl} className="h-5 w-5 rounded object-cover shrink-0" alt="" />
             : att.category === "image"
               ? <ImageIcon className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+              : att.category === "audio"
+              ? <Music className="h-3.5 w-3.5 text-purple-400 shrink-0" />
+              : att.category === "video"
+              ? <Video className="h-3.5 w-3.5 text-pink-400 shrink-0" />
               : <FileText className="h-3.5 w-3.5 text-slate-400 shrink-0" />
           }
           <span className="truncate">{att.fileName}</span>
