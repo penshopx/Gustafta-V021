@@ -825,6 +825,32 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* ── VIDEO EXPLAINER (SELINGAN TENGAH) ── */}
+      <section className="py-16 px-4 bg-white dark:bg-background" data-testid="section-video-explainer">
+        <div className="max-w-3xl mx-auto text-center">
+          <p className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-2">Kenali Lebih Dekat</p>
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-3">
+            Bagaimana Gustafta Bekerja
+          </h2>
+          <p className="text-sm md:text-base text-gray-600 dark:text-gray-400 mb-8 max-w-2xl mx-auto">
+            Tonton sebentar — bagaimana pengetahuan Anda dirakit menjadi AI yang benar-benar bekerja.
+          </p>
+          <div className="relative rounded-2xl overflow-hidden ring-1 ring-gray-200 dark:ring-white/10 shadow-2xl bg-black/5 dark:bg-black/30">
+            <video
+              src={overviewVideo}
+              poster={overviewPoster}
+              className="w-full aspect-video"
+              controls
+              muted
+              loop
+              playsInline
+              preload="metadata"
+              data-testid="video-overview-explainer"
+            />
+          </div>
+        </div>
+      </section>
+
       {/* ── DARI PENGETAHUAN MENJADI AI ── */}
       <section className="py-16 px-4 bg-gray-50 dark:bg-muted/20">
         <div className="max-w-5xl mx-auto">
@@ -1191,23 +1217,6 @@ export default function Landing() {
           </div>
           <p className="text-center text-xs text-gray-400 dark:text-gray-500 mt-3">
             Lihat bagaimana pengetahuan satu arah berubah menjadi dialog yang hidup.
-          </p>
-
-          <div className="mt-8 rounded-2xl overflow-hidden border shadow-lg bg-black/5 dark:bg-white/5">
-            <video
-              src={overviewVideo}
-              poster={overviewPoster}
-              className="w-full aspect-video"
-              controls
-              muted
-              loop
-              playsInline
-              preload="metadata"
-              data-testid="video-overview-explainer"
-            />
-          </div>
-          <p className="text-center text-xs text-gray-400 dark:text-gray-500 mt-3">
-            Penjelasan lengkap: bagaimana pengetahuan Anda dirakit menjadi AI yang benar-benar bekerja.
           </p>
         </div>
       </section>
