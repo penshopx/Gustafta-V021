@@ -156,3 +156,9 @@ Buku III = 7 arketipe kreator; tiap bab = "cetak biru" tim agen + prinsip Gerban
 - MISSING: Bab 1 (pemilih profil kreator), Bab 6 (Studio Visual Hibrida). PARTIAL: Bab 2 (Studio Personal — bisa manual, belum ada template).
 - Celah loop monetisasi terbesar: one-click publish Builder→Store. Infra ada: Studio Kompetensi (`studio-panel.tsx`), Store + Revenue/Affiliate/Voucher, `/affiliate` `/packs`.
 - **Why:** peta ini menghindari rebuild fitur yang sudah ada saat mulai Buku III. **How to apply:** tahap Buku III harus aditif per pola Buku I/II; detail lengkap di `docs/blueprint-engine/00-roadmap.md` bagian "Fase 4".
+
+## Tahap 40 — Blueprint kreator "studio-visual" (Buku III Bab 6, Studio Visual Hibrida)
+Menambah tim kreator baru di tab Kreasi `tutor-builder.tsx`. **Pola dual-entry WAJIB** untuk tiap blueprint kreator: (1) kartu presentasi di array `KREASI_BLUEPRINTS` (client) + (2) entri `TUTOR_BLUEPRINTS["<id>"]` (server/routes.ts) berisi specialists[] {name,role,systemPrompt,greetingMessage} + orchestratorPrompt/orchestratorName/greetingOrchestrator. `POST /api/tutor-builder/create-team` baca entri server via `blueprintId` → spawn N sub-agen + 1 orchestrator (agenticSubAgents). **id kartu HARUS = key server**, kalau tidak → 404 "Blueprint tidak ditemukan". `agentCount` klien = specialists+1 (hitung orchestrator).
+- **Why:** kartu klien saja tanpa entri server = tombol "Rakit" 404; audit "BUILT" harus cek KEDUA sisi.
+- **How to apply:** blueprint kreator Buku III berikutnya (studio-personal dst) ikut pola sama; verifikasi via `GET /api/tutor-builder/blueprints` (list dari server, bukan klien).
+- Icon lucide kartu harus sudah di-import di tutor-builder.tsx (MEMORY: Map-icon crash) — studio-visual pakai PenLine/Sparkles/Layers/Archive/Globe (sudah ada).
