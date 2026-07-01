@@ -6,11 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import {
   BookOpen, ClipboardList, Play, RefreshCw, CheckCircle2,
   XCircle, Loader2, AlertTriangle, Database, BarChart3,
-  ChevronDown, ChevronUp, Cpu, Wand2,
+  ChevronDown, ChevronUp, Cpu, Wand2, ShieldCheck, ShieldOff,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -109,6 +110,28 @@ export function AdminAgentsPanel() {
   const qc = useQueryClient();
   const [autoFill, setAutoFill] = useState(false);
   const [pollingActive, setPollingActive] = useState(false);
+  const [certAgentId, setCertAgentId] = useState("");
+
+  const certifyMutation = useMutation({
+    mutationFn: async ({ id, certified }: { id: string; certified: boolean }) => {
+      const res = await fetch(`/api/admin/agents/${encodeURIComponent(id)}/certification`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ certified }),
+      });
+      const text = await res.text();
+      if (!res.ok) throw new Error(text || `HTTP ${res.status}`);
+      try { return JSON.parse(text); } catch { return {}; }
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: data?.isCertified ? "Ditandai Bersertifikat" : "Sertifikat dicabut",
+        description: data?.message || `Agen #${data?.id}`,
+      });
+    },
+    onError: (e: any) => toast({ title: "Gagal ubah sertifikasi", description: e.message, variant: "destructive" }),
+  });
 
   const { data: jobs, refetch } = useQuery<AgentJobs>({
     queryKey: ["/api/admin/agents/status"],
@@ -249,6 +272,59 @@ export function AdminAgentsPanel() {
           <RefreshCw className="h-4 w-4" />
         </Button>
       </div>
+
+      {/* ── Sertifikasi Chatbot (admin-only) ─────────────────────── */}
+      <Card className="border-green-500/25 bg-green-500/5">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2.5">
+            <div className="p-1.5 rounded-lg bg-green-500/10">
+              <ShieldCheck className="h-4 w-4 text-green-400" />
+            </div>
+            <div>
+              <span className="text-base">Sertifikasi Chatbot</span>
+              <p className="text-xs font-normal text-gray-400 mt-0.5">
+                Tandai chatbot kreator sebagai "Bersertifikat" setelah lulus workshop. Hanya admin — kreator tidak bisa menyertifikasi chatbot-nya sendiri.
+              </p>
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Input
+              value={certAgentId}
+              onChange={(e) => setCertAgentId(e.target.value.replace(/[^0-9]/g, ""))}
+              placeholder="ID chatbot (angka)"
+              inputMode="numeric"
+              className="sm:max-w-[200px]"
+              data-testid="input-cert-agent-id"
+            />
+            <div className="flex gap-2">
+              <Button
+                onClick={() => certifyMutation.mutate({ id: certAgentId.trim(), certified: true })}
+                disabled={!certAgentId.trim() || certifyMutation.isPending}
+                className="bg-green-600 hover:bg-green-700 text-white"
+                data-testid="button-grant-certification"
+              >
+                {certifyMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ShieldCheck className="h-4 w-4 mr-2" />}
+                Beri Sertifikat
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => certifyMutation.mutate({ id: certAgentId.trim(), certified: false })}
+                disabled={!certAgentId.trim() || certifyMutation.isPending}
+                className="border-white/15"
+                data-testid="button-revoke-certification"
+              >
+                <ShieldOff className="h-4 w-4 mr-2" />
+                Cabut
+              </Button>
+            </div>
+          </div>
+          <p className="text-xs text-gray-500">
+            Chatbot bersertifikat tampil dengan badge hijau "Bersertifikat" di Store, menggantikan badge "Pra-Sertifikasi".
+          </p>
+        </CardContent>
+      </Card>
 
       {/* ── Bulk Fill Agent — full width, most important ─────────── */}
       <Card className="border-violet-500/30 bg-violet-500/5">
