@@ -12,7 +12,7 @@ import overviewVideo from "@assets/generated_videos/gustafta_explainer.mp4";
 import overviewPoster from "@assets/generated_videos/gustafta_explainer_poster.jpg";
 import {
   Rocket, ArrowRight, Check, BookOpen, Wrench, Zap, Lightbulb, TrendingUp,
-  MessageCircle, ChevronRight, ShieldCheck, Store, Bot, FileText,
+  MessageCircle, ShieldCheck, Store, Bot, FileText,
   GraduationCap, Smartphone, Users, Building2, Briefcase, User,
   Send, Loader2, Sparkles, X, ChevronDown, Lock, ShoppingBag, FileDown,
   Mic, MicOff, Paperclip,
@@ -915,10 +915,12 @@ export default function Landing() {
             <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-3">
               Satu Platform. Lima Perjalanan.
             </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Semuanya berada dalam satu ekosistem GUSTAFTA.</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 max-w-xl mx-auto">
+              Dari pengetahuan yang Anda miliki hingga menjadi bisnis AI — lima tahap yang saling terhubung. Ketuk tiap tahap untuk melihat detailnya.
+            </p>
           </div>
 
-          <div className="space-y-5">
+          <Accordion type="single" collapsible defaultValue="stage-0" className="space-y-3">
             {[
               {
                 emoji: "📚", num: "01", label: "BELAJAR",
@@ -963,53 +965,48 @@ export default function Landing() {
                 title: "Dari Perakit AI — Menjadi Pelaku Bisnis AI.",
                 desc: "Ini bukan lagi tentang memakai AI. Ini tentang membangun bisnis, organisasi, atau ekosistem berbasis AI. Dua jalur tersedia: naik level sebagai Perakit AI Profesional, atau bangun ekosistem AI untuk tim & perusahaan Anda.",
                 items: ["Naik level: Pemula → Profesional → Creator → Enterprise", "Sertifikasi Perakit AI (Certified AI Assembler)", "Buka jasa konsultasi AI sendiri", "AI Studio — tim Gustafta rakitkan untuk Anda", "White Label & Kemitraan Bisnis AI", "Corporate Training & AI Organization"],
-                evolution: null,
                 cta: "Mulai Berkembang", href: "/packs",
               },
-            ].map((stage) => (
-              <div key={stage.num} className={`rounded-2xl border ${stage.color} p-6`}>
-                <div className="flex flex-col md:flex-row md:items-start gap-5">
-                  <div className="flex items-center gap-3 md:flex-col md:items-center md:w-20 shrink-0">
+            ].map((stage, idx) => (
+              <AccordionItem
+                key={stage.num}
+                value={`stage-${idx}`}
+                className={`rounded-2xl border ${stage.color} px-5 overflow-hidden`}
+                data-testid={`accordion-stage-${stage.label.toLowerCase()}`}
+              >
+                <AccordionTrigger className="hover:no-underline py-5">
+                  <div className="flex items-center gap-4 text-left">
                     <div className={`w-10 h-10 rounded-xl ${stage.badge} text-white flex items-center justify-center font-bold text-sm shrink-0`}>
                       {stage.num}
                     </div>
-                    <div className="text-2xl">{stage.emoji}</div>
-                    <div className={`text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-full text-white ${stage.badge}`}>
-                      {stage.label}
+                    <div className="flex flex-col gap-1.5">
+                      <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full text-white ${stage.badge} w-fit`}>
+                        {stage.emoji} {stage.label}
+                      </span>
+                      <h3 className="text-sm md:text-base font-bold text-gray-900 dark:text-white">{stage.title}</h3>
                     </div>
                   </div>
-                  <div className="flex-1">
-                    <h3 className="text-base font-bold text-gray-900 dark:text-white mb-2">{stage.title}</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed mb-4">{stage.desc}</p>
-                    {stage.items && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 mb-4">
-                        {stage.items.map((item) => (
-                          <div key={item} className="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300">
-                            <Check className="h-3.5 w-3.5 text-green-500 shrink-0" />{item}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {stage.evolution && (
-                      <div className="flex flex-wrap items-center gap-2 mb-4">
-                        {stage.evolution.map((ev, i) => (
-                          <span key={ev} className="flex items-center gap-2">
-                            <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 bg-white/70 dark:bg-white/10 border rounded-lg px-3 py-1">{ev}</span>
-                            {i < stage.evolution.length - 1 && <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                    <Link href={stage.href}>
-                      <Button size="sm" variant="outline" className="text-xs h-8 gap-1.5" data-testid={`btn-stage-${stage.label.toLowerCase()}`}>
-                        {stage.cta} <ArrowRight className="w-3 h-3" />
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-              </div>
+                </AccordionTrigger>
+                <AccordionContent className="pb-5">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed mb-4">{stage.desc}</p>
+                  {stage.items && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 mb-4">
+                      {stage.items.map((item) => (
+                        <div key={item} className="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300">
+                          <Check className="h-3.5 w-3.5 text-green-500 shrink-0" />{item}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <Link href={stage.href}>
+                    <Button size="sm" variant="outline" className="text-xs h-8 gap-1.5" data-testid={`btn-stage-${stage.label.toLowerCase()}`}>
+                      {stage.cta} <ArrowRight className="w-3 h-3" />
+                    </Button>
+                  </Link>
+                </AccordionContent>
+              </AccordionItem>
             ))}
-          </div>
+          </Accordion>
         </div>
       </section>
 
