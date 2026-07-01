@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { AiTransparencyLabel } from "@/components/ai-transparency-label";
 import { useQuery } from "@tanstack/react-query";
 import { MessageContent } from "@/lib/format-message";
 import { Button } from "@/components/ui/button";
@@ -96,6 +97,7 @@ function ChatMessage({ msg }: { msg: Message }) {
         <div className="mt-2" style={{ wordBreak: "break-word" }}>
           {msg.isStreaming && !msg.content ? <span className="animate-pulse text-white/60">▋</span> : <MessageContent text={msg.content} className="text-sm text-white/90 leading-relaxed" />}
         </div>
+        <AiTransparencyLabel msg={msg} />
         {msg.orchestrationMs && msg.subAgents && msg.subAgents.length > 0 && !msg.isStreaming && (
           <div className="flex items-center gap-1 text-xs text-white/30 px-1 mt-1"><Zap className="h-2.5 w-2.5" /><span>{msg.subAgents.length} agen paralel · {(msg.orchestrationMs/1000).toFixed(1)}s</span></div>
         )}

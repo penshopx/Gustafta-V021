@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { AiTransparencyLabel } from "@/components/ai-transparency-label";
 import { parseBrainUpdates, BrainChip } from "@/lib/brain-utils";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -205,6 +206,7 @@ function ChatMessage({ msg }: { msg: Message }) {
             </span>
           ) : cleanContent}
         </div>
+        <AiTransparencyLabel msg={msg} />
         <BrainChip fields={brainFields} />
         {msg.dataMasterInjected && (
           <div className="flex items-center gap-1.5 text-[10px] text-emerald-400/70 px-1 mt-0.5">
