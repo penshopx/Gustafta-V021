@@ -519,10 +519,23 @@ export type PendingPremiumDelivery = typeof pendingPremiumDeliveries.$inferSelec
 
 // In-app notifications (e.g. agent shared with you). Email-independent so
 // collaborators reliably discover shares even when BREVO_API_KEY is absent.
+// Sumber tunggal tipe notifikasi (Loop Publikasi #13). Server (emit), UI lonceng
+// (pilih ikon), dan tes WAJIB pakai konstanta ini — cegah string-drift antar-lapis.
+// `AGENT_CERTIFICATION_LEGACY` hanya untuk data lama sebelum tipe grant/revoke dipisah
+// (Tahap 57); jangan dipakai untuk notifikasi baru. Panjang string harus ≤ 40 char
+// (lihat kolom `type` di bawah).
+export const NOTIFICATION_TYPES = {
+  AGENT_SHARED: "agent_shared",
+  AGENT_CERTIFICATION_GRANTED: "agent_certification_granted",
+  AGENT_CERTIFICATION_REVOKED: "agent_certification_revoked",
+  AGENT_CERTIFICATION_LEGACY: "agent_certification",
+} as const;
+export type NotificationType = (typeof NOTIFICATION_TYPES)[keyof typeof NOTIFICATION_TYPES];
+
 export const notifications = pgTable("notifications", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id", { length: 255 }).notNull(),
-  type: varchar("type", { length: 40 }).notNull().default("agent_shared"),
+  type: varchar("type", { length: 40 }).notNull().default(NOTIFICATION_TYPES.AGENT_SHARED),
   title: text("title").notNull(),
   message: text("message").notNull().default(""),
   link: text("link"),

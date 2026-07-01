@@ -92,6 +92,7 @@ import type {
   InsertNotification,
   CertificationAudit,
 } from "@shared/schema";
+import { NOTIFICATION_TYPES } from "@shared/schema";
 
 export type CollaboratorView = AgentCollaborator & {
   email?: string | null;
@@ -1290,7 +1291,7 @@ export class MemStorage implements IStorage {
     const rec: Notification = {
       id: ++this.notificationIdSeq,
       userId: data.userId,
-      type: data.type ?? "agent_shared",
+      type: data.type ?? NOTIFICATION_TYPES.AGENT_SHARED,
       title: data.title,
       message: data.message ?? "",
       link: data.link ?? null,

@@ -23,6 +23,7 @@ import {
   miniAppTypeSchema,
   knowledgeBases,
   collaboratorRoleSchema,
+  NOTIFICATION_TYPES,
   type Agent,
   type MiniApp,
   type MiniAppType,
@@ -1567,7 +1568,7 @@ export async function registerRoutes(
       try {
         await storage.createNotification({
           userId: targetUser.id,
-          type: "agent_shared",
+          type: NOTIFICATION_TYPES.AGENT_SHARED,
           title: `${inviterName || "Seseorang"} membagikan agen "${agentName}"`,
           message: `Anda kini punya akses ${roleLabel} ke agen "${agentName}".`,
           link: "/dashboard",
@@ -1939,7 +1940,7 @@ export async function registerRoutes(
             // Tipe eksplisit per aksi (Loop Publikasi #12) — UI lonceng memilih
             // ikon dari `type`, TIDAK menebak dari teks judul (agar tak putus
             // bila copy diubah). Legacy `agent_certification` tetap didukung UI.
-            type: certified ? "agent_certification_granted" : "agent_certification_revoked",
+            type: certified ? NOTIFICATION_TYPES.AGENT_CERTIFICATION_GRANTED : NOTIFICATION_TYPES.AGENT_CERTIFICATION_REVOKED,
             title: certified
               ? `Chatbot "${agentName}" kini Bersertifikat`
               : `Status Bersertifikat "${agentName}" dicabut`,
