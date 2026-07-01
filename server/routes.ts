@@ -5233,6 +5233,108 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
       }
     });
 
+    // POST /api/subscriptions/upgrade — user meminta "Naik Tier" (bulanan saja, LISENSI TIDAK ditagih lagi)
+    // Membuat pending request; admin mengaktifkan via /api/subscriptions/activate/:id (alur yang sudah ada).
+    app.post("/api/subscriptions/upgrade", isAuthenticated, async (req: any, res) => {
+      try {
+        const userId = req.user?.claims?.sub || "";
+        const { plan } = req.body || {};
+        const { PLAN_CONFIGS, LEGACY_PLAN_MAP } = await import("@shared/feature-plans");
+
+        const GUSTAFTA_PLAN_KEYS = ["starter", "profesional", "bisnis", "enterprise"];
+        if (!plan || !GUSTAFTA_PLAN_KEYS.includes(plan)) {
+          return res.status(400).json({ error: "invalid_plan", message: "Paket tujuan tidak valid." });
+        }
+
+        // Admin/superadmin sudah setara enterprise — tidak ada jalur upgrade
+        const role = await getDbRole(req);
+        if (role === "superadmin" || role === "admin") {
+          return res.status(400).json({ error: "already_max", message: "Akun admin sudah berada di tier tertinggi." });
+        }
+
+        // Tier saat ini (dari langganan aktif; kalau tak ada → free)
+        const current = await storage.getActiveSubscription(userId);
+        const currentTierName = current && current.status === "active"
+          ? (LEGACY_PLAN_MAP[current.plan] ?? "free")
+          : "free";
+        const currentTier = PLAN_CONFIGS[currentTierName]?.tier ?? 0;
+
+        // Naik Tier HANYA untuk pelanggan berbayar aktif. Pembelian pertama (termasuk LISENSI/setup)
+        // wajib lewat onboarding/create — bukan endpoint upgrade yang hanya menagih bulanan.
+        if (currentTier < 1) {
+          return res.status(400).json({
+            error: "no_active_plan",
+            message: "Naik Tier hanya untuk pelanggan aktif. Pilih paket & selesaikan lisensi lewat onboarding terlebih dahulu.",
+            redirectUrl: "/onboarding",
+          });
+        }
+
+        const planConfig = PLAN_CONFIGS[plan as keyof typeof PLAN_CONFIGS];
+        const targetTier = planConfig?.tier ?? 0;
+
+        // Harus benar-benar lebih tinggi
+        if (targetTier <= currentTier) {
+          return res.status(400).json({ error: "not_higher", message: "Paket tujuan harus lebih tinggi dari paket Anda saat ini." });
+        }
+
+        // Cegah permintaan upgrade ganda
+        const existingPending = await storage.getLatestPendingSubscription(userId);
+        if (existingPending) {
+          return res.status(409).json({
+            error: "pending_exists",
+            message: "Sudah ada permintaan upgrade yang menunggu konfirmasi admin.",
+            subscription: existingPending,
+          });
+        }
+
+        // Amount = HANYA biaya bulanan tier tujuan; lisensi/setup TIDAK ditagih ulang saat upgrade.
+        const orderId = `GUS-UPGRADE-${plan.toUpperCase()}-${userId.slice(0, 8)}-${Date.now()}`;
+        const subscription = await storage.createSubscription({
+          userId,
+          plan,
+          status: "pending",
+          amount: planConfig.monthlyFee, // bulanan saja
+          currency: "IDR",
+          chatbotLimit: Math.min(planConfig.maxAgents === -1 ? 200 : planConfig.maxAgents, 200),
+          mayarOrderId: orderId,
+        });
+
+        const monthlyLabel = planConfig.monthlyFee > 0
+          ? `Rp ${planConfig.monthlyFee.toLocaleString("id-ID")}/bln`
+          : "Custom (dihitung tim)";
+        const waMsg = encodeURIComponent(
+          `Halo, saya ingin Naik Tier ke paket ${planConfig.name}.\n` +
+          `Order ID: ${orderId}\n` +
+          `Tarif bulanan baru: ${monthlyLabel}\n` +
+          `(Lisensi tidak ditagih lagi — hanya biaya bulanan)\n\n` +
+          `Mohon info cara pembayaran.`
+        );
+        const waUrl = `https://wa.me/6282299417818?text=${waMsg}`;
+
+        return res.status(201).json({
+          subscription,
+          orderId,
+          waUrl,
+          message: `Permintaan Naik Tier ke ${planConfig.name} tercatat. Selesaikan pembayaran bulanan, admin akan mengaktifkannya.`,
+        });
+      } catch (err) {
+        console.error("[/api/subscriptions/upgrade]", err);
+        return res.status(500).json({ error: "Failed to create upgrade request" });
+      }
+    });
+
+    // GET /api/subscriptions/pending — permintaan pending terbaru milik user (untuk status "menunggu konfirmasi")
+    app.get("/api/subscriptions/pending", isAuthenticated, async (req: any, res) => {
+      try {
+        const userId = req.user?.claims?.sub || "";
+        const pending = await storage.getLatestPendingSubscription(userId);
+        res.json({ pending: pending ?? null });
+      } catch (err) {
+        console.error("[/api/subscriptions/pending]", err);
+        res.status(500).json({ error: "Failed to load pending subscription" });
+      }
+    });
+
     // Check payment status by orderId (frontend polling)
     app.get("/api/subscriptions/check/:orderId", isAuthenticated, async (req: any, res) => {
       try {

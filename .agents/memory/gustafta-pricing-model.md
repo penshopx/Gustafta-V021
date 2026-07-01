@@ -40,3 +40,10 @@ Fitur **white-label** (hapus branding Gustafta / merek sendiri) sengaja **dihapu
 
 **Why:** menawarkan fitur yang belum bisa dipenuhi = janji kosong ke pelanggan/mitra.
 **How to apply:** JANGAN tambah kembali `white_label` sebagai fitur berbayar atau copy pemasaran ("white label", "hapus branding", "merek sendiri") sampai pemilik menyatakan siap. Custom Domain tetap ada dan berbeda dari white-label.
+
+## Alur "Naik Tier" (upgrade langganan)
+
+Upgrade tier platform = **ubah tarif BULANAN saja; LISENSI/setup TIDAK ditagih ulang**. Model yang dipakai: user klik "Naik Tier" → dibuat pending subscription (amount = monthlyFee tier tujuan saja) → admin aktifkan via `/api/subscriptions/activate/:id` (alur aktivasi yang sudah ada). Endpoint: `POST /api/subscriptions/upgrade`, status pending dibaca via `GET /api/subscriptions/pending` (storage `getLatestPendingSubscription`).
+
+**Why:** endpoint upgrade hanya menagih bulanan; kalau pengguna free/belum berlangganan boleh memakainya, mereka bisa melewati biaya lisensi/setup sekali (jalur akuisisi disamarkan jadi jalur upgrade).
+**How to apply:** `/api/subscriptions/upgrade` WAJIB tolak bila `currentTier < 1` (belum ada langganan berbayar aktif) — arahkan ke onboarding/`/api/subscriptions/create` untuk pembelian pertama. Target juga wajib `targetTier > currentTier` dan cegah pending ganda. UI hanya menampilkan tombol "Naik Tier" untuk pelanggan berbayar (nextPlanKey null untuk free), tapi guard server tetap wajib (defense in depth).

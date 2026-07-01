@@ -264,6 +264,7 @@ export interface IStorage {
   getSubscriptionByMayarOrderId(mayarOrderId: string): Promise<Subscription | undefined>;
   getActiveSubscription(userId: string): Promise<Subscription | undefined>;
   updateSubscription(id: string, data: Partial<InsertSubscription>): Promise<Subscription | undefined>;
+  getLatestPendingSubscription(userId: string): Promise<Subscription | undefined>;
   expireSubscriptions(): Promise<number>;
   incrementTrialMessages(subscriptionId: string): Promise<number>;
 
@@ -1754,6 +1755,12 @@ export class MemStorage implements IStorage {
       }
       return true;
     });
+  }
+
+  async getLatestPendingSubscription(userId: string): Promise<Subscription | undefined> {
+    return Array.from(this.subscriptions.values())
+      .filter((sub) => sub.userId === userId && sub.status === "pending")
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
   }
 
   async updateSubscription(id: string, data: Partial<InsertSubscription>): Promise<Subscription | undefined> {

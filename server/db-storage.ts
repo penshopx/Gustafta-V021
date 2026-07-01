@@ -2301,6 +2301,18 @@ export class DatabaseStorage implements IStorage {
     return this.mapSubscriptionRow(result[0]);
   }
 
+  async getLatestPendingSubscription(userId: string): Promise<Subscription | undefined> {
+    const result = await db.select().from(subscriptionsTable)
+      .where(and(
+        eq(subscriptionsTable.userId, userId),
+        eq(subscriptionsTable.status, "pending")
+      ))
+      .orderBy(desc(subscriptionsTable.createdAt))
+      .limit(1);
+    if (result.length === 0) return undefined;
+    return this.mapSubscriptionRow(result[0]);
+  }
+
   async updateSubscription(id: string, data: Partial<InsertSubscription>): Promise<Subscription | undefined> {
     const updateData: Record<string, unknown> = { updatedAt: new Date() };
     Object.entries(data).forEach(([key, value]) => {
