@@ -13,6 +13,7 @@ import {
   MessageCircle, ChevronRight, ShieldCheck, Store, Bot, FileText,
   GraduationCap, Smartphone, Users, Building2, Briefcase, User,
   Send, Loader2, Sparkles, X, ChevronDown, Lock, ShoppingBag, FileDown,
+  Mic, MicOff, Paperclip,
 } from "lucide-react";
 
 const GUSTAFTA_AGENT_ID = "1";
@@ -202,8 +203,14 @@ function GustaftaFloatingChat({ isOpen, onClose }: { isOpen: boolean; onClose: (
   const [blueprint, setBlueprint] = useState<Blueprint | null>(null);
   const [generatingBP, setGeneratingBP] = useState(false);
   const [sessionId] = useState(() => `socratic_${Date.now()}_${Math.random().toString(36).slice(2)}`);
+  const [isListening, setIsListening] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const initialized = useRef(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const recognitionRef = useRef<any>(null);
+  const sendRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     if (isOpen && !initialized.current) {
@@ -219,6 +226,70 @@ function GustaftaFloatingChat({ isOpen, onClose }: { isOpen: boolean; onClose: (
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading, blueprint]);
+
+  // ── Speech API ──────────────────────────────────────────────────────────
+  useEffect(() => {
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) return;
+    setSpeechSupported(true);
+    const recognition = new SR();
+    recognition.lang = "id-ID";
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    let final = "";
+    recognition.onstart = () => { setIsListening(true); final = ""; };
+    recognition.onresult = (e: any) => {
+      let interim = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript;
+        if (e.results[i].isFinal) final += t; else interim += t;
+      }
+      setInput(final + interim);
+    };
+    recognition.onend = () => {
+      setIsListening(false);
+      if (final.trim()) setTimeout(() => sendRef.current(), 50);
+    };
+    recognition.onerror = () => setIsListening(false);
+    recognitionRef.current = recognition;
+  }, []);
+
+  const toggleMic = () => {
+    if (!recognitionRef.current) return;
+    if (isListening) { recognitionRef.current.stop(); }
+    else { setInput(""); recognitionRef.current.start(); }
+  };
+
+  // ── File upload ─────────────────────────────────────────────────────────
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    setIsUploading(true);
+    try {
+      for (const file of files) {
+        const fd = new FormData();
+        fd.append("file", file);
+        const r = await fetch("/api/chat/upload", { method: "POST", body: fd });
+        if (!r.ok) continue;
+        const data = await r.json();
+        if (data.category === "audio") {
+          try {
+            const tf = new FormData(); tf.append("file", file);
+            const tr = await fetch("/api/chat/transcribe", { method: "POST", body: tf });
+            if (tr.ok) {
+              const td = await tr.json();
+              if (td.transcript) setInput(prev => prev ? `${prev}\n\n${td.transcript}` : td.transcript);
+            }
+          } catch { /* optional */ }
+        } else {
+          setInput(prev => prev ? `${prev} [File: ${data.fileName}]` : `[File: ${data.fileName}]`);
+        }
+      }
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   const currentGate = (): SocraticGate => {
     if (userMsgCount < 2) return "GATE1";
@@ -304,6 +375,10 @@ function GustaftaFloatingChat({ isOpen, onClose }: { isOpen: boolean; onClose: (
     } finally {
       setLoading(false);
     }
+  };
+
+  sendRef.current = () => {
+    if (input.trim() && !loading && !generatingBP && gate !== "BLUEPRINT") send();
   };
 
   if (!isOpen) return null;
@@ -402,17 +477,49 @@ function GustaftaFloatingChat({ isOpen, onClose }: { isOpen: boolean; onClose: (
       {/* Input */}
       {!isDone && (
         <div className="px-3 py-2.5 border-t bg-white dark:bg-zinc-900">
-          <div className="flex gap-1.5">
+          {isListening && (
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <span className="flex h-2 w-2 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+              </span>
+              <span className="text-[10px] text-red-500 font-medium">Mendengarkan…</span>
+            </div>
+          )}
+          <div className="flex gap-1.5 items-center">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={loading || generatingBP || isUploading || isListening}
+              className="shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-30 transition-colors p-1"
+              title="Lampirkan file"
+              data-testid="button-attach-landing"
+            >
+              {isUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Paperclip className="h-3.5 w-3.5" />}
+            </button>
+            <input ref={fileInputRef} type="file" multiple className="hidden"
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.jpg,.jpeg,.png,.mp3,.wav,.webm,.ogg,.m4a,.mp4,.mov"
+              onChange={handleFileSelect} />
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send()}
-              placeholder={userMsgCount === 0 ? "Ceritakan keahlian Anda…" : userMsgCount < 4 ? "Jawab pertanyaan di atas…" : "Satu jawaban lagi untuk Blueprint Anda…"}
-              disabled={loading || generatingBP}
+              placeholder={isListening ? "Mendengarkan suara Anda…" : userMsgCount === 0 ? "Ceritakan keahlian Anda…" : userMsgCount < 4 ? "Jawab pertanyaan di atas…" : "Satu jawaban lagi untuk Blueprint Anda…"}
+              disabled={loading || generatingBP || isListening}
               className="flex-1 text-xs h-8"
               data-testid="input-gustafta-chat"
             />
-            <Button onClick={send} disabled={loading || generatingBP || !input.trim()} size="sm"
+            {speechSupported && (
+              <button
+                onClick={toggleMic}
+                disabled={loading || generatingBP}
+                className={`shrink-0 p-1.5 rounded-lg transition-all ${isListening ? "text-red-500 bg-red-50 dark:bg-red-900/20" : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-30"}`}
+                title={isListening ? "Berhenti" : "Rekam suara"}
+                data-testid="button-mic-landing"
+              >
+                {isListening ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+              </button>
+            )}
+            <Button onClick={send} disabled={loading || generatingBP || !input.trim() || isListening} size="sm"
               className="bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-700 hover:to-violet-700 text-white h-8 px-2.5"
               data-testid="button-gustafta-send">
               {(loading || generatingBP) ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
