@@ -487,7 +487,7 @@ export default function PacksPage() {
                 Anda ahli di bidang Anda. Serahkan perakitan AI ke tim Gustafta — atau jadikan platform ini backbone bisnis Anda.
               </p>
               <div className="space-y-1 mb-3">
-                {["Custom AI dari nol oleh tim Gustafta", "White Label & Partner Program", "Corporate Training seluruh tim"].map(i => (
+                {["Custom AI dari nol oleh tim Gustafta", "Partner Program", "Corporate Training seluruh tim"].map(i => (
                   <div key={i} className="flex items-start gap-1.5 text-[11px] text-orange-800 dark:text-orange-300">
                     <Check className="h-3 w-3 text-orange-500 shrink-0 mt-0.5" />{i}
                   </div>

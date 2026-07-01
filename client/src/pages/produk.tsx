@@ -55,7 +55,7 @@ const ENTERPRISE_PLAN = {
   bgColor: "bg-purple-50/50 dark:bg-purple-950/20",
   headerBg: "bg-purple-100/50 dark:bg-purple-900/30",
   icon: Crown,
-  tagline: "Solusi skala penuh — white-label, unlimited, dedicated manager",
+  tagline: "Solusi skala penuh — unlimited, dedicated manager",
   limits: [
     { label: "Pesan/bulan", value: "Unlimited" },
     { label: "Chatbot", value: "Unlimited slot" },
@@ -64,7 +64,6 @@ const ENTERPRISE_PLAN = {
   ],
   features: [
     "Semua fitur Bisnis",
-    "White-label (hapus branding Gustafta)",
     "5 sub-akun (multi-operator)",
     "Unlimited chatbot slot",
     "API akses penuh",
@@ -434,7 +433,7 @@ function BisnisPaket() {
           <ArrowRight className="w-3 h-3 text-gray-400 shrink-0"/>
           <span className="bg-violet-100 dark:bg-violet-900/40 px-2 py-0.5 rounded-full text-violet-600 dark:text-violet-400">Bisnis: + 5 bot konstruksi (total 9)</span>
           <ArrowRight className="w-3 h-3 text-gray-400 shrink-0"/>
-          <span className="bg-purple-100 dark:bg-purple-900/40 px-2 py-0.5 rounded-full text-purple-600 dark:text-purple-400">Enterprise: unlimited + white-label</span>
+          <span className="bg-purple-100 dark:bg-purple-900/40 px-2 py-0.5 rounded-full text-purple-600 dark:text-purple-400">Enterprise: unlimited</span>
         </div>
       </div>
 

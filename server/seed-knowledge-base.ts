@@ -834,7 +834,7 @@ A: Dua hal berbeda: Big Idea = chatbot Level 3 yang menerima user lalu routing k
 A: OpenClaw adalah metodologi penalaran agentic berlapis yang diterapkan Gustafta: ambil konteks (KB, Project Brain, Memory) → analisis multi-layer → invoke tool/fitur → sintesis → loop iterasi. Hasilnya: respons chatbot yang jauh lebih relevan dan kontekstual.
 
 **Q: Bagaimana Custom Domain bekerja?**
-A: Kamu set CNAME di provider domain kamu → arahkan ke server Gustafta → setelah verifikasi, domain kamu otomatis redirect ke chatbot yang dipilih. Cocok untuk white-label branding.
+A: Kamu set CNAME di provider domain kamu → arahkan ke server Gustafta → setelah verifikasi, domain kamu otomatis redirect ke chatbot yang dipilih.
 
 **Q: KB tipe YouTube, bagaimana cara kerjanya?**
 A: Paste link YouTube → Gustafta otomatis ambil transkrip video → konten dijadikan knowledge base yang bisa di-query chatbot via RAG. Tidak perlu download video secara manual.

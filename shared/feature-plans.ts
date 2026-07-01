@@ -17,7 +17,6 @@ export type FeatureKey =
   | "doc_generator"
   | "podcast"
   | "custom_domain"
-  | "white_label"
   | "priority_support"
   | "api_access"
   | "ai_tools"
@@ -65,7 +64,6 @@ export const PLAN_CONFIGS: Record<PlanTier, PlanConfig> = {
       doc_generator: false,
       podcast: false,
       custom_domain: false,
-      white_label: false,
       priority_support: false,
       api_access: false,
       ai_tools: false,
@@ -95,7 +93,6 @@ export const PLAN_CONFIGS: Record<PlanTier, PlanConfig> = {
       doc_generator: false,
       podcast: false,
       custom_domain: false,
-      white_label: false,
       priority_support: false,
       api_access: false,
       ai_tools: true,
@@ -125,7 +122,6 @@ export const PLAN_CONFIGS: Record<PlanTier, PlanConfig> = {
       doc_generator: true,
       podcast: false,
       custom_domain: true,
-      white_label: false,
       priority_support: false,
       api_access: false,
       ai_tools: true,
@@ -155,7 +151,6 @@ export const PLAN_CONFIGS: Record<PlanTier, PlanConfig> = {
       doc_generator: true,
       podcast: true,
       custom_domain: true,
-      white_label: true,
       priority_support: true,
       api_access: false,
       ai_tools: true,
@@ -185,7 +180,6 @@ export const PLAN_CONFIGS: Record<PlanTier, PlanConfig> = {
       doc_generator: true,
       podcast: true,
       custom_domain: true,
-      white_label: true,
       priority_support: true,
       api_access: true,
       ai_tools: true,
@@ -230,7 +224,6 @@ export const FEATURE_LABELS: Record<FeatureKey, { name: string; description: str
   doc_generator: { name: "Document Generator", description: "Otomatisasi pembuatan dokumen", icon: "FileText" },
   podcast: { name: "Podcast", description: "Kelola konten audio", icon: "Mic" },
   custom_domain: { name: "Custom Domain", description: "Domain sendiri untuk platform Anda", icon: "Globe" },
-  white_label: { name: "White-label", description: "Hapus branding Gustafta, tampilkan merek Anda", icon: "Shield" },
   priority_support: { name: "Priority Support", description: "Dukungan WhatsApp prioritas 1×24 jam", icon: "Headphones" },
   api_access: { name: "API Access", description: "Akses API penuh untuk integrasi", icon: "Cpu" },
   ai_tools: { name: "AI Tools", description: "EduCounsel AI & AI Tutor Adaptif multi-agen", icon: "Brain" },

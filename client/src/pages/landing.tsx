@@ -964,7 +964,7 @@ export default function Landing() {
                 badge: "bg-orange-600",
                 title: "Dari Perakit AI — Menjadi Pelaku Bisnis AI.",
                 desc: "Ini bukan lagi tentang memakai AI. Ini tentang membangun bisnis, organisasi, atau ekosistem berbasis AI. Dua jalur tersedia: naik level sebagai Perakit AI Profesional, atau bangun ekosistem AI untuk tim & perusahaan Anda.",
-                items: ["Naik level: Pemula → Profesional → Creator → Enterprise", "Sertifikasi Perakit AI (Certified AI Assembler)", "Buka jasa konsultasi AI sendiri", "AI Studio — tim Gustafta rakitkan untuk Anda", "White Label & Kemitraan Bisnis AI", "Corporate Training & AI Organization"],
+                items: ["Naik level: Pemula → Profesional → Creator → Enterprise", "Sertifikasi Perakit AI (Certified AI Assembler)", "Buka jasa konsultasi AI sendiri", "AI Studio — tim Gustafta rakitkan untuk Anda", "Kemitraan Bisnis AI", "Corporate Training & AI Organization"],
                 cta: "Mulai Berkembang", href: "/packs",
               },
             ].map((stage, idx) => (

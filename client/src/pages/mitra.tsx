@@ -206,8 +206,8 @@ export default function MitraPage() {
               {
                 icon: "🏛️", tier: "Partner Strategis", badge: "", highlight: false,
                 tagline: "Bangun Ekosistem untuk Klien",
-                desc: "Gunakan platform Gustafta untuk membangun solusi AI bagi klien Anda. White-label tersedia.",
-                items: ["White-label platform", "Harga khusus mitra", "Dedicated account manager", "Co-marketing opportunity"],
+                desc: "Gunakan platform Gustafta untuk membangun solusi AI bagi klien Anda.",
+                items: ["Harga khusus mitra", "Dedicated account manager", "Co-marketing opportunity"],
                 cta: "Hubungi Tim Kami",
               },
             ].map((t) => (
@@ -254,7 +254,7 @@ export default function MitraPage() {
               { emoji: "🏛️", label: "Lembaga Sertifikasi (LSP)", desc: "Buat ekosistem kompetensi digital untuk peserta — sertifikasi + AI panduan." },
               { emoji: "📣", label: "Digital Marketer", desc: "Bantu klien Anda punya chatbot AI — tambah layanan, tambah revenue Anda." },
               { emoji: "🤝", label: "Community Builder", desc: "Rekomendasikan Gustafta ke komunitas Anda, raih komisi dari setiap konversi." },
-              { emoji: "🏢", label: "Perusahaan Pelatihan", desc: "White-label platform untuk brand Anda sendiri, didukung infrastruktur Gustafta." },
+              { emoji: "🏢", label: "Perusahaan Pelatihan", desc: "Bangun platform pelatihan AI untuk tim Anda, didukung infrastruktur Gustafta." },
             ].map((p) => (
               <div key={p.label} className="rounded-2xl border bg-gray-50 dark:bg-muted/20 p-5 flex flex-col gap-3">
                 <span className="text-2xl">{p.emoji}</span>

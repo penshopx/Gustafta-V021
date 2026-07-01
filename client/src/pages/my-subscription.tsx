@@ -13,9 +13,9 @@ import { useFeatureAccess, PLAN_CONFIGS, FEATURE_LABELS, type FeatureKey } from 
 import {
   Check, X, Lock, Rocket, ArrowRight, Crown, Calendar, Clock,
   MessageSquare, BookOpen, Blocks, PlaySquare, FileText, Mic,
-  Globe, Shield, Headphones, Cpu, Bot, Zap, Building2,
+  Globe, Headphones, Cpu, Bot, Zap, Building2,
   RefreshCw, Phone, ChevronRight, Sparkles, BarChart3, AlertCircle, CheckCircle2,
-  Tag, HardHat, Briefcase,
+  HardHat, Briefcase,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -27,7 +27,6 @@ const FEATURE_ICONS: Record<FeatureKey, typeof Check> = {
   doc_generator: FileText,
   podcast: Mic,
   custom_domain: Globe,
-  white_label: Tag,
   priority_support: Headphones,
   api_access: Cpu,
   ai_tools: Bot,
