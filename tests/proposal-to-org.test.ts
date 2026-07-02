@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   proposalTeamToOrgMembers,
+  dialogBlueprintToOrgDraft,
   type ProposalTeamMember,
 } from "../shared/proposal-to-org.ts";
 
@@ -107,4 +108,39 @@ test("multi-departemen: tim beranggota tunggal → spesialis langsung di bawah K
   const solo = s.find((m) => m.title === "Spesialis Tunggal")!;
   assert.equal(solo.role, "specialist");
   assert.equal(solo.parentLocalId, "m1", "tim tunggal → spesialis di bawah puncak, bukan Ketua tanpa bawahan");
+});
+
+// ── dialogBlueprintToOrgDraft (Dialog → Organization Builder bridge) ───────────
+test("dialogBlueprintToOrgDraft: builds a single-orchestrator org seed from a blueprint", () => {
+  const draft = dialogBlueprintToOrgDraft({
+    namaChatbot: "Asisten Toko Roti",
+    persona: "Ramah dan cekatan menjawab pertanyaan pelanggan.",
+    targetPengguna: "Pembeli toko roti",
+    ringkasan: "Chatbot untuk menjawab jam buka, menu, dan harga.",
+  });
+  assert.equal(draft.members.length, 1);
+  assert.equal(draft.members[0].role, "orchestrator");
+  assert.equal(draft.members[0].title, "Asisten Toko Roti");
+  assert.equal(draft.orgName, "Tim Asisten Toko Roti");
+  assert.match(draft.mission, /jam buka/);
+  assert.match(draft.mission, /Target pengguna:/);
+  assert.ok(draft.maxSpecialists >= 1 && draft.maxSpecialists <= 5);
+});
+
+test("dialogBlueprintToOrgDraft: falls back gracefully when fields are missing", () => {
+  const draft = dialogBlueprintToOrgDraft({});
+  assert.equal(draft.members.length, 1);
+  assert.equal(draft.members[0].title, "Asisten AI");
+  assert.ok(draft.orgName.length > 0);
+  assert.ok(draft.mission.length > 0);
+  assert.ok(draft.members[0].responsibility.length > 0);
+});
+
+test("dialogBlueprintToOrgDraft: clamps overly long strings", () => {
+  const long = "x".repeat(1000);
+  const draft = dialogBlueprintToOrgDraft({ namaChatbot: long, ringkasan: long, persona: long });
+  assert.ok(draft.orgName.length <= 120);
+  assert.ok(draft.mission.length <= 600);
+  assert.ok(draft.members[0].title.length <= 120);
+  assert.ok(draft.members[0].responsibility.length <= 600);
 });

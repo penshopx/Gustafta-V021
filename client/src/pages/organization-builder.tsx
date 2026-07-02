@@ -374,9 +374,13 @@ export default function OrganizationBuilderPage() {
   const bootRef = useRef(false);
   const holdRef = useRef(false);
 
-  /* ── Handoff dari Proposal ("Rakit Tim Ini") + draft auto-save: muat saat mount ── */
+  /* ── Handoff dari Proposal/Dialog ("Rakit Tim Ini") + draft auto-save: muat setelah auth siap ──
+     Halaman ini auth-gated. Prefill (mis. dari Dialog publik) HARUS tetap ada saat pengguna
+     login dulu, jadi konsumsi ditunda sampai autentikasi selesai & pengguna sudah login —
+     sessionStorage bertahan melewati redirect login sehingga tim tetap termuat. */
   useEffect(() => {
-    // Prioritas: prefill dari Proposal (sekali pakai, langsung ke langkah anggota).
+    if (authLoading || !isAuthenticated || bootRef.current) return;
+    // Prioritas: prefill dari Proposal/Dialog (sekali pakai, langsung ke langkah anggota).
     try {
       const prefillRaw = sessionStorage.getItem(ORG_PREFILL_KEY);
       if (prefillRaw) {
@@ -384,7 +388,7 @@ export default function OrganizationBuilderPage() {
         applyDraft(JSON.parse(prefillRaw));
         setStep("members");
         bootRef.current = true;
-        toast({ title: "Tim dari proposal dimuat", description: "Tinjau & sesuaikan anggota, lalu lanjutkan." });
+        toast({ title: "Tim dimuat", description: "Tinjau & sesuaikan anggota, lalu lanjutkan." });
         return;
       }
     } catch { /* abaikan prefill rusak */ }
@@ -399,7 +403,7 @@ export default function OrganizationBuilderPage() {
       }
     } catch { /* abaikan draft rusak */ }
     bootRef.current = true;
-  }, []);
+  }, [isAuthenticated, authLoading]);
 
   /* ── Draft auto-save: simpan tiap perubahan (kecuali saat menunggu keputusan) ── */
   useEffect(() => {
