@@ -219,3 +219,39 @@ export function packageAllowanceForTier(tier: number): "all" | number {
   if (tier === 2) return PRO_PACKAGE_SLOTS;
   return 0;
 }
+
+/**
+ * Format katalog paket claw jadi teks ringkas untuk prompt AI.
+ * Dipakai Generator Proposal agar bisa merekomendasikan claw SIAP PAKAI sebagai
+ * "departemen manajemen AI" perusahaan (bukan hanya merakit tim dari nol).
+ * Deterministik dari CLAW_PACKAGES — tiap claw = tim AI multi-agen satu bidang.
+ */
+export function formatClawCatalogForPrompt(): string {
+  return CLAW_PACKAGES.map((p) => `- ${p.name}: ${p.description}`).join("\n");
+}
+
+/** Daftar nama paket claw yang valid (untuk validasi rekomendasi AI). */
+export function clawPackageNames(): string[] {
+  return CLAW_PACKAGES.map((p) => p.name);
+}
+
+/**
+ * Petakan input bebas (dari AI) ke NAMA PAKET kanonik di CLAW_PACKAGES.
+ * Mencegah rekomendasi claw yang mengarang/di luar katalog: hanya nama paket
+ * yang benar-benar ada yang lolos. Toleran — cocokkan via nama paket persis,
+ * substring nama, lalu isi deskripsi (mis. "SKK K3" → "K3 & Keselamatan").
+ * Kembalikan null bila tak ada padanan.
+ */
+export function resolveClawPackageName(input: string): string | null {
+  const q = (input || "").trim().toLowerCase();
+  if (!q) return null;
+  const exact = CLAW_PACKAGES.find((p) => p.name.toLowerCase() === q);
+  if (exact) return exact.name;
+  const byName = CLAW_PACKAGES.find(
+    (p) => p.name.toLowerCase().includes(q) || q.includes(p.name.toLowerCase()),
+  );
+  if (byName) return byName.name;
+  const byDesc = CLAW_PACKAGES.find((p) => p.description.toLowerCase().includes(q));
+  if (byDesc) return byDesc.name;
+  return null;
+}

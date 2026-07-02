@@ -21279,6 +21279,8 @@ Rp 199.000/bln · Rp 299.000/3bln · Rp 999.000/6bln · Rp 1.999.000/thn.
 Biaya setup BOLEH disesuaikan (umumnya naik) dari baseline tier tergantung: kompleksitas chatbot, luas lingkup, jumlah agen/integrasi, dan tenaga/orang yang terlibat. Sajikan setup sebagai "mulai dari X" atau rentang wajar, sebutkan faktor penyesuainya, dan tandai penyesuaian di luar baseline dengan [ASUMSI: ... | basis: ... | verifikasi-ke: founder]. JANGAN menurunkan setup di bawah baseline tier tanpa alasan jelas.`;
 
       const teamRef = formatTeamPlansForPrompt();
+      const { formatClawCatalogForPrompt, resolveClawPackageName } = await import("@shared/claw-packages");
+      const clawCatalog = formatClawCatalogForPrompt();
 
       const systemPrompt = `Anda adalah "Penyusun Penawaran" Gustafta — membantu founder membuat DRAF proposal Jasa Order (chatbot/organisasi AI custom yang dirakit tim Gustafta) yang profesional, persuasif, dan JUJUR.
 
@@ -21287,6 +21289,7 @@ Prinsip:
 - JANGAN urgensi palsu, janji hasil pasti, atau ROI fiktif. Angka harga HANYA dari acuan kanonik.
 - Rekomendasikan SATU tier jasa yang paling pas + jelaskan alasannya. Biaya BULANAN WAJIB pakai angka resmi (tak boleh berubah); biaya SETUP = baseline tier yang BOLEH disesuaikan naik sesuai kompleksitas & tenaga (sajikan sebagai "mulai dari").
 - Susun "tim_agen" BERDASARKAN "CETAK BIRU TIM" tier yang direkomendasikan (boleh disesuaikan naik sesuai kebutuhan). Untuk Tier 4, kelompokkan anggota ke BEBERAPA tim (multi-departemen) dan sertakan Kepala Kantor sebagai koordinator. Untuk tier kecil, isi field "tim" dengan nama tim yang sama untuk semua anggota.
+- CHATBOT PREMIUM SIAP PAKAI (CLAW): Gustafta punya KATALOG CLAW berupa PAKET BIDANG — tiap paket adalah kumpulan claw (tim AI multi-agen) SIAP PAKAI & sudah teruji untuk satu bidang. Bila kebutuhan klien COCOK dengan satu/beberapa bidang di KATALOG CLAW, REKOMENDASIKAN paket itu di field "claw_rekomendasi" sebagai "manajemen AI siap pakai" — posisikan sebagai DEPARTEMEN manajemen AI yang menjalankan koordinasi harian bidang tsb, sementara keputusan berisiko tetap di tangan manusia (◆ gerbang). Ini lebih cepat & teruji dibanding merakit dari nol, tapi TETAP sertakan "tim_agen" custom sebagai opsi. Isi "nama" HANYA dengan nama PAKET dari KATALOG CLAW PERSIS (level paket/bidang, BUKAN nama claw tunggal) — JANGAN mengarang. Karena claw produk PREMIUM berlisensi, TEGASKAN di "kenapa_cocok" bahwa opsi ini berbiaya tersendiri (lisensi premium + bulanan hosting) dan harga final tetap ◆ keputusan founder. Bila tak ada yang cocok, isi "claw_rekomendasi" dengan array kosong [].
 - Untuk setiap anggota tim, tuliskan ◆ gerbang manusia (keputusan yang wajib lewat founder) bila relevan; pakai "-" bila tak ada. Ambil gerbang default dari cetak biru tim.
 - Tandai apa pun yang belum pasti dengan [ASUMSI: ... | basis: ... | verifikasi-ke: ...].
 - Ini DRAF; harga/lingkup final & pengiriman = keputusan founder (◆ gerbang manusia). Sertakan catatan ini di penutup.
@@ -21295,6 +21298,9 @@ ${pricingRef}
 
 ===== CETAK BIRU TIM PER TIER (acuan menyusun tim_agen) =====
 ${teamRef}
+
+===== KATALOG CLAW (Chatbot Premium siap pakai — tiap claw = tim AI multi-agen 1 bidang) =====
+${clawCatalog}
 
 ===== FONDASI PENJUALAN =====
 ${playbook}
@@ -21310,6 +21316,7 @@ Balas HANYA dengan JSON valid (tanpa markdown fence) sesuai skema:
   "solusi": "string — narasi solusi Gustafta (tim AI yang dirakit) 3-5 kalimat",
   "lingkup_kerja": ["string", "..."] ,
   "tim_agen": [{"tim":"string — nama tim/departemen, mis. 'Tim Marketing' (tier kecil: satu tim yang sama untuk semua)","peran":"string","tugas":"string","gerbang":"string — ◆ keputusan yang WAJIB lewat founder; '-' bila tak ada"}],
+  "claw_rekomendasi": [{"nama":"string — nama PAKET bidang dari KATALOG CLAW (PERSIS, level paket/bidang bukan claw tunggal)","sebagai":"string — jadi departemen/fungsi manajemen apa di perusahaan klien, mis. 'Departemen K3 & Keselamatan'","kenapa_cocok":"string — 1-2 kalimat alasan cocok + catatan biaya lisensi premium + bulanan tersendiri"}],
   "tahapan": [{"fase":"string","durasi":"string","hasil":"string"}],
   "rekomendasi_tier": "string — nama tier + harga setup, mis. 'Tier 2 — Chatbot Menengah (Rp 2.499.000)'",
   "estimasi": {"setup": number, "bulanan": number, "catatan": "string"},
@@ -21352,6 +21359,21 @@ ${kebutuhan.trim()}`;
         tugas: typeof m?.tugas === "string" ? m.tugas : "",
         gerbang: typeof m?.gerbang === "string" ? m.gerbang.replace(/^[◆\s]+/, "").trim() : "",
       }));
+      {
+        // Validasi: hanya paket claw yang ADA di katalog yang lolos (cegah claw ngarang), dedup per paket.
+        const seenClaw = new Set<string>();
+        data.claw_rekomendasi = (Array.isArray(data.claw_rekomendasi) ? data.claw_rekomendasi : [])
+          .map((c: any) => ({
+            nama: resolveClawPackageName(typeof c?.nama === "string" ? c.nama : "") || "",
+            sebagai: typeof c?.sebagai === "string" ? c.sebagai.trim() : "",
+            kenapa_cocok: typeof c?.kenapa_cocok === "string" ? c.kenapa_cocok.trim() : "",
+          }))
+          .filter((c: any) => {
+            if (!c.nama || seenClaw.has(c.nama)) return false;
+            seenClaw.add(c.nama);
+            return true;
+          });
+      }
       data.tahapan = Array.isArray(data.tahapan) ? data.tahapan : [];
       data.syarat_ketentuan = Array.isArray(data.syarat_ketentuan) ? data.syarat_ketentuan : [];
       data.asumsi = Array.isArray(data.asumsi) ? data.asumsi : [];
