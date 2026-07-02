@@ -16732,6 +16732,38 @@ Return HANYA JSON berikut (tanpa penjelasan lain):
     }
   });
 
+  // ── Meta Conversions API — status & tes (Admin) ────────────────────────────
+  app.get("/api/admin/meta-capi/status", isAuthenticated, requireAdmin, async (_req: any, res: any) => {
+    const { isMetaCapiConfigured } = await import("./lib/meta-capi");
+    res.json({
+      configured: isMetaCapiConfigured(),
+      hasAccessToken: !!process.env.META_CAPI_ACCESS_TOKEN,
+      hasPixelId: !!process.env.META_PIXEL_ID,
+      hasTestEventCode: !!process.env.META_TEST_EVENT_CODE,
+    });
+  });
+
+  app.post("/api/admin/meta-capi/test", isAuthenticated, requireAdmin, async (req: any, res: any) => {
+    try {
+      const { sendMetaPurchaseEvent } = await import("./lib/meta-capi");
+      const testEventCode = typeof req.body?.testEventCode === "string" ? req.body.testEventCode : undefined;
+      const result = await sendMetaPurchaseEvent({
+        orderId: `test_${Date.now()}`,
+        value: 245000,
+        currency: "IDR",
+        email: req.body?.email || "test@gustafta.com",
+        phone: req.body?.phone || "081234567890",
+        name: req.body?.name || "Test Pembeli",
+        contentName: "Tes Meta CAPI Gustafta",
+        eventName: "Purchase",
+        testEventCode,
+      });
+      res.status(result.sent ? 200 : 400).json(result);
+    } catch (err: any) {
+      res.status(500).json({ sent: false, error: err?.message });
+    }
+  });
+
   // ── Scalev Webhook (PUBLIC — no auth) ──────────────────────────────────────
   // Scalev sends POST to this URL when order payment status changes.
   // Set this URL in app.scalev.id → Settings → Developers → Webhook URL
@@ -16779,6 +16811,45 @@ Return HANYA JSON berikut (tanpa penjelasan lain):
       if (existing) {
         return res.status(200).json({ received: true, note: "Duplicate, already processed" });
       }
+
+      // ── Meta Conversions API: kirim event Purchase (fire-and-forget) ─────────
+      // Jembatan Scalev → Meta: integrasi langsung Scalev↔Meta sering gagal, jadi
+      // Gustafta yang meneruskan event Purchase server-side. Meta dedup via
+      // event_id = scalev_{orderId}, jadi aman walau webhook diulang sebelum order
+      // tercatat. JANGAN pernah blokir/ gagalkan webhook karena CAPI.
+      (async () => {
+        try {
+          const { sendMetaPurchaseEvent } = await import("./lib/meta-capi");
+          // Pakai pixel per-agen bila order terkait agen dengan metaPixelId
+          let agentPixelId: string | undefined;
+          let contentName: string | undefined;
+          for (const pName of Object.keys(finalVariants)) {
+            const m = await storage.getScalevMappingByProductName(pName).catch(() => null);
+            if (m?.agentId) {
+              const ag: any = await storage.getAgent(String(m.agentId)).catch(() => null);
+              if (ag?.metaPixelId) agentPixelId = ag.metaPixelId;
+              if (ag?.name) contentName = ag.name;
+              break;
+            }
+          }
+          const result = await sendMetaPurchaseEvent({
+            orderId,
+            value: grossRevenue,
+            currency: "IDR",
+            email: customerEmail || undefined,
+            phone: customerPhone || undefined,
+            name: customerName || undefined,
+            contentName: contentName || Object.keys(finalVariants)[0] || undefined,
+            pixelId: agentPixelId,
+          });
+          if (!result.sent && result.skippedReason) {
+            console.log(`[Meta CAPI] Dilewati untuk order ${orderId}: ${result.skippedReason}`);
+          }
+        } catch (capiErr: any) {
+          console.error("[Meta CAPI] Error tak terduga:", capiErr?.message);
+        }
+      })();
+      // ─────────────────────────────────────────────────────────────────────────
 
       // ── Handle Gustafta Platform Subscription Plans ──────────────────────────
       // Detect if this is a platform subscription purchase (monthly_1/3/6/12)
