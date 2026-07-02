@@ -1,6 +1,7 @@
 import { useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import DemoChat from "@/components/demo-chat";
 import {
   CheckCircle2, MessageSquare, Phone, Calendar, Star, ChevronDown, ChevronUp,
   Zap, Shield, Award, ArrowRight, Bot, Sparkles, AlertCircle, UserPlus,
@@ -198,6 +199,31 @@ export default function AgentLanding() {
           )}
         </div>
       </section>
+
+      {/* ── DEMO CHAT ────────────────────────────────── */}
+      {data.landingPageEnabled && (
+      <section className="py-16 bg-white" data-testid="section-demo-chat">
+        <div className="max-w-4xl mx-auto px-6">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center gap-1.5 text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full text-xs font-medium mb-3">
+              <Sparkles className="w-3.5 h-3.5" />
+              Coba Gratis
+            </div>
+            <h2 className="text-3xl font-bold text-gray-800">Coba Langsung Sekarang</h2>
+            <p className="text-gray-500 mt-2 text-sm">
+              Buktikan kualitas jawabannya sebelum membeli — tanpa perlu daftar.
+            </p>
+          </div>
+          <DemoChat
+            agentId={String(data.id)}
+            agentName={data.name}
+            avatar={data.avatar}
+            chatUrl={data.chatUrl || `/chat/${data.slug}`}
+            ctaText={data.landingHeroCtaText || "Mulai Sekarang"}
+          />
+        </div>
+      </section>
+      )}
 
       {/* ── PAIN POINTS ──────────────────────────────── */}
       {painPoints.length > 0 && (
