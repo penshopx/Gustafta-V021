@@ -244,9 +244,26 @@ test("misi satu-domain tetap satu tim DATAR (tanpa hirarki), lead punya gerbang 
   assert.equal(s.members.filter((m) => m.role === "orchestrator").length, 1);
   // Struktur tetap datar: tak ada parentLocalId di anggota mana pun.
   assert.ok(s.members.every((m) => m.parentLocalId === undefined), "tim datar: tanpa parentLocalId");
-  // Safe-by-default: HANYA lead yang diberi gerbang; spesialis tidak.
+  // Lead selalu punya gerbang domain.
   assert.ok((s.members[0].gates ?? []).length > 0, "lead punya gerbang default");
-  assert.ok(s.members.slice(1).every((m) => (m.gates ?? []).length === 0), "spesialis tanpa gerbang default");
+  // Fase E: spesialis berfungsi-berisiko (Konten, Media Sosial & Iklan) punya gerbang per-fungsi.
+  const konten = s.members.find((m) => m.title.includes("Konten"));
+  const iklan = s.members.find((m) => m.title.includes("Iklan"));
+  assert.ok((konten?.gates ?? []).length > 0, "Spesialis Konten punya gerbang per-fungsi");
+  assert.ok((iklan?.gates ?? []).length > 0, "Spesialis Media Sosial & Iklan punya gerbang per-fungsi");
+  // Spesialis advisory (SEO) tetap tanpa gerbang — hindari kebisingan.
+  const seo = s.members.find((m) => m.title.includes("SEO"));
+  assert.equal((seo?.gates ?? []).length, 0, "Spesialis SEO (advisory) tanpa gerbang");
+});
+
+test("Fase E: spesialis berfungsi-berisiko di tim multi-departemen tetap dapat gerbang per-fungsi", () => {
+  const s = suggestTeamComposition("tim pemasaran iklan, tim keuangan pajak");
+  assert.ok(s.members.some((m) => m.title === "Kepala Kantor"), "multi-departemen: ada Kepala Kantor");
+  const pajak = s.members.find((m) => m.title.includes("Pajak"));
+  const iklan = s.members.find((m) => m.title.includes("Iklan"));
+  assert.equal(pajak?.role !== "orchestrator", true, "Spesialis Pajak bukan orchestrator");
+  assert.ok((pajak?.gates ?? []).length > 0, "Spesialis Pajak punya gerbang per-fungsi di multi-departemen");
+  assert.ok((iklan?.gates ?? []).length > 0, "Spesialis Iklan punya gerbang per-fungsi di multi-departemen");
 });
 
 test("string gerbang TIDAK menyertakan glyph ◆ (ditambahkan hanya saat render)", () => {

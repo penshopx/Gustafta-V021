@@ -148,7 +148,7 @@ interface TeamTemplate {
   domain: string;
   keywords: string[];
   lead: { title: string; responsibility: string };
-  specialists: { title: string; responsibility: string; role?: OrgMemberRole }[];
+  specialists: { title: string; responsibility: string; role?: OrgMemberRole; gate?: string }[];
 }
 
 const TEAM_TEMPLATES: TeamTemplate[] = [
@@ -157,8 +157,8 @@ const TEAM_TEMPLATES: TeamTemplate[] = [
     keywords: ["konstruksi", "sbu", "skk", "bujk", "bangunan", "sipil", "kontraktor", "lpjk", "tender", "proyek"],
     lead: { title: "Ketua Tim Konstruksi", responsibility: "Memahami kebutuhan klien konstruksi lalu mengarahkan ke spesialis yang tepat dan merangkum jawaban akhir." },
     specialists: [
-      { title: "Spesialis Perizinan & SBU", responsibility: "Membantu mengurus NIB, SBU, dan perizinan usaha jasa konstruksi lewat OSS." },
-      { title: "Spesialis Tender & Pengadaan", responsibility: "Membantu mencari, menganalisis, dan menyiapkan dokumen tender proyek konstruksi." },
+      { title: "Spesialis Perizinan & SBU", responsibility: "Membantu mengurus NIB, SBU, dan perizinan usaha jasa konstruksi lewat OSS.", gate: "Pengajuan perizinan/dokumen resmi (OSS) — final diputuskan & dikirim manusia." },
+      { title: "Spesialis Tender & Pengadaan", responsibility: "Membantu mencari, menganalisis, dan menyiapkan dokumen tender proyek konstruksi.", gate: "Penawaran/komitmen tender sebelum dikirim — diputuskan manusia." },
       { title: "Spesialis K3 & Kepatuhan", responsibility: "Memberi panduan keselamatan kerja (K3) dan kepatuhan regulasi konstruksi." },
     ],
   },
@@ -167,7 +167,7 @@ const TEAM_TEMPLATES: TeamTemplate[] = [
     keywords: ["hukum", "legal", "pengacara", "kontrak", "perjanjian", "litigasi", "perkara", "advokat"],
     lead: { title: "Ketua Tim Hukum", responsibility: "Menerima pertanyaan hukum klien, membagi ke spesialis bidang, lalu menyusun ringkasan yang jelas." },
     specialists: [
-      { title: "Spesialis Kontrak & Perjanjian", responsibility: "Membantu menyusun, meninjau, dan menjelaskan kontrak serta perjanjian." },
+      { title: "Spesialis Kontrak & Perjanjian", responsibility: "Membantu menyusun, meninjau, dan menjelaskan kontrak serta perjanjian.", gate: "Dokumen/kontrak mengikat sebelum diteken — ditinjau advokat manusia." },
       { title: "Spesialis Kepatuhan & Regulasi", responsibility: "Menjelaskan regulasi, perizinan, dan kewajiban hukum usaha." },
       { title: "Spesialis Litigasi & Sengketa", responsibility: "Memberi panduan awal penanganan sengketa dan langkah hukum." },
     ],
@@ -177,7 +177,7 @@ const TEAM_TEMPLATES: TeamTemplate[] = [
     keywords: ["pajak", "akuntansi", "keuangan", "ppn", "pph", "faktur", "spt", "audit", "pembukuan"],
     lead: { title: "Ketua Tim Keuangan", responsibility: "Memahami kebutuhan keuangan klien lalu mengarahkan ke spesialis pajak/akuntansi dan merangkum jawaban." },
     specialists: [
-      { title: "Spesialis Pajak", responsibility: "Membantu perhitungan, pelaporan SPT, PPN/PPh, dan kepatuhan pajak." },
+      { title: "Spesialis Pajak", responsibility: "Membantu perhitungan, pelaporan SPT, PPN/PPh, dan kepatuhan pajak.", gate: "Pelaporan pajak resmi (SPT) sebelum dikirim — disetujui manusia." },
       { title: "Spesialis Akuntansi", responsibility: "Membantu pembukuan, laporan keuangan, dan pencatatan transaksi." },
       { title: "Spesialis Analisis Keuangan", responsibility: "Menganalisis arus kas, profitabilitas, dan kesehatan keuangan usaha." },
     ],
@@ -187,8 +187,8 @@ const TEAM_TEMPLATES: TeamTemplate[] = [
     keywords: ["marketing", "pemasaran", "iklan", "brand", "konten", "sosial media", "seo", "copywriting", "promosi"],
     lead: { title: "Ketua Tim Pemasaran", responsibility: "Memahami tujuan pemasaran klien, membagi tugas ke spesialis, lalu menyatukan strategi." },
     specialists: [
-      { title: "Spesialis Konten & Copywriting", responsibility: "Membuat ide konten, caption, dan naskah promosi yang menarik." },
-      { title: "Spesialis Media Sosial & Iklan", responsibility: "Menyusun strategi media sosial dan kampanye iklan berbayar." },
+      { title: "Spesialis Konten & Copywriting", responsibility: "Membuat ide konten, caption, dan naskah promosi yang menarik.", gate: "Konten sebelum dipublikasikan — disetujui pemilik." },
+      { title: "Spesialis Media Sosial & Iklan", responsibility: "Menyusun strategi media sosial dan kampanye iklan berbayar.", gate: "Publikasi iklan & anggaran kampanye — disetujui pemilik." },
       { title: "Spesialis SEO & Pertumbuhan", responsibility: "Memberi panduan SEO dan taktik menaikkan trafik & konversi." },
     ],
   },
@@ -207,8 +207,8 @@ const TEAM_TEMPLATES: TeamTemplate[] = [
     keywords: ["sdm", "rekrutmen", "karyawan", "kepegawaian", "payroll", "talent", "hrd", "hr"],
     lead: { title: "Ketua Tim SDM", responsibility: "Memahami kebutuhan SDM klien lalu mengarahkan ke spesialis terkait dan merangkum solusi." },
     specialists: [
-      { title: "Spesialis Rekrutmen", responsibility: "Membantu menyusun lowongan, menyaring kandidat, dan panduan wawancara." },
-      { title: "Spesialis Hubungan Industrial", responsibility: "Menjelaskan aturan ketenagakerjaan, kontrak kerja, dan penyelesaian masalah karyawan." },
+      { title: "Spesialis Rekrutmen", responsibility: "Membantu menyusun lowongan, menyaring kandidat, dan panduan wawancara.", gate: "Keputusan menerima/menolak kandidat — diputuskan manusia." },
+      { title: "Spesialis Hubungan Industrial", responsibility: "Menjelaskan aturan ketenagakerjaan, kontrak kerja, dan penyelesaian masalah karyawan.", gate: "Kontrak kerja & sanksi karyawan sebelum berlaku — disetujui manusia." },
       { title: "Spesialis Pengembangan Karyawan", responsibility: "Merancang pelatihan, penilaian kinerja, dan jenjang karier." },
     ],
   },
@@ -217,7 +217,7 @@ const TEAM_TEMPLATES: TeamTemplate[] = [
     keywords: ["properti", "real estate", "rumah", "kpr", "sewa", "developer properti", "apartemen"],
     lead: { title: "Ketua Tim Properti", responsibility: "Memahami kebutuhan properti klien lalu mengarahkan ke spesialis dan merangkum rekomendasi." },
     specialists: [
-      { title: "Spesialis Jual-Beli & Sewa", responsibility: "Membantu proses jual-beli, sewa, dan negosiasi harga properti." },
+      { title: "Spesialis Jual-Beli & Sewa", responsibility: "Membantu proses jual-beli, sewa, dan negosiasi harga properti.", gate: "Komitmen harga/kesepakatan jual-beli sebelum disepakati — diputuskan manusia." },
       { title: "Spesialis KPR & Pembiayaan", responsibility: "Menjelaskan skema KPR, simulasi cicilan, dan persyaratan pembiayaan." },
       { title: "Spesialis Legalitas Properti", responsibility: "Memandu pengecekan sertifikat, AJB, dan legalitas properti." },
     ],
@@ -247,7 +247,7 @@ const TEAM_TEMPLATES: TeamTemplate[] = [
     keywords: ["software", "aplikasi", "developer", "coding", "teknologi", "saas", "it", "program", "website"],
     lead: { title: "Ketua Tim Teknologi", responsibility: "Memahami kebutuhan teknis klien lalu mengarahkan ke spesialis dan merangkum rekomendasi." },
     specialists: [
-      { title: "Spesialis Pengembangan", responsibility: "Memberi panduan teknis pengembangan aplikasi/website dan praktik terbaik." },
+      { title: "Spesialis Pengembangan", responsibility: "Memberi panduan teknis pengembangan aplikasi/website dan praktik terbaik.", gate: "Rilis ke produksi / perubahan berisiko — disetujui manusia." },
       { title: "Spesialis Produk & UX", responsibility: "Membantu merumuskan fitur, alur pengguna, dan prioritas produk." },
       { title: "Spesialis Dukungan Teknis", responsibility: "Membantu troubleshooting dan menjawab pertanyaan teknis pengguna.", role: "support" },
     ],
@@ -379,6 +379,7 @@ export function suggestTeamComposition(
           title: s.title,
           responsibility: s.responsibility,
           parentLocalId: leadId,
+          gates: s.gate ? [s.gate] : undefined,
         });
       });
     }
@@ -403,6 +404,7 @@ export function suggestTeamComposition(
       role: s.role ?? "specialist",
       title: s.title,
       responsibility: s.responsibility,
+      gates: s.gate ? [s.gate] : undefined,
     });
   });
 
@@ -429,6 +431,12 @@ function roleCode(title: string, idx: number): string {
  * Bangun OrganizationBlueprint dari saran tim (MENGGANTI daftar anggota &
  * struktur; `meta` organisasi dipertahankan). Lead = anggota orchestrator
  * pertama; edge otomatis lead → setiap anggota lain.
+ *
+ * CATATAN GERBANG (◆): fungsi ini SENGAJA tidak menyalin `s.gates` ke OrgMember.
+ * Gerbang Manusia adalah milik draf klien (organization-builder.tsx) sebagai
+ * source-of-truth — klien membaca `gates` langsung dari hasil /suggest, membiarkan
+ * pengguna menyunting, lalu menyisipkannya ke systemPrompt via gateBlock() saat
+ * configure. Jangan mengandalkan applyTeamSuggestion untuk mempertahankan gerbang.
  */
 export function applyTeamSuggestion(
   org: OrganizationBlueprint,
