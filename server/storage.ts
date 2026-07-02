@@ -271,6 +271,9 @@ export interface IStorage {
   // User dialog completion methods
   getUserDialogCompleted(userId: string): Promise<boolean>;
   setUserDialogCompleted(userId: string): Promise<void>;
+  getUserClawPackages(userId: string): Promise<string[]>;
+  updateUserClawPackages(userId: string, packages: string[]): Promise<void>;
+  claimUserClawPackages(userId: string, packages: string[]): Promise<boolean>;
   
   // Agent count for subscription limits
   countUserAgents(userId: string): Promise<number>;
@@ -1810,6 +1813,18 @@ export class MemStorage implements IStorage {
   async incrementTrialMessages(_subscriptionId: string): Promise<number> { return 0; }
   async getUserDialogCompleted(_userId: string): Promise<boolean> { return false; }
   async setUserDialogCompleted(_userId: string): Promise<void> {}
+  private userClawPackages = new Map<string, string[]>();
+  async getUserClawPackages(userId: string): Promise<string[]> {
+    return this.userClawPackages.get(userId) ?? [];
+  }
+  async updateUserClawPackages(userId: string, packages: string[]): Promise<void> {
+    this.userClawPackages.set(userId, packages);
+  }
+  async claimUserClawPackages(userId: string, packages: string[]): Promise<boolean> {
+    if ((this.userClawPackages.get(userId) ?? []).length > 0) return false;
+    this.userClawPackages.set(userId, packages);
+    return true;
+  }
 
   // Project Brain Template methods
   async getProjectBrainTemplates(agentId: string): Promise<ProjectBrainTemplate[]> {

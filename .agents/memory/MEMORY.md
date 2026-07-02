@@ -26,6 +26,7 @@
 - [Premium Privat clone + auto-delivery](premium-private-clone.md) — per-buyer clone (override isPublic+isListed, reset custom* keys, copy knowledge_chunks too); Scalev webhook delivers (pending-queue→login); clone MUST be atomic txn + partial-unique index (cloned_from,user).
 - [KB endpoint authz parity](kb-endpoint-authz.md) — every /api/knowledge-base/* gates on OWNING AGENT (read=assertCanAccessAgentChat, mutate=assertCanMutateAgent), never isAuthenticated-only; add to agent-authz-guard.test.ts.
 - [Conversation/voice API authz](conversation-api-authz.md) — Replit chat/audio integration ships /api/conversations* with NO auth + NO owner column (IDOR); must add userId, isAuthenticated, ownership checks on import.
+- [db-storage user placeholders](db-storage-user-placeholders.md) — storage.getUser/getUserByUsername always return undefined (Replit Auth placeholders); query users table directly for existence checks.
 - [AI Organization Blueprint](organization-blueprint.md) — Fase 3: Blueprint flow designs a TEAM of agents; members ref each other by localId (not agentId), wiring source-of-truth = org structure.edges, resolved to agenticSubAgents at config time.
 - [Meta CAPI bridge](meta-capi-bridge.md) — Purchase events relayed server-side from Scalev webhook; fire-and-forget, dedup via event_id, hashed PII, token in body not URL.
 - [Public-agent SSE authz](public-agent-sse-authz.md) — deny gate must be `isPublic !== true`, never userId-based (legacy no-owner agents leak); SSE streams need req close → abort upstream LLM.

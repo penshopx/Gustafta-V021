@@ -1,13 +1,15 @@
 import { type ReactNode } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   Lock, LogIn, Zap, ArrowRight, Crown, Star, Shield,
-  Brain, Cpu, Bot, Sparkles, CheckCircle2, MessageCircle, Phone
+  Brain, Cpu, Bot, Sparkles, CheckCircle2, MessageCircle, Phone,
+  LayoutGrid, PackageOpen
 } from "lucide-react";
 import { useFeatureAccess, type FeatureKey, type PlanTier, PLAN_CONFIGS, FEATURE_LABELS } from "@/hooks/use-feature-access";
+import { useClawPackages, packageForRoute } from "@/hooks/use-claw-packages";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 
@@ -37,6 +39,9 @@ export function PremiumPageGuard({
 }: PremiumPageGuardProps) {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { hasFeature, planInfo } = useFeatureAccess();
+  const [location] = useLocation();
+  const routePackage = packageForRoute(location);
+  const clawPkgQuery = useClawPackages();
 
   // Admin/SuperAdmin bypass — check role from /api/admin/me
   const { data: adminData, isLoading: adminLoading } = useQuery<{
@@ -51,7 +56,7 @@ export function PremiumPageGuard({
 
   const isSuperAdmin = adminData?.isSuperAdmin === true;
 
-  if (authLoading || adminLoading || planInfo.status === "loading") {
+  if (authLoading || adminLoading || planInfo.status === "loading" || (isAuthenticated && routePackage && clawPkgQuery.isLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
@@ -79,6 +84,28 @@ export function PremiumPageGuard({
   // Only SuperAdmin gets full bypass — regular admin still needs subscription
   if (isSuperAdmin) return <>{children}</>;
 
+  // ── Paket bidang: route claw yang termasuk paket bidang ──
+  // Bisnis/Enterprise (allowance "all") → buka semua paket.
+  // Profesional (allowance > 0) → buka HANYA claw di paket terpilih (termasuk claw yang dulunya khusus Bisnis).
+  // Tier di bawahnya → jatuh ke pengecekan fitur biasa (upsell lama).
+  if (routePackage) {
+    const { allowance, selected } = clawPkgQuery.info;
+    if (allowance === "all") return <>{children}</>;
+    if (typeof allowance === "number" && allowance > 0) {
+      if (selected.includes(routePackage.id)) return <>{children}</>;
+      return (
+        <PackageLockedScreen
+          title={title}
+          description={description}
+          icon={icon}
+          packageName={routePackage.name}
+          hasSelection={selected.length > 0}
+          className={className}
+        />
+      );
+    }
+  }
+
   if (!hasFeature(feature)) {
     return (
       <LockedScreen
@@ -94,6 +121,74 @@ export function PremiumPageGuard({
   }
 
   return <>{children}</>;
+}
+
+interface PackageLockedScreenProps {
+  title: string;
+  description: string;
+  icon?: ReactNode;
+  packageName: string;
+  hasSelection: boolean;
+  className?: string;
+}
+
+function PackageLockedScreen({ title, description, icon, packageName, hasSelection, className }: PackageLockedScreenProps) {
+  return (
+    <div className={cn("min-h-screen bg-background flex flex-col", className)}>
+      <div className="flex-1 flex items-center justify-center px-4 py-16">
+        <div className="max-w-lg w-full text-center space-y-8">
+
+          <div className="relative flex justify-center">
+            <div className="w-24 h-24 rounded-3xl bg-muted flex items-center justify-center text-4xl shadow-lg">
+              {icon ?? <Bot className="h-12 w-12 text-muted-foreground" />}
+            </div>
+            <div className="absolute -bottom-2 -right-2 w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center shadow">
+              <PackageOpen className="h-5 w-5 text-indigo-500" />
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <Badge className="gap-1.5 px-3 py-1 text-xs font-semibold bg-indigo-500/10 text-indigo-500 border border-indigo-500/30">
+              <LayoutGrid className="h-3.5 w-3.5" />
+              Paket Bidang: {packageName}
+            </Badge>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{title}</h1>
+            <p className="text-muted-foreground text-base leading-relaxed">{description}</p>
+          </div>
+
+          <div className="bg-muted/40 rounded-2xl p-5 border border-border/50 text-sm text-muted-foreground leading-relaxed">
+            {hasSelection ? (
+              <>Claw ini termasuk paket bidang <span className="font-semibold text-foreground">{packageName}</span> yang belum ada di pilihan Anda. Pilihan paket bidang terkunci setelah disimpan — hubungi admin jika ingin mengganti.</>
+            ) : (
+              <>Claw ini termasuk paket bidang <span className="font-semibold text-foreground">{packageName}</span>. Paket Profesional Anda memberi jatah memilih paket bidang — pilih sekarang untuk membuka claw ini.</>
+            )}
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link href="/paket-bidang">
+              <Button size="lg" className="gap-2 w-full sm:w-auto" data-testid="button-pilih-paket-bidang">
+                <LayoutGrid className="h-4 w-4" />
+                {hasSelection ? "Lihat Paket Bidang Saya" : "Pilih Paket Bidang"}
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+            <Link href="/multiclaw">
+              <Button variant="outline" size="lg" className="gap-2 w-full sm:w-auto" data-testid="button-back-directory">
+                <Cpu className="h-4 w-4" />
+                Direktori MultiClaw
+              </Button>
+            </Link>
+          </div>
+
+          {hasSelection && (
+            <p className="text-xs text--muted-foreground text-muted-foreground">
+              Ingin akses semua bidang tanpa memilih? Upgrade ke paket Bisnis.
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 interface LockedScreenProps {

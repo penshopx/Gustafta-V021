@@ -30,6 +30,7 @@ export const users = pgTable("users", {
   emailVerified: boolean("email_verified").default(false),
   authProvider: varchar("auth_provider").default("replit"),
   dialogCompleted: boolean("dialog_completed").default(false),
+  selectedClawPackages: varchar("selected_claw_packages").array(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

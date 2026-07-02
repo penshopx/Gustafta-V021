@@ -5134,6 +5134,94 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
     }
   });
 
+  // ── Paket MultiClaw per Bidang ──────────────────────────────────────────
+  // Model: Profesional (tier 2) pilih 2 paket bidang; Bisnis/Enterprise (tier 3+) semua;
+  // Starter/free hanya claw dasar. Pilihan terkunci setelah disimpan (reset via admin).
+  const resolveUserTier = async (req: any): Promise<number> => {
+    const role = await getDbRole(req);
+    if (role === "superadmin" || role === "admin") return 4;
+    const userId = req.user?.claims?.sub || "";
+    const { resolvePlan } = await import("@shared/feature-plans");
+    const subscription = await storage.getActiveSubscription(userId);
+    return resolvePlan(subscription?.plan, subscription?.status === "active").tier;
+  };
+
+  app.get("/api/claw-packages/my", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub || "";
+      const { CLAW_PACKAGES, packageAllowanceForTier, PRO_PACKAGE_SLOTS } = await import("@shared/claw-packages");
+      const [tier, selected] = await Promise.all([
+        resolveUserTier(req),
+        storage.getUserClawPackages(userId),
+      ]);
+      const allowance = packageAllowanceForTier(tier);
+      res.json({
+        packages: CLAW_PACKAGES,
+        selected,
+        allowance, // "all" | angka slot | 0
+        slots: PRO_PACKAGE_SLOTS,
+        tier,
+        locked: allowance !== "all" && selected.length > 0,
+      });
+    } catch (err) {
+      console.error("[/api/claw-packages/my]", err);
+      res.status(500).json({ error: "Gagal memuat paket bidang" });
+    }
+  });
+
+  app.post("/api/claw-packages/select", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub || "";
+      const { isValidPackageId, packageAllowanceForTier, PRO_PACKAGE_SLOTS } = await import("@shared/claw-packages");
+      const parsed = z.object({ packages: z.array(z.string()).min(1).max(PRO_PACKAGE_SLOTS) }).safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: `Pilih 1–${PRO_PACKAGE_SLOTS} paket bidang` });
+      }
+      const requested = Array.from(new Set(parsed.data.packages));
+      if (!requested.every(isValidPackageId)) {
+        return res.status(400).json({ error: "Paket bidang tidak dikenal" });
+      }
+      const tier = await resolveUserTier(req);
+      const allowance = packageAllowanceForTier(tier);
+      if (allowance === "all") {
+        return res.status(400).json({ error: "Paket Anda sudah membuka semua bidang — tidak perlu memilih" });
+      }
+      if (allowance === 0) {
+        return res.status(403).json({ error: "Pemilihan paket bidang tersedia mulai paket Profesional" });
+      }
+      if (requested.length > allowance) {
+        return res.status(400).json({ error: `Maksimal ${allowance} paket bidang` });
+      }
+      // Atomic claim — hanya berhasil jika belum ada pilihan (race-safe lock sekali pilih)
+      const claimed = await storage.claimUserClawPackages(userId, requested);
+      if (!claimed) {
+        return res.status(409).json({
+          error: "Paket bidang sudah dipilih dan terkunci. Hubungi admin untuk mengganti pilihan.",
+        });
+      }
+      res.json({ success: true, selected: requested });
+    } catch (err) {
+      console.error("[/api/claw-packages/select]", err);
+      res.status(500).json({ error: "Gagal menyimpan pilihan paket" });
+    }
+  });
+
+  // Admin: reset pilihan paket bidang user (buka kunci agar user bisa memilih ulang)
+  app.post("/api/admin/claw-packages/reset/:userId", requireAdmin, async (req: any, res) => {
+    try {
+      const targetUserId = req.params.userId;
+      // Lookup langsung ke tabel users (storage.getUser adalah placeholder Replit Auth)
+      const found = await db.select({ id: users.id }).from(users)
+        .where(eq(users.id, targetUserId)).limit(1);
+      if (found.length === 0) return res.status(404).json({ error: "User tidak ditemukan" });
+      await storage.updateUserClawPackages(targetUserId, []);
+      res.json({ success: true });
+    } catch (err) {
+      console.error("[/api/admin/claw-packages/reset]", err);
+      res.status(500).json({ error: "Gagal mereset paket bidang" });
+    }
+  });
+
   // Get subscription plans
   app.get("/api/subscriptions/plans", (_req, res) => {
       const plans = Object.entries(subscriptionPlans).map(([key, value]) => ({

@@ -58,6 +58,8 @@ Gustafta is an AI chatbot builder platform that enables users to create, configu
 ## MultiClaw Suite (80 halaman)
 Semua pakai `PremiumPageGuard` feature="advanced_ai_tools" requiredPlan="profesional". SSE streaming, sub-agent panel dots, legend strip, 6 sample prompts.
 
+**Paket Bidang (model Kombinasi)**: `shared/claw-packages.ts` = sumber tunggal 10 paket bidang (67 route) + `BASE_CLAW_ROUTES` (13 claw dasar Starter) = 80 claw. Aturan: Profesional pilih 2 paket (`PRO_PACKAGE_SLOTS`), pilihan TERKUNCI setelah simpan (atomic claim, reset via `POST /api/admin/claw-packages/reset/:userId`); Bisnis/Enterprise buka semua; paket terpilih meng-override feature flag lama (claw eks-Bisnis ikut terbuka). Gating di `PremiumPageGuard` via `useLocation()` + `packageForRoute()` — TANPA edit 80 halaman claw. API: `GET /api/claw-packages/my`, `POST /api/claw-packages/select`. Kolom: `users.selected_claw_packages varchar[]`. UI pilih: `client/src/pages/paket-bidang.tsx` (route `/paket-bidang`). Hook: `use-claw-packages.ts`.
+
 Endpoint: `GET /api/{nama}-claw/orchestrator` → `{ id, name, tagline, avatar }`. Semua route pakai `getAgentBySlug` sebagai primary lookup — JANGAN ganti ke hardcoded ID.
 
 | Rute | Nama | Agen | Hub Slug (DB) | Theme |
