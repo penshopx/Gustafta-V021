@@ -41,6 +41,7 @@ interface ConfigureMember {
 }
 interface SuggestMember {
   localId: string; role: OrgMemberRole; title: string; responsibility: string;
+  parentLocalId?: string; gates?: string[];
 }
 interface SuggestResponse { domain: string; members: SuggestMember[] }
 interface InferMember {
@@ -712,6 +713,8 @@ export default function OrganizationBuilderPage() {
         title: m.title || "",
         responsibility: m.responsibility || "",
         systemPrompt: "",
+        parentLocalId: typeof m.parentLocalId === "string" && m.parentLocalId.trim() ? m.parentLocalId : undefined,
+        gates: Array.isArray(m.gates) && m.gates.length ? m.gates : undefined,
       }));
       if (suggested.length === 0) {
         toast({ title: "Belum ada usulan", description: "Coba tuliskan misi lebih spesifik.", variant: "destructive" });

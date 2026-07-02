@@ -90,6 +90,10 @@ export interface MemberSuggestion {
   role: OrgMemberRole;
   title: string;
   responsibility: string;
+  /** localId atasan langsung (Ketua Tim). Kosong = lapor ke Ketua puncak/akar. */
+  parentLocalId?: string;
+  /** ◆ Gerbang Manusia default: keputusan yang WAJIB diserahkan ke manusia. */
+  gates?: string[];
 }
 
 export interface TeamSuggestion {
@@ -261,19 +265,65 @@ const GENERIC_TEAM: Omit<TeamTemplate, "keywords"> = {
 };
 
 /* ===========================================================================
+ * ◆ GERBANG MANUSIA DEFAULT — per domain (Ketua Tim) & lintas-tim (Kepala Kantor)
+ * Selaras filosofi Buku II (Kolaborasi): keputusan berisiko/mengikat tetap di
+ * tangan manusia. Dipisah dari TEAM_TEMPLATES agar template tetap ringkas.
+ * ======================================================================== */
+
+/** Gerbang tingkat atas untuk Kepala Kantor (koordinator lintas-tim). */
+const KEPALA_KANTOR_GATE =
+  "Keputusan lintas-tim yang berisiko atau mengikat (hukum, keuangan besar, keselamatan) — dirangkum untuk keputusan akhir manusia.";
+
+/** Gerbang default Ketua Tim per domain. */
+const DOMAIN_LEAD_GATES: Record<string, string[]> = {
+  Konstruksi: ["Penawaran/komitmen tender & tanda tangan dokumen resmi — diputuskan manusia."],
+  Hukum: ["Nasihat hukum final, langkah litigasi, & dokumen mengikat — di tangan advokat manusia."],
+  "Keuangan & Pajak": ["Pelaporan pajak resmi & keputusan keuangan besar — disetujui manusia."],
+  Pemasaran: ["Publikasi konten/iklan & alokasi anggaran kampanye — disetujui pemilik."],
+  Pendidikan: ["Penilaian akhir & keputusan menyangkut siswa — di guru/orang tua manusia."],
+  SDM: ["Keputusan rekrut/berhenti & pengelolaan data pribadi karyawan — diputuskan manusia."],
+  Properti: ["Transaksi/komitmen jual-beli & dokumen legal properti — diputuskan manusia."],
+  Energi: ["Keputusan teknis berisiko & komitmen proyek energi — diverifikasi ahli manusia."],
+  Kesehatan: ["Diagnosis/nasihat medis & langkah berisiko — selalu di tenaga medis manusia."],
+  Teknologi: ["Rilis ke produksi & perubahan berisiko/keamanan — disetujui manusia."],
+  Umum: ["Keputusan final berisiko (hukum, keuangan, keselamatan) — diserahkan ke manusia."],
+};
+
+function leadGatesFor(domain: string): string[] | undefined {
+  const g = DOMAIN_LEAD_GATES[domain];
+  return g && g.length ? [...g] : undefined;
+}
+
+/** Semua domain yang punya template tim (termasuk "Umum"). Untuk uji paritas. */
+export function teamTemplateDomains(): string[] {
+  return [...TEAM_TEMPLATES.map((t) => t.domain), GENERIC_TEAM.domain];
+}
+
+/** Semua domain yang punya gerbang default. Untuk uji paritas (cegah drift). */
+export function leadGateDomains(): string[] {
+  return Object.keys(DOMAIN_LEAD_GATES);
+}
+
+/* ===========================================================================
  * 1) SARAN KOMPOSISI TIM
  * ======================================================================== */
 
-/** Deteksi domain dari teks misi (kata kunci, batas kata). */
-function detectDomain(text: string): TeamTemplate | null {
+/** Deteksi SEMUA domain yang cocok, urut kecocokan terbanyak (untuk multi-tim). */
+function detectDomains(text: string, max = 4): TeamTemplate[] {
   const lower = (text || "").toLowerCase();
-  if (!lower.trim()) return null;
-  let best: { tpl: TeamTemplate; hits: number } | null = null;
-  for (const tpl of TEAM_TEMPLATES) {
+  if (!lower.trim()) return [];
+  const scored: { tpl: TeamTemplate; hits: number; idx: number }[] = [];
+  TEAM_TEMPLATES.forEach((tpl, idx) => {
     const hits = tpl.keywords.reduce((n, k) => (matchesWord(lower, k) ? n + 1 : n), 0);
-    if (hits > 0 && (!best || hits > best.hits)) best = { tpl, hits };
-  }
-  return best?.tpl ?? null;
+    if (hits > 0) scored.push({ tpl, hits, idx });
+  });
+  scored.sort((a, b) => b.hits - a.hits || a.idx - b.idx);
+  return scored.slice(0, Math.max(1, max)).map((s) => s.tpl);
+}
+
+/** Deteksi domain tunggal terbaik dari teks misi (kompat lama). */
+function detectDomain(text: string): TeamTemplate | null {
+  return detectDomains(text, 1)[0] ?? null;
 }
 
 const WORD_RE_CACHE = new Map<string, RegExp>();
@@ -296,11 +346,56 @@ export function suggestTeamComposition(
   options: { maxSpecialists?: number } = {},
 ): TeamSuggestion {
   const maxSpecialists = Math.max(1, options.maxSpecialists ?? 3);
-  const tpl = detectDomain(missionText);
-  const base = tpl ?? GENERIC_TEAM;
+  const domains = detectDomains(missionText, 4);
 
+  // MULTI-DEPARTEMEN: ≥2 domain terdeteksi → Kepala Kantor (koordinator puncak)
+  // membawahi beberapa Ketua Tim, tiap Ketua Tim punya spesialisnya sendiri.
+  if (domains.length >= 2) {
+    const members: MemberSuggestion[] = [];
+    let n = 1;
+    const topId = `m${n++}`;
+    members.push({
+      localId: topId,
+      role: "orchestrator",
+      title: "Kepala Kantor",
+      responsibility:
+        "Menerima kebutuhan, mengarahkan ke Ketua Tim yang tepat, lalu merangkum hasil lintas-tim menjadi satu.",
+      gates: [KEPALA_KANTOR_GATE],
+    });
+    for (const tpl of domains) {
+      const leadId = `m${n++}`;
+      members.push({
+        localId: leadId,
+        role: "orchestrator",
+        title: tpl.lead.title,
+        responsibility: tpl.lead.responsibility,
+        parentLocalId: topId,
+        gates: leadGatesFor(tpl.domain),
+      });
+      tpl.specialists.slice(0, maxSpecialists).forEach((s) => {
+        members.push({
+          localId: `m${n++}`,
+          role: s.role ?? "specialist",
+          title: s.title,
+          responsibility: s.responsibility,
+          parentLocalId: leadId,
+        });
+      });
+    }
+    const label = `Multi-departemen: ${domains.map((d) => d.domain).join(" + ")}`;
+    return { domain: label, members };
+  }
+
+  // SATU TIM (kompat lama): m1 Ketua Tim + spesialis (lapor ke m1 secara default).
+  const base = domains[0] ?? GENERIC_TEAM;
   const members: MemberSuggestion[] = [
-    { localId: "m1", role: "orchestrator", title: base.lead.title, responsibility: base.lead.responsibility },
+    {
+      localId: "m1",
+      role: "orchestrator",
+      title: base.lead.title,
+      responsibility: base.lead.responsibility,
+      gates: leadGatesFor(base.domain),
+    },
   ];
   base.specialists.slice(0, maxSpecialists).forEach((s, i) => {
     members.push({
@@ -350,16 +445,26 @@ export function applyTeamSuggestion(
     return m;
   });
 
+  // Wiring berjenjang: hormati parentLocalId dari saran (bila Ketua Tim valid),
+  // jika tidak default ke Ketua puncak (kompat tim datar).
+  const orchIds = new Set(
+    suggestion.members.filter((s) => s.role === "orchestrator").map((s) => s.localId),
+  );
+  const parentOf = new Map(suggestion.members.map((s) => [s.localId, s.parentLocalId] as const));
   const lead = members.find((m) => m.role === "orchestrator") ?? members[0];
   const edges: OrgCollaborationEdge[] = lead
     ? members
         .filter((m) => m.localId !== lead.localId)
-        .map((m, i) => ({
-          fromLocalId: lead.localId,
-          toLocalId: m.localId,
-          role: roleCode(m.title ?? "", i),
-          description: m.responsibility,
-        }))
+        .map((m, i) => {
+          const raw = parentOf.get(m.localId);
+          const parent = raw && raw !== m.localId && orchIds.has(raw) ? raw : lead.localId;
+          return {
+            fromLocalId: parent,
+            toLocalId: m.localId,
+            role: roleCode(m.title ?? "", i),
+            description: m.responsibility,
+          };
+        })
     : [];
 
   next.members = members;

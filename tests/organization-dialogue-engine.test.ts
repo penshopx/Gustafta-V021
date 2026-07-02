@@ -23,6 +23,8 @@ import {
   getOrgDialogueState,
   inferOrganization,
   ORG_QUESTION_BANK,
+  teamTemplateDomains,
+  leadGateDomains,
 } from "../server/services/blueprint-engine/organization-dialogue-engine.ts";
 
 /* --- Saran komposisi tim ------------------------------------------------ */
@@ -204,4 +206,75 @@ test("inferOrganization pure (input tak berubah) & mengisi nama org dari domain"
   const res = inferOrganization(org);
   assert.equal(JSON.stringify(org), snapshot);
   assert.equal(res.organization.meta.name, "Tim Konstruksi");
+});
+
+/* --- Multi-departemen (Fase B) ----------------------------------------- */
+
+test("suggestTeamComposition menyusun MULTI-DEPARTEMEN saat misi lintas-domain", () => {
+  const s = suggestTeamComposition(
+    "Bangun organisasi AI: tim pemasaran untuk konten & iklan, tim keuangan untuk pajak & akuntansi, dan tim hukum untuk kontrak",
+  );
+  // Kepala Kantor = akar (m1), punya gerbang, tanpa atasan.
+  assert.equal(s.members[0].role, "orchestrator");
+  assert.equal(s.members[0].localId, "m1");
+  assert.equal(s.members[0].parentLocalId, undefined);
+  assert.ok((s.members[0].gates ?? []).length > 0, "Kepala Kantor punya gerbang");
+  assert.match(s.domain, /Multi-departemen/);
+
+  // ≥2 Ketua Tim (orchestrator ber-parent m1), tiap-tiap punya gerbang default.
+  const ketua = s.members.filter((m) => m.role === "orchestrator" && m.parentLocalId === "m1");
+  assert.ok(ketua.length >= 2, "minimal 2 Ketua Tim di bawah Kepala Kantor");
+  for (const k of ketua) assert.ok((k.gates ?? []).length > 0, "tiap Ketua Tim punya gerbang default");
+
+  // Tiap spesialis lapor ke salah satu Ketua Tim.
+  const ketuaIds = new Set(ketua.map((k) => k.localId));
+  const specialists = s.members.filter((m) => m.role !== "orchestrator");
+  assert.ok(specialists.length > 0);
+  for (const sp of specialists) assert.ok(ketuaIds.has(sp.parentLocalId!), "spesialis lapor ke Ketua Tim");
+
+  // localId unik.
+  const ids = new Set(s.members.map((m) => m.localId));
+  assert.equal(ids.size, s.members.length);
+});
+
+test("misi satu-domain tetap satu tim DATAR (tanpa hirarki), lead punya gerbang default", () => {
+  const s = suggestTeamComposition("tim pemasaran konten dan iklan");
+  assert.equal(s.domain, "Pemasaran");
+  assert.ok(!s.members.some((m) => m.title === "Kepala Kantor"));
+  assert.equal(s.members.filter((m) => m.role === "orchestrator").length, 1);
+  // Struktur tetap datar: tak ada parentLocalId di anggota mana pun.
+  assert.ok(s.members.every((m) => m.parentLocalId === undefined), "tim datar: tanpa parentLocalId");
+  // Safe-by-default: HANYA lead yang diberi gerbang; spesialis tidak.
+  assert.ok((s.members[0].gates ?? []).length > 0, "lead punya gerbang default");
+  assert.ok(s.members.slice(1).every((m) => (m.gates ?? []).length === 0), "spesialis tanpa gerbang default");
+});
+
+test("string gerbang TIDAK menyertakan glyph ◆ (ditambahkan hanya saat render)", () => {
+  const s = suggestTeamComposition("tim pemasaran iklan, tim keuangan pajak, tim hukum kontrak");
+  for (const m of s.members) for (const g of m.gates ?? []) assert.ok(!g.includes("◆"), `gerbang tak boleh memuat ◆: "${g}"`);
+});
+
+test("paritas: setiap domain template punya gerbang default (cegah drift)", () => {
+  const withGates = new Set(leadGateDomains());
+  for (const d of teamTemplateDomains()) {
+    assert.ok(withGates.has(d), `domain "${d}" tak punya gerbang default di DOMAIN_LEAD_GATES`);
+  }
+});
+
+test("applyTeamSuggestion multi-departemen: hirarki lewat parentLocalId, lint bersih", () => {
+  const mission = "tim pemasaran iklan, tim keuangan pajak, tim hukum kontrak";
+  const org = createEmptyOrganizationBlueprint(mission);
+  const s = suggestTeamComposition(mission);
+  const next = applyTeamSuggestion(org, s);
+  organizationBlueprintSchema.parse(next);
+
+  // leadLocalId = Kepala Kantor (m1).
+  assert.equal(next.structure.leadLocalId, "m1");
+  // Tiap non-akar tepat satu edge.
+  assert.equal(next.structure.edges.length, next.members.length - 1);
+  // Ada edge dari Ketua Tim (bukan m1) → spesialis: hirarki bertingkat.
+  const subEdges = next.structure.edges.filter((e) => e.fromLocalId !== "m1");
+  assert.ok(subEdges.length > 0, "ada edge dari Ketua Tim ke spesialis");
+  // Semua from harus orchestrator (lint bersih).
+  assert.deepEqual(lintOrganizationBlueprint(next), []);
 });
