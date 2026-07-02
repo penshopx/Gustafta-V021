@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +14,7 @@ import {
   Bell, BellOff, Building2, MapPin, Search, Flame, Mountain,
   Zap, Globe, Send, CheckCircle2, XCircle, Clock, DollarSign,
   ExternalLink, Star, Info, Loader2, Phone, TrendingUp, FileCheck,
-  AlertTriangle, ChevronRight, Plus, X, Smartphone
+  AlertTriangle, ChevronRight, Plus, X, Smartphone, Mail
 } from "lucide-react";
 import type { Tender } from "@shared/schema";
 
@@ -256,6 +257,7 @@ function DocChecker() {
 
 export default function TenderAlertProfile() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<"profil" | "matches" | "dokumen">("profil");
   const [waToken, setWaToken] = useState("");
@@ -281,7 +283,14 @@ export default function TenderAlertProfile() {
 
   const { data: matches = [], isLoading: matchesLoading } = useQuery<Tender[]>({
     queryKey: ["/api/tender-alerts/matches"],
-    queryFn: () => fetch("/api/tender-alerts/matches", { credentials: "include" }).then(r => r.ok ? r.json() : []),
+    queryFn: () => fetch("/api/tender-alerts/matches", { credentials: "include" }).then(r => {
+      if (r.status === 403) {
+        toast({ title: "Perlu paket berbayar", description: "Tender Alert tersedia mulai paket Starter.", variant: "destructive" });
+        setTimeout(() => setLocation("/pricing"), 1200);
+        return [];
+      }
+      return r.ok ? r.json() : [];
+    }),
     enabled: activeTab === "matches",
     staleTime: 2 * 60 * 1000,
   });
@@ -297,8 +306,46 @@ export default function TenderAlertProfile() {
       queryClient.invalidateQueries({ queryKey: ["/api/tender-alerts/matches"] });
       toast({ title: "Profil tersimpan", description: "Notifikasi tender akan dikirim sesuai preferensi." });
     },
-    onError: () => toast({ title: "Gagal menyimpan", variant: "destructive" }),
+    onError: (err: any) => {
+      if (String(err?.message || "").startsWith("403")) {
+        toast({
+          title: "Perlu paket berbayar",
+          description: "Tender Alert tersedia mulai paket Starter. Klik untuk upgrade.",
+          variant: "destructive",
+        });
+        setTimeout(() => setLocation("/pricing"), 1200);
+        return;
+      }
+      toast({ title: "Gagal menyimpan", variant: "destructive" });
+    },
   });
+
+  const [testingEmail, setTestingEmail] = useState(false);
+  async function sendTestEmail() {
+    setTestingEmail(true);
+    try {
+      const res = await fetch("/api/tender-alerts/test-email", {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: form.email }),
+      });
+      if (res.status === 403) {
+        toast({ title: "Perlu paket berbayar", description: "Tender Alert email mulai paket Starter.", variant: "destructive" });
+        setTimeout(() => setLocation("/pricing"), 1200);
+        return;
+      }
+      const data = await res.json();
+      toast({
+        title: data.ok ? "Email test terkirim!" : "Belum terkirim",
+        description: data.message,
+        variant: data.ok ? undefined : "destructive",
+      });
+    } catch {
+      toast({ title: "Gagal kirim email test", variant: "destructive" });
+    } finally {
+      setTestingEmail(false);
+    }
+  }
 
   const [testingSend, setTestingSend] = useState(false);
   async function sendTestNotif() {
@@ -309,6 +356,11 @@ export default function TenderAlertProfile() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ waToken }),
       });
+      if (res.status === 403) {
+        toast({ title: "Perlu paket berbayar", description: "Tender Alert tersedia mulai paket Starter.", variant: "destructive" });
+        setTimeout(() => setLocation("/pricing"), 1200);
+        return;
+      }
       const data = await res.json();
       if (data.ok) {
         toast({ title: "Test notifikasi terkirim!", description: `Cek WA ${form.waPhone}` });
@@ -544,6 +596,27 @@ export default function TenderAlertProfile() {
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">
                         Contoh: <code className="bg-muted px-1 rounded">628123456789</code> (tanpa +, tanpa spasi)
+                      </p>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground mb-1 block">Email Notifikasi</Label>
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <Mail className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                          <Input value={form.email}
+                            onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                            placeholder="nama@perusahaan.co.id" type="email" className="h-8 text-sm pl-7"
+                            data-testid="input-alert-email" />
+                        </div>
+                        <Button size="sm" variant="outline" className="h-8 text-xs gap-1 whitespace-nowrap"
+                          onClick={sendTestEmail} disabled={testingEmail || !form.email}
+                          data-testid="button-test-email">
+                          {testingEmail ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                          Test Email
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Digest tender harian dikirim ke email ini (bisa bareng WA).
                       </p>
                     </div>
                     {form.waPhone && (

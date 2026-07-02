@@ -219,6 +219,119 @@ Kamu menerima email ini karena seseorang ingin membagikan agen dengan alamat ema
   });
 }
 
+interface TenderMatch {
+  name: string;
+  agency?: string | null;
+  budget?: string | null;
+  location?: string | null;
+  deadlineDate?: string | null;
+  url?: string | null;
+}
+
+interface TenderAlertEmailOptions {
+  to: string;
+  companyName?: string | null;
+  matches: TenderMatch[];
+  sectors?: string[];
+  kualifikasi?: string[];
+  appUrl?: string;
+}
+
+// Sends a daily tender-match digest email to a subscribed BUJK profile.
+// Never throws — returns the underlying SendEmailResult.
+export async function sendTenderAlertEmail(opts: TenderAlertEmailOptions): Promise<SendEmailResult> {
+  const company = opts.companyName?.trim() || "BUJK";
+  const date = new Date().toLocaleDateString("id-ID", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  const alertUrl =
+    opts.appUrl ||
+    (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}/tender-alert` : "");
+  const sectors = (opts.sectors && opts.sectors.length ? opts.sectors : ["konstruksi"]).join(", ");
+  const kual = (opts.kualifikasi && opts.kualifikasi.length ? opts.kualifikasi : []).join("/") || "Semua";
+
+  const clean = (t: TenderMatch) => (t.name || "").replace("[DEMO] ", "");
+  const rows = opts.matches.map((t, i) => {
+    const parts: string[] = [];
+    if (t.agency) parts.push(`🏢 ${t.agency}`);
+    if (t.budget) parts.push(`💰 ${t.budget}`);
+    if (t.location) parts.push(`📍 ${t.location}`);
+    if (t.deadlineDate) parts.push(`⏰ Deadline: ${t.deadlineDate}`);
+    const meta = parts.join(" &nbsp;·&nbsp; ");
+    const link = t.url && !t.url.includes("demo")
+      ? `<div style="margin-top:6px"><a href="${t.url}" style="color:#4f46e5;font-size:13px;text-decoration:none">Lihat detail tender →</a></div>`
+      : "";
+    return `<div style="padding:16px 0;border-bottom:1px solid #eef2f7">
+      <p style="margin:0 0 4px;font-size:15px;font-weight:700;color:#111">${i + 1}. ${clean(t)}</p>
+      <p style="margin:0;font-size:13px;color:#4b5563">${meta}</p>
+      ${link}
+    </div>`;
+  }).join("");
+
+  const rowsText = opts.matches.map((t, i) => {
+    const parts = [clean(t)];
+    if (t.agency) parts.push(`   ${t.agency}`);
+    if (t.budget) parts.push(`   ${t.budget}`);
+    if (t.deadlineDate) parts.push(`   Deadline: ${t.deadlineDate}`);
+    if (t.url && !t.url.includes("demo")) parts.push(`   ${t.url}`);
+    return `${i + 1}. ${parts.join("\n")}`;
+  }).join("\n\n");
+
+  const ctaButton = alertUrl
+    ? `<div style="text-align:center;margin:8px 0 24px"><a href="${alertUrl}" style="display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;font-size:15px;font-weight:600;padding:12px 28px;border-radius:8px">Kelola Filter Tender</a></div>`
+    : "";
+
+  const html = `<!DOCTYPE html>
+<html lang="id">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f3f4f6">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:32px 0">
+    <tr><td align="center">
+      <table width="520" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;padding:40px;font-family:Arial,sans-serif;color:#111">
+        <tr><td>
+          <p style="margin:0 0 4px;font-size:22px;font-weight:700;color:#4f46e5">🏗️ Gustafta Tender Monitor</p>
+          <p style="margin:0 0 12px;font-size:13px;color:#6b7280">${date}</p>
+          <hr style="border:none;border-top:1px solid #e5e7eb;margin:12px 0 20px">
+          <p style="font-size:16px;margin:0 0 4px">Halo <b>${company}</b>,</p>
+          <p style="font-size:15px;color:#374151;margin:0 0 12px">Ada <b>${opts.matches.length} tender baru</b> yang cocok dengan profil bisnis Anda hari ini:</p>
+          ${rows}
+          <div style="margin:20px 0 8px;padding:12px 16px;background:#f9fafb;border-radius:8px">
+            <p style="margin:0;font-size:12px;color:#6b7280">Filter: ${sectors} &nbsp;·&nbsp; Kualifikasi: ${kual}</p>
+          </div>
+          ${ctaButton}
+          <hr style="border:none;border-top:1px solid #e5e7eb;margin:0 0 16px">
+          <p style="font-size:12px;color:#9ca3af;margin:0">Anda menerima email ini karena mengaktifkan Tender Alert di akun Gustafta.</p>
+          <p style="font-size:12px;color:#9ca3af;margin:8px 0 0">© 2026 Gustafta. Seluruh hak dilindungi.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  const textContent = `🏗️ GUSTAFTA TENDER MONITOR
+${date}
+
+Halo ${company},
+
+Ada ${opts.matches.length} tender baru yang cocok dengan profil bisnis Anda hari ini:
+
+${rowsText}
+
+Filter: ${sectors} | Kualifikasi: ${kual}
+${alertUrl ? `\nKelola filter: ${alertUrl}\n` : ""}
+Anda menerima email ini karena mengaktifkan Tender Alert di akun Gustafta.
+
+— Gustafta Tender Monitor`;
+
+  return sendEmail({
+    to: opts.to,
+    toName: opts.companyName || undefined,
+    subject: `🏗️ ${opts.matches.length} tender baru cocok untuk ${company} — ${new Date().toLocaleDateString("id-ID")}`,
+    htmlContent: html,
+    textContent,
+    tags: ["tender-alert", "transactional"],
+  });
+}
+
 interface CertificationNotificationOptions {
   to: string;
   recipientName?: string | null;

@@ -1913,52 +1913,97 @@ function scheduleAtWIB(label: string, hour: number, minute: number, fn: () => Pr
 
 // ─── Tender Alert Notification Runner (08:00 WIB) ────────────────────────────
 async function runTenderAlertNotification(): Promise<void> {
+  // Tender Alert = produk berbayar (Starter+). Pengiriman via WA (Fonnte) DAN/ATAU
+  // email (Brevo). Minimal salah satu channel harus terkonfigurasi.
   const waToken = process.env.FONNTE_API_TOKEN;
-  if (!waToken) {
-    log("[Tender Alert] FONNTE_API_TOKEN tidak dikonfigurasi — skip notifikasi WA.");
+  const emailReady = !!process.env.BREVO_API_KEY;
+  if (!waToken && !emailReady) {
+    log("[Tender Alert] FONNTE_API_TOKEN & BREVO_API_KEY dua-duanya kosong — tidak ada channel pengiriman. Skip.");
     return;
   }
   try {
+    const { sendTenderAlertEmail } = await import("./lib/email");
+    const { resolvePlan, PLAN_CONFIGS } = await import("@shared/feature-plans");
+
     const profiles = await (storage as any).getAllActiveTenderAlertProfiles?.() ?? [];
     log(`[Tender Alert] Memproses ${profiles.length} profil aktif...`);
     const date = new Date().toLocaleDateString("id-ID", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
 
-    let sent = 0;
+    let sentWa = 0, sentEmail = 0, skippedPlan = 0;
     for (const profile of profiles) {
-      if (!profile.waPhone) continue;
+      if (!profile.waPhone && !profile.email) continue;
       try {
+        // Gating berbayar: hanya kirim untuk pengguna dengan langganan aktif Starter+.
+        const sub = await storage.getActiveSubscription(String(profile.userId));
+        const plan = resolvePlan(sub?.plan, sub?.status === "active");
+        if (plan.tier < PLAN_CONFIGS.starter.tier) {
+          skippedPlan++;
+          continue;
+        }
+
         const matches = await (storage as any).getTendersMatchingProfile?.(profile, 5) ?? [];
         if (matches.length === 0) continue;
 
-        let message = `🏗️ *TENDER MONITOR GUSTAFTA*\n📅 ${date}\n\n`;
-        message += `Halo *${profile.companyName || "BUJK"}*!\n`;
-        message += `${matches.length} tender baru yang cocok untuk Anda:\n\n`;
-        matches.forEach((t: any, i: number) => {
-          message += `${i + 1}. *${t.name.replace("[DEMO] ", "")}*\n`;
-          message += `   🏢 ${t.agency}`;
-          if (t.budget) message += ` | 💰 ${t.budget}`;
-          if (t.deadlineDate) message += `\n   ⏰ Deadline: ${t.deadlineDate}`;
-          if (t.url && !t.url.includes("demo")) message += `\n   🔗 ${t.url}`;
-          message += "\n\n";
-        });
-        const sectors = (profile.sectors || ["konstruksi"]).join(", ");
-        const kual = (profile.kualifikasi || []).join("/") || "Semua";
-        message += `_Filter: ${sectors} | Kualifikasi: ${kual}_\n_— Gustafta Tender Monitor_`;
+        let delivered = false;
 
-        await fetch("https://api.fonnte.com/send", {
-          method: "POST",
-          headers: { Authorization: waToken },
-          body: new URLSearchParams({ target: profile.waPhone, message }),
-        });
-        await (storage as any).markAlertProfileNotified?.(profile.userId);
-        sent++;
-        // Rate limit: delay 2 detik antar pesan
-        if (profiles.length > 1) await new Promise(r => setTimeout(r, 2000));
+        // ── Channel 1: WhatsApp (Fonnte) ──
+        if (waToken && profile.waPhone) {
+          let message = `🏗️ *TENDER MONITOR GUSTAFTA*\n📅 ${date}\n\n`;
+          message += `Halo *${profile.companyName || "BUJK"}*!\n`;
+          message += `${matches.length} tender baru yang cocok untuk Anda:\n\n`;
+          matches.forEach((t: any, i: number) => {
+            message += `${i + 1}. *${t.name.replace("[DEMO] ", "")}*\n`;
+            message += `   🏢 ${t.agency}`;
+            if (t.budget) message += ` | 💰 ${t.budget}`;
+            if (t.deadlineDate) message += `\n   ⏰ Deadline: ${t.deadlineDate}`;
+            if (t.url && !t.url.includes("demo")) message += `\n   🔗 ${t.url}`;
+            message += "\n\n";
+          });
+          const sectors = (profile.sectors || ["konstruksi"]).join(", ");
+          const kual = (profile.kualifikasi || []).join("/") || "Semua";
+          message += `_Filter: ${sectors} | Kualifikasi: ${kual}_\n_— Gustafta Tender Monitor_`;
+
+          try {
+            const waRes = await fetch("https://api.fonnte.com/send", {
+              method: "POST",
+              headers: { Authorization: waToken },
+              body: new URLSearchParams({ target: profile.waPhone, message }),
+            });
+            const waBody: any = await waRes.json().catch(() => ({}));
+            if (waRes.ok && waBody?.status !== false) {
+              sentWa++;
+              delivered = true;
+            } else {
+              log(`[Tender Alert] WA ditolak profile ${profile.userId}: HTTP ${waRes.status} ${JSON.stringify(waBody).slice(0, 200)}`);
+            }
+          } catch (waErr) {
+            log(`[Tender Alert] WA gagal profile ${profile.userId}: ${(waErr as Error).message}`);
+          }
+        }
+
+        // ── Channel 2: Email (Brevo) ──
+        if (emailReady && profile.email) {
+          const r = await sendTenderAlertEmail({
+            to: profile.email,
+            companyName: profile.companyName,
+            matches,
+            sectors: profile.sectors,
+            kualifikasi: profile.kualifikasi,
+          });
+          if (r.sent) { sentEmail++; delivered = true; }
+          else log(`[Tender Alert] Email gagal profile ${profile.userId}: ${r.reason}${r.detail ? " — " + r.detail : ""}`);
+        }
+
+        if (delivered) {
+          await (storage as any).markAlertProfileNotified?.(profile.userId);
+          // Rate limit: delay 2 detik antar profil
+          if (profiles.length > 1) await new Promise(r => setTimeout(r, 2000));
+        }
       } catch (err) {
         log(`[Tender Alert] Gagal notif profile ${profile.userId}: ${(err as Error).message}`);
       }
     }
-    log(`[Tender Alert] Selesai — ${sent}/${profiles.length} notifikasi WA terkirim`);
+    log(`[Tender Alert] Selesai — WA: ${sentWa}, Email: ${sentEmail}, dilewati (tanpa langganan): ${skippedPlan} dari ${profiles.length} profil`);
   } catch (err) {
     log(`[Tender Alert] Error: ${(err as Error).message}`);
   }
