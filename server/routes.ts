@@ -2556,36 +2556,22 @@ SKK berlaku 5 tahun. Perpanjangan via: Pengembangan Keprofesian Berkelanjutan (P
   // Owner/admin dari agen feed yang boleh memicu. Resolusi agen via slug (bukan ID).
   app.post("/api/research/sweep", isAuthenticated, async (req, res) => {
     try {
-      const { runResearchSweep, RESEARCH_LOCAL_SLUG, RESEARCH_GLOBAL_SLUG } = await import("./lib/research-feed");
-      // Sweep MENULIS ke agen feed lokal DAN global. Otorisasi wajib untuk SETIAP agen
+      const { runResearchSweep, FEED_STREAMS } = await import("./lib/research-feed");
+      // Sweep MENULIS ke SEMUA agen stream feed. Otorisasi wajib untuk SETIAP agen
       // yang akan dimutasi (cegah cross-agent privilege bleed bila kepemilikan berbeda).
-      const feedAgents = (await Promise.all([
-        storage.getAgentBySlug(RESEARCH_LOCAL_SLUG),
-        storage.getAgentBySlug(RESEARCH_GLOBAL_SLUG),
-      ])).filter(Boolean);
+      // Topik feed = fixed defaults di FEED_STREAMS (tak ada input user → tak ada vektor abuse).
+      const feedAgents = (await Promise.all(
+        FEED_STREAMS.map((s) => storage.getAgentBySlug(s.slug)),
+      )).filter(Boolean);
       if (feedAgents.length === 0) {
-        return res.status(404).json({ error: "Agen feed riset belum dibuat (slug riset-viral-lokal / riset-tren-global tidak ditemukan)." });
+        return res.status(404).json({ error: "Agen feed riset belum dibuat (slug riset-viral-lokal / riset-tren-global / riset-iklan-pasar tidak ditemukan)." });
       }
       for (const a of feedAgents) {
         const auth = await assertCanMutateAgent(req, a);
         if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
       }
 
-      // Batasi input agar sweep yang dipicu pengguna tidak menguras sumber daya.
-      const sanitizeTopics = (v: unknown): string[] | undefined => {
-        if (!Array.isArray(v) || v.length === 0) return undefined;
-        const cleaned = v
-          .filter((t): t is string => typeof t === "string")
-          .map((t) => t.trim().slice(0, 120))
-          .filter((t) => t.length > 0)
-          .slice(0, 12);
-        return cleaned.length ? cleaned : undefined;
-      };
-      const body = (req.body || {}) as { localTopics?: unknown; globalTopics?: unknown };
-      const result = await runResearchSweep({
-        localTopics: sanitizeTopics(body.localTopics),
-        globalTopics: sanitizeTopics(body.globalTopics),
-      });
+      const result = await runResearchSweep();
       res.json({ ok: true, result });
     } catch (error) {
       console.error("[/api/research/sweep]", error);
