@@ -14,8 +14,7 @@ Jasa Order sold via the Proposal tool is really about **forming work TEAMS for a
 # Ready vs gaps (for the "sell team formation" vision)
 - READY: org design (hier. teams), AI-suggest members per domain, AI-write prompts, per-member ◆ gate, atomic create+wire, save drafts, client handover mechanism (agent collaborators + pending invites, viewer/editor).
 - ~~GAP — multi-department~~ **DONE (Fase B)**: `suggest` now emits 3-level orgs when the mission spans ≥2 domains (Kepala Kantor → per-domain Ketua Tim → specialists) with default gates.
-- GAP — no auto handoff Dialog/Proposal → Organization Builder (3 tools are conceptually a flow but not wired).
-- GAP — Proposal's `tim_agen` output is text only; no "rakit tim ini" button that prefills org builder.
+- ~~GAP — Proposal→org handoff~~ **DONE (Fase C)**: "Rakit Tim Ini" button on Proposal converts `tim_agen` via pure `shared/proposal-to-org.ts` → sessionStorage one-shot handoff (`gustafta_org_prefill_v1`) → org builder consumes on mount (priority over draft restore). Dialog→org still unwired.
 - GAP — proposal tier(complexity) → team size/structure not mapped.
 
 # Agreed direction
