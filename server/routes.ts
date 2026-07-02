@@ -13876,6 +13876,98 @@ Jika informasi tidak ditemukan, isi dengan string kosong "".
     }
   });
 
+  // ==================== Tender Ingest (Relay Eksternal SIRUP) ====================
+  // Menerima data tender dari skrip relay yang berjalan di server/komputer Indonesia
+  // (sirup.lkpp.go.id tidak dapat diakses dari lingkungan hosting ini).
+  // Auth: header x-tender-ingest-key harus cocok dengan env TENDER_INGEST_KEY.
+  const tenderIngestItemSchema = z.object({
+    tenderId: z.string().min(1).max(200),
+    name: z.string().min(1).max(2000),
+    agency: z.string().max(1000).optional().default(""),
+    budget: z.string().max(200).optional().default(""),
+    type: z.string().max(500).optional().default(""),
+    sector: z.string().max(100).optional().default("konstruksi"),
+    status: z.string().max(200).optional().default(""),
+    stage: z.string().max(500).optional().default(""),
+    location: z.string().max(1000).optional().default(""),
+    publishDate: z.string().max(100).optional().default(""),
+    deadlineDate: z.string().max(100).optional().default(""),
+    url: z.string().max(2000).optional().default(""),
+  });
+  const tenderIngestBodySchema = z.object({
+    tenders: z.array(tenderIngestItemSchema).min(1).max(500),
+  });
+
+  app.post("/api/tender-ingest", async (req, res) => {
+    try {
+      const ingestKey = process.env.TENDER_INGEST_KEY;
+      if (!ingestKey) {
+        return res.status(503).json({ error: "TENDER_INGEST_KEY belum dikonfigurasi di server" });
+      }
+      const provided = String(req.header("x-tender-ingest-key") || "");
+      const cryptoMod = await import("node:crypto");
+      const a = Buffer.from(provided);
+      const b = Buffer.from(ingestKey);
+      const keyOk = a.length === b.length && cryptoMod.timingSafeEqual(a, b);
+      if (!keyOk) {
+        return res.status(401).json({ error: "Kunci ingest tidak valid" });
+      }
+
+      const parsed = tenderIngestBodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Payload tidak valid", details: parsed.error.issues.slice(0, 5) });
+      }
+
+      // Cari/buat sumber "SIRUP (Relay)" — semua data relay masuk ke satu sumber ini
+      const sources = await storage.getTenderSources();
+      let relaySource = sources.find((s) => s.sourceType === "sirup");
+      if (!relaySource) {
+        relaySource = await storage.createTenderSource({
+          userId: "",
+          name: "SIRUP LKPP (Relay Eksternal)",
+          baseUrl: "https://sirup.lkpp.go.id",
+          sourceType: "sirup",
+          sector: "multiple",
+          region: "Nasional",
+        } as any);
+      }
+
+      let saved = 0;
+      for (const item of parsed.data.tenders) {
+        await storage.upsertTender({
+          sourceId: relaySource.id,
+          tenderId: item.tenderId,
+          name: item.name,
+          agency: item.agency,
+          budget: item.budget,
+          type: item.type,
+          sector: item.sector,
+          sourceType: "sirup",
+          status: item.status,
+          stage: item.stage,
+          location: item.location,
+          publishDate: item.publishDate,
+          deadlineDate: item.deadlineDate,
+          url: item.url,
+          rawData: {},
+        } as any);
+        saved++;
+      }
+
+      await storage.updateTenderSource(String(relaySource.id), {
+        scrapeStatus: "success",
+        lastError: "",
+        lastScrapedAt: new Date(),
+      } as any);
+
+      console.log(`[Tender Ingest] Relay eksternal menyimpan ${saved} tender (source ${relaySource.id})`);
+      res.json({ success: true, saved, sourceId: relaySource.id });
+    } catch (err) {
+      console.error("[/api/tender-ingest]", err);
+      res.status(500).json({ error: "Gagal menyimpan data tender" });
+    }
+  });
+
   // ==================== Tender Source Routes (Protected) ====================
 
   app.get("/api/tender-sources", isAuthenticated, async (_req, res) => {
