@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
+import DemoChat from "@/components/demo-chat";
 import {
   AlertTriangle,
   CheckCircle,
@@ -174,6 +175,22 @@ export default function ProductLanding() {
             </div>
           </section>
         )}
+
+        <section className="py-16 md:py-20" data-testid="section-demo-chat">
+          <div className="container mx-auto px-4">
+            <SectionHeader title="Coba Langsung, Gratis" />
+            <p className="text-center text-muted-foreground max-w-xl mx-auto -mt-6 mb-8">
+              Buktikan sendiri kualitas jawabannya sebelum membeli — tanpa perlu daftar.
+            </p>
+            <DemoChat
+              agentId={agentId}
+              agentName={agent.name}
+              avatar={agent.avatar}
+              chatUrl={chatUrl}
+              ctaText="Mulai Chat Sekarang"
+            />
+          </div>
+        </section>
 
         <section className="py-20 md:py-32 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
@@ -453,6 +470,23 @@ export default function ProductLanding() {
           </div>
         </section>
       )}
+
+      {/* Demo Chat — coba langsung */}
+      <section className="py-16 md:py-20" data-testid="section-demo-chat">
+        <div className="container mx-auto px-4">
+          <SectionHeader title="Coba Langsung, Gratis" />
+          <p className="text-center text-muted-foreground max-w-xl mx-auto -mt-6 mb-8">
+            Buktikan sendiri kualitas jawabannya sebelum membeli — tanpa perlu daftar.
+          </p>
+          <DemoChat
+            agentId={agentId}
+            agentName={agent.name}
+            avatar={agent.avatar}
+            chatUrl={`/bot/${agentId}`}
+            ctaText={agent.landingHeroCtaText || "Mulai Sekarang"}
+          />
+        </div>
+      </section>
 
       {/* Pricing / Offers */}
       {(conversionOffers.length > 0 || monthlyPrice > 0) && (
