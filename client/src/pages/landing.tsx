@@ -15,7 +15,7 @@ import {
   MessageCircle, ShieldCheck, Store, Bot, FileText,
   GraduationCap, Smartphone, Users, Building2, Briefcase, User,
   Send, Loader2, Sparkles, X, ChevronDown, Lock, ShoppingBag, FileDown,
-  Mic, MicOff, Paperclip,
+  Mic, MicOff, Paperclip, Bell, Clock, Target, Mail,
 } from "lucide-react";
 
 const GUSTAFTA_AGENT_ID = "1";
@@ -1070,6 +1070,70 @@ export default function Landing() {
           <div className="mt-6 flex items-center justify-center gap-2 text-xs text-gray-500 dark:text-gray-400 text-center">
             <span>🔎</span>
             <span>Transparan &amp; jujur: setiap jawaban AI diberi label agar Anda tahu mana yang perlu diperiksa sebelum dipakai.</span>
+          </div>
+        </div>
+      </section>
+
+      {/* ── TENDER ALERT PROMO ── */}
+      <section className="py-16 px-4 bg-gray-50 dark:bg-muted/20">
+        <div className="max-w-5xl mx-auto">
+          <div className="rounded-3xl border border-emerald-200 dark:border-emerald-800 bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/30 dark:to-background overflow-hidden">
+            <div className="grid md:grid-cols-2 gap-0">
+              {/* Left: pitch */}
+              <div className="p-8 md:p-10 flex flex-col justify-center">
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-emerald-600 text-white">
+                    <Bell className="w-3 h-3" /> Fitur Berbayar
+                  </span>
+                  <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">
+                    Untuk Pelaku Usaha
+                  </span>
+                </div>
+                <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-3 leading-tight">
+                  Jangan Sampai Kelewatan Tender Lagi
+                </h2>
+                <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed mb-6">
+                  Tender Alert memantau pengumuman tender pemerintah (SIRUP LKPP) dan mengirimkan
+                  notifikasi harian yang sudah dicocokkan dengan bidang usaha Anda — langsung ke
+                  WhatsApp dan email. Anda cukup fokus menyiapkan penawaran.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Button asChild size="sm" className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white" data-testid="btn-tender-alert-activate">
+                    <Link href="/tender-alert">
+                      Aktifkan Tender Alert <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </Button>
+                  <Button asChild size="sm" variant="outline" className="gap-1.5" data-testid="btn-tender-monitor-view">
+                    <Link href="/tender-monitor">
+                      Lihat Monitor Tender
+                    </Link>
+                  </Button>
+                </div>
+                <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-4">
+                  Tersedia mulai paket Starter. Butuh dulu? <Link href="/pricing" className="underline hover:text-emerald-600" data-testid="link-tender-pricing">Lihat paket langganan</Link>.
+                </p>
+              </div>
+
+              {/* Right: benefit list */}
+              <div className="bg-white/60 dark:bg-background/40 border-t md:border-t-0 md:border-l border-emerald-100 dark:border-emerald-900 p-8 md:p-10 flex flex-col justify-center gap-5">
+                {[
+                  { icon: Target, title: "Dicocokkan otomatis", desc: "Hanya tender yang relevan dengan bidang & lokasi usaha Anda." },
+                  { icon: Clock, title: "Notifikasi harian 08:00 WIB", desc: "Rangkuman tender baru setiap pagi, tepat waktu." },
+                  { icon: Mail, title: "WhatsApp + Email", desc: "Terima peringatan lewat dua saluran sekaligus." },
+                  { icon: FileText, title: "Data resmi SIRUP LKPP", desc: "Sumber pengadaan pemerintah, bukan tebakan." },
+                ].map((b) => (
+                  <div key={b.title} className="flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center shrink-0">
+                      <b.icon className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-gray-900 dark:text-white">{b.title}</h3>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">{b.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </section>
