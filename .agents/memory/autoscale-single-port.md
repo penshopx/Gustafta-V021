@@ -1,18 +1,20 @@
 ---
-name: Autoscale single-port requirement
-description: Why a Gustafta autoscale publish can fail at "Creating Autoscale service" with no runtime logs, and how port mappings get polluted.
+name: Autoscale promote failure — transient, and the single-port rule
+description: A Gustafta publish that fails at "Creating Autoscale service" with no runtime logs was TRANSIENT (retry fixed it). Also documents the real single-port rule for future reference.
 ---
 
-# Autoscale deployments require exactly ONE external port
+# "Creating Autoscale service" failure with no runtime logs
 
-**Rule:** Replit Autoscale deployments support only a single external port. If `.replit` has more than one `[[ports]]` block with an `externalPort`, the publish **fails at the "Creating Autoscale service" (promote) step** — the build phase succeeds (image compiles + pushes), then service creation fails, and **no runtime deployment logs are captured** (the container never starts serving). This looks identical to a crash/health-check failure but the app is actually fine.
+**Observed case:** A publish failed at the "Creating Autoscale service" (promote) step — build phase succeeded (image compiled + pushed), then service creation failed and **no runtime deployment logs were captured**. Every measurable health signal was fine (build ok, boots ~1s, `GET /` 200 in ~30ms, peak RSS ~331 MB on the 4 GB cr-2-4, all env/secrets present in dev+prod). **Simply re-publishing succeeded** — so this instance was a **transient infrastructure failure**, not code/config.
 
-**Why:** Autoscale can't route to multiple external ports, so it rejects the service.
+**Lesson:** When a promote fails with no runtime logs AND all local health checks pass, the first cheap move is to **retry the publish** before making any code/config changes. Don't over-diagnose.
 
-**How to apply / diagnose:**
-- If a publish fails at "Creating Autoscale service" with no runtime logs, FIRST check `grep -c "\[\[ports\]\]" .replit`. More than one = the cause. Rule out crash/OOM/slow-boot only after confirming port count is 1.
-- The fix is a **user UI action**: open the Ports pane and remove every port row except the app's main one (`localPort 5000 → externalPort 80`). The agent CANNOT edit `.replit` directly (blocked) and there is no agent tool for port removal.
+**Correction — multi-port was NOT the cause here:** The successful re-publish happened with `.replit` still containing **4 `[[ports]]` blocks** (5000→80 plus dev leftovers 5050→3000, 5051→3002, 23636→3001). So multiple ports did **not** block this autoscale deploy. Replit tolerated the extra dev ports and routed the primary one.
 
-**Gotcha — testing pollutes `.replit`:** Running a local server on a non-5000 port (e.g. `NODE_ENV=production PORT=5050 node dist/index.cjs` to test the prod build) makes Replit auto-add that port to `.replit` as a new `[[ports]]` block. These stale entries persist after the process is killed and will break the next autoscale publish. When testing the prod build locally, prefer port 5000, or expect to have the extra port removed before publishing. The mockup-sandbox dev workflow also adds its own port (e.g. 23636 → 3001) — that too must be gone before an autoscale publish.
+**The single-port rule still exists (just wasn't the culprit):** Replit docs state Autoscale supports only one external port and multiple `externalPort` entries "will fail." Treat it as a thing to check, but the observed reality is that extra dev ports did not break this deploy. If you ever do need to reduce ports, the agent CANNOT edit `.replit` (blocked) and there is no agent tool for it — it's a user action in the Ports pane.
 
-**Verified healthy signals for Gustafta prod build (so you can skip re-checking these):** `npm run build` succeeds; `NODE_ENV=production node dist/index.cjs` boots in ~1s, serves `GET /` 200 in ~30ms, peak RSS ~331 MB (far under the 4 GB cr-2-4 machine); all env vars/secrets present in both dev and prod. So a promote failure is NOT code/env/memory — look at port config first.
+**Gotcha — local prod testing pollutes `.replit` ports:** Running a local server on a non-5000 port (e.g. `NODE_ENV=production PORT=5050 node dist/index.cjs` to test the prod build) makes Replit auto-add that port to `.replit` as a new `[[ports]]` block that persists after the process dies. Prefer testing on port 5000 to avoid the clutter.
+
+**Verified-healthy signals for the Gustafta prod build (skip re-checking):** `npm run build` succeeds; `NODE_ENV=production node dist/index.cjs` boots ~1s, serves `GET /` 200 in ~30ms, peak RSS ~331 MB; all env/secrets present in both environments. A promote failure is therefore NOT code/env/memory.
+
+**Known benign prod log noise:** `[agent-policies] series lookup failed, falling back to default category: TypeError: e.select is not a function` — pre-existing minified-bundle db quirk that falls back gracefully; not fatal, not newly introduced.
