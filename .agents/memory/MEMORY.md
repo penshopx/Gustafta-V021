@@ -31,4 +31,6 @@
 - [Meta CAPI bridge](meta-capi-bridge.md) — Purchase events relayed server-side from Scalev webhook; fire-and-forget, dedup via event_id, hashed PII, token in body not URL.
 - [Public-agent SSE authz](public-agent-sse-authz.md) — deny gate must be `isPublic !== true`, never userId-based (legacy no-owner agents leak); SSE streams need req close → abort upstream LLM.
 - [jsonb double-encoding](jsonb-double-encoding.md) — jsonb column can store a JSON *string*; Array.isArray gates then silently skip orchestration. Normalize at read+write; audit with jsonb_typeof.
+- [Orchestrator boot demotion](orchestrator-boot-demotion.md) — fixOrphanedOrchestrators() demotes is_orchestrator agents with no toolbox at boot; but runtime orchestration keys ONLY off non-empty agenticSubAgents, so teams still delegate. Don't fight the flag.
+- [code_execution sandbox quirks](code-execution-sandbox-quirks.md) — no process.env in sandbox; use executeSql callback; it returns command tag not RETURNING rows (SELECT back to get ids).
 - [Plan gating: tier not badge](plan-badge-vs-tier.md) — gate by `plan.tier < PLAN_CONFIGS[min].tier`, never `meetsMinPlan(badge.toLowerCase())` (badge=PRO/GRATIS ≠ tier key → runtime throw). requirePlan middleware misses req.user.id — gate inline.
