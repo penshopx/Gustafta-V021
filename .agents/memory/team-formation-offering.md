@@ -1,0 +1,22 @@
+---
+name: Team-formation as the Jasa Order offering
+description: How the dialog/blueprint/organization flows map to the founder's vision of selling "work-team formation" (marketing team, admin team, etc.) via Proposal; what's ready vs the gaps.
+---
+
+# Vision (founder, stated)
+Jasa Order sold via the Proposal tool is really about **forming work TEAMS for a client** — e.g. a marketing team, an administration team — several functional teams, member count scaled to complexity. The Gustafta Marketing team (orchestrator + specialists + ◆ human gate) is the reference example.
+
+# Three separate flows today (NOT auto-wired into one pipeline)
+1. **Dialog Gustafta** (`/dialog-gustafta`, public) — lead-gen funnel. Staged s1→s1_gate(Profil)→s2→s2_gate(Gambaran+offer)→s3(unlock via Starter Kit)→blueprint TEXT. Gates here = lead-capture/paywall, output is a SINGLE-agent Blueprint text, ends at WhatsApp/Starter Kit. Not connected to the org builder.
+2. **Blueprint Builder** (`/blueprint-builder`, auth) — designs ONE agent (Tahap 1–13), `/configure` creates it.
+3. **Organization Builder** (`/organization-builder`, auth) — THE team-formation surface. Steps intro→members→review→done. Roles: Ketua Tim(orchestrator)/Spesialis(specialist)/support. Hierarchical (computeOrgTree → tiered teams). **Per-member ◆ Gerbang Manusia (`gates?: string[]`)** citing ebook Buku II Bab 3. AI endpoints: `/api/organization/{suggest,infer,configure,drafts}`. `configure` atomically creates all agents + wires `agenticSubAgents` from `structure.edges`. Runtime delegation already works (proof: Marketing team).
+
+# Ready vs gaps (for the "sell team formation" vision)
+- READY: org design (hier. teams), AI-suggest members per domain, AI-write prompts, per-member ◆ gate, atomic create+wire, save drafts, client handover mechanism (agent collaborators + pending invites, viewer/editor).
+- GAP — multi-department ("beberapa tim" in one client org): data structure SUPPORTS it (3-level tree: top orchestrator → several Ketua Tim → specialists), but AI-`suggest` is single-domain/one-team — needs tuning for multi-department orgs.
+- GAP — no auto handoff Dialog/Proposal → Organization Builder (3 tools are conceptually a flow but not wired).
+- GAP — Proposal's `tim_agen` output is text only; no "rakit tim ini" button that prefills org builder.
+- GAP — proposal tier(complexity) → team size/structure not mapped.
+
+# Agreed direction
+Founder chose "explain + roadmap first, don't build yet." Roadmap phases: A) Proposal→team bridge (tier→standard team blueprint incl. default gates), B) multi-department in org builder, C) wire Dialog/Proposal→org builder prefill, D) client handover flow, E) default ◆ gates per function.
