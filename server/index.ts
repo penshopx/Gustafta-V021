@@ -280,6 +280,16 @@ declare module "http" {
   }
 }
 
+// Guard khusus /api/tender-ingest: tolak body besar SEBELUM JSON di-parse
+// (endpoint publik ber-kunci; limit global 50mb terlalu besar untuk jalur ini)
+app.use("/api/tender-ingest", (req, res, next) => {
+  const len = Number(req.headers["content-length"] || 0);
+  if (len > 5 * 1024 * 1024) {
+    return res.status(413).json({ error: "Payload terlalu besar (maks 5MB)" });
+  }
+  next();
+});
+
 app.use(
   express.json({
     limit: "50mb",

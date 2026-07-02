@@ -3602,19 +3602,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertTender(tender: InsertTender): Promise<Tender> {
-    const existing = await db.select().from(tenders)
-      .where(and(
-        eq(tenders.sourceId, tender.sourceId),
-        eq(tenders.tenderId, tender.tenderId)
-      ));
-    if (existing.length > 0) {
-      const [updated] = await db.update(tenders)
-        .set({ ...tender, updatedAt: new Date() } as any)
-        .where(eq(tenders.id, existing[0].id))
-        .returning();
-      return updated;
-    }
-    const [result] = await db.insert(tenders).values(tender as any).returning();
+    // Atomic upsert — race-safe berkat unique index (source_id, tender_id)
+    const [result] = await db.insert(tenders)
+      .values(tender as any)
+      .onConflictDoUpdate({
+        target: [tenders.sourceId, tenders.tenderId],
+        set: { ...tender, updatedAt: new Date() } as any,
+      })
+      .returning();
     return result;
   }
 

@@ -145,6 +145,11 @@ Endpoint: `GET /api/{nama}-claw/orchestrator` → `{ id, name, tagline, avatar }
 | `/nspk-navigator-claw` | NSPKNavigatorClaw — AI Panduan NSPK & Standar Teknis | 8 | nspk-navigator-claw-orchestrator | blue |
 | `/korporasi-claw` | KorporasiClaw — AI Konsultan Korporasi & Bisnis | 8 | korporasi-claw-orchestrator | gray |
 
+## Tender Data Relay (SIRUP)
+- `sirup.lkpp.go.id` TIDAK bisa diakses dari hosting ini (blokir geo/IP) — scraper terjadwal selalu gagal ke data demo. `isb.lkpp.go.id` reachable (jalur resmi, butuh akun/token LKPP — rencana jangka panjang).
+- Solusi sementara: **relay eksternal**. Skrip `scripts/tender-relay.mjs` dijalankan di komputer/server Indonesia (Node 18+, tanpa dependensi) → kirim ke `POST /api/tender-ingest` (auth header `x-tender-ingest-key` = secret `TENDER_INGEST_KEY`, timing-safe compare, batch maks 500, upsert dedup per `tenderId`).
+- Data masuk ke sumber `sourceType="sirup"` (dibuat otomatis "SIRUP LKPP (Relay Eksternal)"). Alert harian 08:00 WIB (`runTenderAlertNotification` di `server/index.ts`) memakai tabel `tenders` — otomatis bekerja setelah relay jalan.
+
 ## User preferences
 Preferred communication style: Simple, everyday language.
 
