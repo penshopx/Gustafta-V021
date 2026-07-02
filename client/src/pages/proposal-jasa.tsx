@@ -12,7 +12,7 @@ interface ProposalResult {
   ringkasan_kebutuhan: string;
   solusi: string;
   lingkup_kerja: string[];
-  tim_agen: { peran: string; tugas: string }[];
+  tim_agen: { tim?: string; peran: string; tugas: string; gerbang?: string }[];
   tahapan: { fase: string; durasi: string; hasil: string }[];
   rekomendasi_tier: string;
   estimasi: { setup: number; bulanan: number; catatan: string };
@@ -50,7 +50,21 @@ function proposalToText(r: ProposalResult): string {
   }
   if (r.tim_agen?.length) {
     lines.push("TIM AGEN YANG DIRAKIT");
-    r.tim_agen.forEach((a) => lines.push(`• ${a.peran}: ${a.tugas}`));
+    const byTeam = new Map<string, typeof r.tim_agen>();
+    r.tim_agen.forEach((a) => {
+      const key = (a.tim || "").trim() || "Tim";
+      if (!byTeam.has(key)) byTeam.set(key, [] as any);
+      byTeam.get(key)!.push(a);
+    });
+    const multi = byTeam.size > 1;
+    byTeam.forEach((anggota, tim) => {
+      if (multi) lines.push(`[${tim}]`);
+      anggota.forEach((a) => {
+        const g = (a.gerbang || "").trim();
+        const gate = g && g !== "-" ? ` (◆ ${g})` : "";
+        lines.push(`• ${a.peran}: ${a.tugas}${gate}`);
+      });
+    });
     lines.push("");
   }
   if (r.tahapan?.length) {
@@ -287,18 +301,41 @@ export default function ProposalJasa() {
                     </Section>
                   )}
 
-                  {result.tim_agen.length > 0 && (
-                    <Section title="Tim Agen yang Dirakit" icon={<Users className="h-4 w-4 text-violet-400" />}>
-                      <div className="space-y-2">
-                        {result.tim_agen.map((a, i) => (
-                          <div key={i} className="text-sm">
-                            <span className="text-white font-medium">{a.peran}</span>
-                            <span className="text-white/50"> — {a.tugas}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </Section>
-                  )}
+                  {result.tim_agen.length > 0 && (() => {
+                    const byTeam = new Map<string, typeof result.tim_agen>();
+                    result.tim_agen.forEach((a) => {
+                      const key = (a.tim || "").trim() || "Tim";
+                      if (!byTeam.has(key)) byTeam.set(key, [] as any);
+                      byTeam.get(key)!.push(a);
+                    });
+                    const multi = byTeam.size > 1;
+                    return (
+                      <Section title="Tim Agen yang Dirakit" icon={<Users className="h-4 w-4 text-violet-400" />}>
+                        <div className="space-y-3">
+                          {Array.from(byTeam.entries()).map(([tim, anggota], ti) => (
+                            <div key={ti} className="space-y-1.5" data-testid={`group-tim-${ti}`}>
+                              {multi && (
+                                <p className="text-xs font-semibold text-violet-300 uppercase tracking-wide">{tim}</p>
+                              )}
+                              {anggota.map((a, i) => {
+                                const g = (a.gerbang || "").trim();
+                                const hasGate = g && g !== "-";
+                                return (
+                                  <div key={i} className="text-sm">
+                                    <span className="text-white font-medium">{a.peran}</span>
+                                    <span className="text-white/50"> — {a.tugas}</span>
+                                    {hasGate && (
+                                      <div className="text-xs text-amber-300/80 mt-0.5">◆ {g}</div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ))}
+                        </div>
+                      </Section>
+                    );
+                  })()}
 
                   {result.tahapan.length > 0 && (
                     <Section title="Tahapan Pengerjaan" icon={<CalendarDays className="h-4 w-4 text-emerald-400" />}>

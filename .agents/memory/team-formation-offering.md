@@ -20,3 +20,7 @@ Jasa Order sold via the Proposal tool is really about **forming work TEAMS for a
 
 # Agreed direction
 Founder chose "explain + roadmap first, don't build yet." Roadmap phases: A) Proposal→team bridge (tier→standard team blueprint incl. default gates), B) multi-department in org builder, C) wire Dialog/Proposal→org builder prefill, D) client handover flow, E) default ◆ gates per function.
+
+# Fase A — DONE
+Canonical single source `shared/team-blueprints.ts` (TIER_TEAM_PLANS 1-4, `formatTeamPlansForPrompt()`) maps tier→standard team structure + default ◆ gates. Tiers 1-3 = one team; Tier 4 = multi-department (Kepala Kantor lead + Marketing/Administrasi/Operasional). Proposal route grounds the LLM prompt on it; `tim_agen` items gained `tim`+`gerbang`; frontend groups members by team and shows ◆ per member.
+**Why/gotchas:** gate strings in the blueprint MUST NOT embed the ◆ char — ◆ is added only at render/prompt time, else the model echoes it and normalization must strip a leading ◆ to avoid "◆ ◆". Any future proposal/org seeding path should reference this module, not re-hardcode team structures (avoid drift). Reuse it when building Fase B/C.
