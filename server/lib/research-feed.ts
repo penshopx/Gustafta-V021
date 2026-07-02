@@ -1,4 +1,5 @@
 import * as cheerio from "cheerio";
+import OpenAI from "openai";
 import { storage } from "../storage";
 import { processKnowledgeBaseForRAG } from "./rag-service";
 
@@ -20,6 +21,19 @@ export const RESEARCH_MARKET_SLUG = "riset-iklan-pasar";
 
 const FEED_KB_PREFIX = "Feed Riset";
 const METHOD_KB_PREFIX = "Panduan Metode Riset";
+const AD_KB_PREFIX = "Materi Iklan Harian";
+
+// Agen "Pembuat Materi Iklan" — mengubah temuan riset harian jadi materi iklan siap pakai.
+export const AD_MATERIAL_SLUG = "mkt-materi-iklan";
+
+// Client OpenAI lokal (pola sama dgn rag-service): dipakai untuk generate materi iklan.
+let _adOpenai: OpenAI | null = null;
+function getAdOpenAI(): OpenAI | null {
+  const key = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+  if (!key) return null;
+  if (!_adOpenai) _adOpenai = new OpenAI({ apiKey: key });
+  return _adOpenai;
+}
 
 export interface NewsItem {
   title: string;
@@ -333,6 +347,99 @@ export async function ensureResearchMethodLibrary(agentId: number): Promise<{ cr
   return { created: true, chunks: chunks.length };
 }
 
+/**
+ * Ubah temuan riset harian menjadi MATERI IKLAN siap pakai, lalu simpan sebagai KB
+ * (prefix "Materi Iklan Harian") pada agen Pembuat Materi Iklan → terambil saat chat.
+ * Aman: bila tak ada OpenAI key, lewati tanpa error. Prune materi lama sebelum tulis.
+ */
+export async function generateDailyAdMaterials(
+  agentId: number,
+  researchContext: string,
+): Promise<{ generated: boolean; chunks: number; reason?: string }> {
+  const client = getAdOpenAI();
+  if (!client) return { generated: false, chunks: 0, reason: "no-openai-key" };
+  if (!researchContext.trim()) return { generated: false, chunks: 0, reason: "no-research" };
+
+  const agent = await storage.getAgent(String(agentId));
+  const persona = agent?.systemPrompt || "Kamu Pembuat Materi Iklan Gustafta.";
+  const model =
+    agent?.aiModel &&
+    !agent.aiModel.startsWith("deepseek") &&
+    !agent.aiModel.startsWith("qwen") &&
+    !agent.aiModel.startsWith("gemini") &&
+    agent.aiModel !== "custom"
+      ? agent.aiModel
+      : "gpt-4o-mini";
+  const today = new Date().toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta", dateStyle: "full" });
+
+  const userPrompt = `Tanggal: ${today}
+
+Berikut TEMUAN RISET TERBARU hari ini (agregasi berita publik). Ubah menjadi materi iklan siap pakai sesuai instruksimu — 2-3 sudut lengkap (hook, primary text, headline, CTA, konsep visual, skrip video) untuk produk Gustafta. Tandai klaim belum terverifikasi dengan [ASUMSI: ... | basis: ... | verifikasi-ke: ...].
+
+===== TEMUAN RISET =====
+${researchContext.slice(0, 8000)}
+===== SELESAI =====`;
+
+  let content = "";
+  try {
+    const resp = await client.chat.completions.create(
+      {
+        model,
+        temperature: 0.7,
+        max_tokens: 2500,
+        messages: [
+          { role: "system", content: persona },
+          { role: "user", content: userPrompt },
+        ],
+      },
+      { timeout: 60000 },
+    );
+    content = resp.choices?.[0]?.message?.content?.trim() || "";
+  } catch (e) {
+    return { generated: false, chunks: 0, reason: (e as Error).message };
+  }
+  if (!content) return { generated: false, chunks: 0, reason: "empty" };
+
+  const stamp = new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" });
+  const doc = `MATERI IKLAN HARIAN — Gustafta
+Dibuat otomatis: ${stamp} WIB
+Dasar: temuan riset harian (Google News RSS, agregasi berita publik). Tandai [ASUMSI:...] untuk klaim belum terverifikasi. Publikasi/spend iklan = keputusan founder (gerbang manusia).
+
+${content}`;
+
+  const { db } = await import("../db");
+  const { sql } = await import("drizzle-orm");
+  await db.execute(sql`
+    DELETE FROM knowledge_chunks
+    WHERE knowledge_base_id IN (
+      SELECT id FROM knowledge_bases
+      WHERE agent_id = ${agentId} AND name LIKE ${AD_KB_PREFIX + "%"}
+    )
+  `);
+  await db.execute(sql`
+    DELETE FROM knowledge_bases
+    WHERE agent_id = ${agentId} AND name LIKE ${AD_KB_PREFIX + "%"}
+  `);
+
+  const kb = await storage.createKnowledgeBase({
+    agentId: String(agentId),
+    name: `${AD_KB_PREFIX} — ${new Date().toISOString().slice(0, 10)}`,
+    type: "text",
+    content: doc,
+    description: "Materi iklan harian dari temuan riset (auto-generated)",
+    extractedText: doc,
+    sourceUrl: "",
+    sourceAuthority: "Pembuat Materi Iklan Gustafta (AI, dari feed riset)",
+    status: "active",
+  });
+
+  const chunks = await processKnowledgeBaseForRAG(parseInt(kb.id), agentId, doc, kb.name);
+  if (chunks.length > 0) {
+    await storage.createChunks(chunks);
+  }
+  return { generated: true, chunks: chunks.length };
+}
+
 export interface StreamResult {
   slug: string;
   agentId: number;
@@ -344,6 +451,7 @@ export interface StreamResult {
 export interface SweepResult {
   streams: StreamResult[];
   methodLibrary?: { agentId: number; created: boolean; chunks: number };
+  adMaterials?: { agentId: number; generated: boolean; chunks: number; reason?: string };
   skipped: string[];
   // Kompatibilitas mundur (kode/UI lama yang membaca .local / .global).
   local?: StreamResult;
@@ -356,6 +464,7 @@ export interface SweepResult {
  */
 export async function runResearchSweep(): Promise<SweepResult> {
   const result: SweepResult = { streams: [], skipped: [] };
+  const docsBySlug: Record<string, string> = {};
 
   for (const stream of FEED_STREAMS) {
     const agent = await storage.getAgentBySlug(stream.slug);
@@ -377,6 +486,7 @@ export async function runResearchSweep(): Promise<SweepResult> {
       }
     }
     const doc = formatNewsDoc(stream.docTitle, groups);
+    docsBySlug[stream.slug] = doc;
     const chunks = await ingestNewsForAgent(agentId, stream.kbLabel, doc);
     const sr: StreamResult = {
       slug: stream.slug,
@@ -397,6 +507,26 @@ export async function runResearchSweep(): Promise<SweepResult> {
         console.error(`[ResearchFeed] seed method library gagal:`, (e as Error).message);
       }
     }
+  }
+
+  // Setelah riset segar: agen Pembuat Materi Iklan menjalankan tugasnya —
+  // ubah temuan pasar + pain point produk hari ini jadi materi iklan siap pakai.
+  // Fire-and-forget: kegagalan di sini tidak boleh menggagalkan sweep riset.
+  try {
+    const adAgent = await storage.getAgentBySlug(AD_MATERIAL_SLUG);
+    if (adAgent) {
+      const ctx = [docsBySlug[RESEARCH_MARKET_SLUG], docsBySlug[RESEARCH_LOCAL_SLUG]]
+        .filter(Boolean)
+        .join("\n\n");
+      result.adMaterials = {
+        agentId: Number(adAgent.id),
+        ...(await generateDailyAdMaterials(Number(adAgent.id), ctx)),
+      };
+    } else {
+      result.skipped.push(AD_MATERIAL_SLUG);
+    }
+  } catch (e) {
+    console.error(`[ResearchFeed] generate materi iklan gagal:`, (e as Error).message);
   }
 
   return result;

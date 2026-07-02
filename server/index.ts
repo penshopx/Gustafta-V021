@@ -2115,7 +2115,7 @@ function startScheduler() {
   scheduleAtWIB("Research Feed Sweep", 6, 30, async () => {
     const { runResearchSweep } = await import("./lib/research-feed");
     const result = await runResearchSweep();
-    log(`[Research Feed] sweep selesai: lokal=${result.local?.chunks ?? "-"} chunk, global=${result.global?.chunks ?? "-"} chunk, skip=[${result.skipped.join(",")}]`);
+    log(`[Research Feed] sweep selesai: lokal=${result.local?.chunks ?? "-"} chunk, global=${result.global?.chunks ?? "-"} chunk, materi-iklan=${result.adMaterials?.generated ? result.adMaterials.chunks + " chunk" : (result.adMaterials?.reason ?? "-")}, skip=[${result.skipped.join(",")}]`);
   });
 
   log("[Scheduler] Started — broadcast cek setiap 2 menit | tender scraping 06:00 & 13:00 WIB | alert notifikasi 08:00 WIB | research feed 06:30 WIB");
