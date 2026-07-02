@@ -1396,6 +1396,17 @@ const TOOLS: Tool[] = [
     model: "GPT-4o Vision",
   },
   {
+    href: "/proposal-jasa",
+    icon: <FileSignature className="h-6 w-6" />,
+    iconBg: "bg-sky-500/10",
+    iconColor: "text-sky-400",
+    badgeColor: "bg-sky-500/15 text-sky-400 border-sky-500/30",
+    label: "Generator Penawaran / Proposal Jasa",
+    desc: "Ceritakan kebutuhan calon klien Jasa Order — AI menyusun draf proposal profesional lengkap dengan lingkup kerja, tim agen, tahapan, dan estimasi biaya (setup + bulanan). Grounded ke Fondasi Penjualan & harga kanonik.",
+    tag: "Jualan",
+    model: "GPT-4o",
+  },
+  {
     href: "/docu-gen",
     icon: <FileSignature className="h-6 w-6" />,
     iconBg: "bg-blue-500/10",
