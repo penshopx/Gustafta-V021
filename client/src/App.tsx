@@ -17,6 +17,8 @@ import LoginPage from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
 import Documentation from "@/pages/documentation";
 import Pricing from "@/pages/pricing";
+import SyaratKetentuan from "@/pages/syarat-ketentuan";
+import KebijakanPrivasi from "@/pages/kebijakan-privasi";
 import CheckoutPage from "@/pages/checkout";
 import Produk from "@/pages/produk";
 import Marketplace from "@/pages/marketplace";
@@ -413,6 +415,8 @@ function Router() {
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/documentation" component={Documentation} />
       <Route path="/pricing" component={Pricing} />
+      <Route path="/syarat-ketentuan" component={SyaratKetentuan} />
+      <Route path="/kebijakan-privasi" component={KebijakanPrivasi} />
       <Route path="/checkout" component={CheckoutPage} />
       <Route path="/produk" component={Produk} />
       <Route path="/marketplace" component={MarketplaceRedirect} />
