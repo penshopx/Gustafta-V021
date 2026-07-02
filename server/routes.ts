@@ -21176,22 +21176,26 @@ PENTING: Kembalikan HANYA JSON valid tanpa markdown code block, dengan format pe
       const playbook = buildSalesPlaybookDoc();
       const foundation = buildGustaftaFoundationDoc();
 
-      const pricingRef = `ACUAN HARGA KANONIK (rujuk, jangan mengarang angka lain):
-JASA ORDER = biaya SETUP sekali (sudah termasuk lisensi) + biaya BULANAN (hosting+token). Starter Kit dibundel GRATIS.
-Tier Jasa (setup sekali, pilih yang paling pas dengan kompleksitas):
-- Tier 1 "Chatbot Dasar" Rp 1.499.000 — FAQ, info produk, layanan dasar.
-- Tier 2 "Chatbot Menengah" Rp 2.499.000 — multi-fungsi, lead gen, sales assist.
-- Tier 3 "Chatbot Kompleks" Rp 4.900.000 — orkestrasi, knowledge base luas.
-- Tier 4 "Chatbot Enterprise" Rp 7.490.000 — multi-domain, agentic penuh.
-Biaya BULANAN (hosting, berlaku semua produk): Rp 199.000/bln · Rp 299.000/3bln · Rp 999.000/6bln · Rp 1.999.000/thn.
-Jika kebutuhan di luar 4 tier (sangat besar/khusus), tandai estimasi sebagai [ASUMSI:...] dan sarankan diskusi lanjut.`;
+      const pricingRef = `ACUAN HARGA KANONIK:
+JASA ORDER = biaya SETUP & INSTALASI sekali (sudah termasuk lisensi) + biaya BULANAN (hosting+token). Starter Kit dibundel GRATIS.
+
+【BIAYA BULANAN — RESMI, TIDAK BOLEH DIUBAH】(price list; kutip PERSIS salah satu periode, jangan mengarang angka lain):
+Rp 199.000/bln · Rp 299.000/3bln · Rp 999.000/6bln · Rp 1.999.000/thn.
+
+【BIAYA SETUP & INSTALASI — FLEKSIBEL】
+4 Tier berikut adalah BASELINE / titik awal (pilih yang paling dekat dengan kompleksitas kebutuhan):
+- Tier 1 "Chatbot Dasar" mulai Rp 1.499.000 — FAQ, info produk, layanan dasar.
+- Tier 2 "Chatbot Menengah" mulai Rp 2.499.000 — multi-fungsi, lead gen, sales assist.
+- Tier 3 "Chatbot Kompleks" mulai Rp 4.900.000 — orkestrasi, knowledge base luas.
+- Tier 4 "Chatbot Enterprise" mulai Rp 7.490.000 — multi-domain, agentic penuh.
+Biaya setup BOLEH disesuaikan (umumnya naik) dari baseline tier tergantung: kompleksitas chatbot, luas lingkup, jumlah agen/integrasi, dan tenaga/orang yang terlibat. Sajikan setup sebagai "mulai dari X" atau rentang wajar, sebutkan faktor penyesuainya, dan tandai penyesuaian di luar baseline dengan [ASUMSI: ... | basis: ... | verifikasi-ke: founder]. JANGAN menurunkan setup di bawah baseline tier tanpa alasan jelas.`;
 
       const systemPrompt = `Anda adalah "Penyusun Penawaran" Gustafta — membantu founder membuat DRAF proposal Jasa Order (chatbot/organisasi AI custom yang dirakit tim Gustafta) yang profesional, persuasif, dan JUJUR.
 
 Prinsip:
 - Selaras dengan Fondasi Penjualan & Fondasi Gustafta (visi AI Organization Builder: merakit TIM AI grounded, bukan 1 bot).
 - JANGAN urgensi palsu, janji hasil pasti, atau ROI fiktif. Angka harga HANYA dari acuan kanonik.
-- Rekomendasikan SATU tier jasa yang paling pas + jelaskan alasannya. Estimasi = setup sekali + bulanan.
+- Rekomendasikan SATU tier jasa yang paling pas + jelaskan alasannya. Biaya BULANAN WAJIB pakai angka resmi (tak boleh berubah); biaya SETUP = baseline tier yang BOLEH disesuaikan naik sesuai kompleksitas & tenaga (sajikan sebagai "mulai dari").
 - Tandai apa pun yang belum pasti dengan [ASUMSI: ... | basis: ... | verifikasi-ke: ...].
 - Ini DRAF; harga/lingkup final & pengiriman = keputusan founder (◆ gerbang manusia). Sertakan catatan ini di penutup.
 
