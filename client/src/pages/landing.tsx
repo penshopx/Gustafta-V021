@@ -1397,11 +1397,15 @@ export default function Landing() {
               </ul>
             </div>
           </div>
-          <div className="border-t pt-6 flex flex-col sm:flex-row items-center justify-between gap-2">
+          <div className="border-t pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
             <p className="text-xs text-gray-400">© 2026 Gustafta. Platform Perakit AI — No Code.</p>
-            <div className="flex items-center gap-1 text-xs text-gray-400">
-              <ShieldCheck className="h-3 w-3" />
-              Pembayaran aman via Scalev.id
+            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+              <Link href="/syarat-ketentuan" className="text-xs text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400" data-testid="link-syarat-ketentuan">Syarat &amp; Ketentuan</Link>
+              <Link href="/kebijakan-privasi" className="text-xs text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400" data-testid="link-kebijakan-privasi">Kebijakan Privasi</Link>
+              <span className="flex items-center gap-1 text-xs text-gray-400">
+                <ShieldCheck className="h-3 w-3" />
+                Pembayaran aman via Scalev.id
+              </span>
             </div>
           </div>
         </div>
