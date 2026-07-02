@@ -50,3 +50,8 @@ Roadmap teknis bertahap hidup di **`docs/blueprint-engine/`** (BUKAN di memory):
 
 ## Catatan selaras strategi lain
 - Tetap hormati Framework Visibility Strategy (Framework login-gated) & aturan anti-testimoni/anti-stat-fiktif di landing-page-persuasion.md.
+
+## Positioning inti (dikonfirmasi Gustaf, Jul 2026) — "arms dealer", bukan pesaing
+Yang DIJUAL Gustafta = PLATFORM dialog-kolaborasi-kreasi (bangun chatbot/tim AI sendiri). Gustafta BUKAN penyedia jasa SBU/legalitas/tender dan BUKAN pesaing biro jasa/konsultan/asosiasi — justru merekalah pelanggan. Target pembeli = kontraktor, konsultan, biro jasa, asosiasi (pelaku ekosistem legalitas/tender/konstruksi) yang dipersenjatai AI untuk melayani klien/anggotanya lebih cepat. Grid DOMAIN(legalitas/tender/K3/ISO...) x SEKTOR(konstruksi/energi/tambang/migas/lingkungan) dipakai sebagai LENSA memilih sel pembeli + use-case, BUKAN sebagai bisnis. Konten SBU/tender/K3 di app = BUKTI/HOOK, bukan lini jasa.
+**Why:** menghindari tim AI (Ketua Tim 1872 + Peneliti 1883) mengira Gustafta jualan jasa SBU. Model = "Gabungan": pesan inti platform, konten domain sebagai contoh nyata.
+**How to apply:** setiap prompt tim distribusi/riset harus menyatakan positioning ini; jangan sempitkan misi jadi "riset/jual SBU".
