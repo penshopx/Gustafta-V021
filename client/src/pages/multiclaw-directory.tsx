@@ -227,18 +227,20 @@ export default function MultiClawDirectory() {
               <div className="text-[10px] text-white/40">{PLAN_COUNTS.starter} claw • SBU & Tender</div>
             </div>
           </div>
-          <div className="flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/20 rounded-xl px-4 py-2.5">
-            <Zap className="h-4 w-4 text-indigo-400" />
-            <div className="text-left">
-              <div className="text-xs font-semibold text-indigo-300">Profesional</div>
-              <div className="text-[10px] text-white/40">{PLAN_COUNTS.profesional} claw • +Konstruksi, K3, SKK</div>
+          <Link href="/paket-bidang">
+            <div className="flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/20 rounded-xl px-4 py-2.5 hover:border-indigo-500/40 transition-colors cursor-pointer" data-testid="link-paket-bidang-pro">
+              <Zap className="h-4 w-4 text-indigo-400" />
+              <div className="text-left">
+                <div className="text-xs font-semibold text-indigo-300">Profesional</div>
+                <div className="text-[10px] text-white/40">Claw dasar + pilih 2 paket bidang →</div>
+              </div>
             </div>
-          </div>
+          </Link>
           <div className="flex items-center gap-2 bg-violet-500/10 border border-violet-500/20 rounded-xl px-4 py-2.5">
             <Crown className="h-4 w-4 text-violet-400" />
             <div className="text-left">
               <div className="text-xs font-semibold text-violet-300">Bisnis</div>
-              <div className="text-[10px] text-white/40">{PLAN_COUNTS.bisnis} claw • Semua akses</div>
+              <div className="text-[10px] text-white/40">{PLAN_COUNTS.bisnis} claw • Semua paket bidang</div>
             </div>
           </div>
         </div>

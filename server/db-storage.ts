@@ -2447,6 +2447,29 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, userId));
   }
 
+  async getUserClawPackages(userId: string): Promise<string[]> {
+    const result = await db.select({ selectedClawPackages: users.selectedClawPackages })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    return result[0]?.selectedClawPackages ?? [];
+  }
+
+  async updateUserClawPackages(userId: string, packages: string[]): Promise<void> {
+    await db.update(users)
+      .set({ selectedClawPackages: packages, updatedAt: new Date() })
+      .where(eq(users.id, userId));
+  }
+
+  // Atomic: hanya berhasil jika user belum punya pilihan (lock sekali-pilih, race-safe)
+  async claimUserClawPackages(userId: string, packages: string[]): Promise<boolean> {
+    const result = await db.update(users)
+      .set({ selectedClawPackages: packages, updatedAt: new Date() })
+      .where(sql`${users.id} = ${userId} AND (${users.selectedClawPackages} IS NULL OR cardinality(${users.selectedClawPackages}) = 0)`)
+      .returning({ id: users.id });
+    return result.length > 0;
+  }
+
   // Project Brain Template methods
   async getProjectBrainTemplates(agentId: string): Promise<ProjectBrainTemplate[]> {
     const result = await db.select().from(projectBrainTemplates)
