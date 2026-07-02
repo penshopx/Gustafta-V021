@@ -15,7 +15,7 @@ import {
 import {
   Users, Sparkles, ArrowRight, ArrowLeft, Loader2, Lock, Check, AlertTriangle,
   Plus, Trash2, Crown, Rocket, RotateCcw, Info, Network, ClipboardList, Wand2,
-  Download, Upload, Copy, X, Save, FolderOpen, MessageSquare,
+  Download, Upload, Copy, X, Save, FolderOpen, MessageSquare, UserPlus,
 } from "lucide-react";
 import {
   createEmptyOrganizationBlueprint,
@@ -352,6 +352,10 @@ export default function OrganizationBuilderPage() {
   const [preview, setPreview] = useState<ConfigureResult | null>(null);
   const [created, setCreated] = useState<ConfigureResult | null>(null);
   const [createError, setCreateError] = useState<string[] | null>(null);
+  const [handoverEmail, setHandoverEmail] = useState("");
+  const [handoverRole, setHandoverRole] = useState<"viewer" | "editor">("viewer");
+  const [handoverBusy, setHandoverBusy] = useState(false);
+  const [handoverResult, setHandoverResult] = useState<{ total: number; shared: number; pending: number; failed: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [maxSpecialists, setMaxSpecialists] = useState(3);
   const [composedDomain, setComposedDomain] = useState<string | null>(null);
@@ -851,10 +855,42 @@ export default function OrganizationBuilderPage() {
     } finally { setBusy(false); }
   };
 
+  // Fase D — serah-terima seluruh tim ke email klien dalam satu aksi.
+  const handoverTeam = async () => {
+    const agentIds = created ? Object.values(created.idMap || {}).filter(Boolean) : [];
+    if (agentIds.length === 0) {
+      toast({ title: "Belum ada agen untuk diserahkan", variant: "destructive" });
+      return;
+    }
+    setHandoverBusy(true);
+    try {
+      const data = await apiRequest("POST", "/api/organization/handover", {
+        agentIds,
+        email: handoverEmail.trim(),
+        role: handoverRole,
+      });
+      setHandoverResult({ total: data.total, shared: data.shared, pending: data.pending, failed: data.failed });
+      const okCount = (data.shared || 0) + (data.pending || 0);
+      toast({
+        title: okCount > 0 ? "Tim diserahkan ke klien" : "Serah-terima gagal",
+        description:
+          okCount > 0
+            ? `${okCount} dari ${data.total} agen dibagikan${data.pending ? ` (${data.pending} menunggu klien mendaftar)` : ""}.` +
+              (data.failed ? ` ${data.failed} gagal.` : "")
+            : "Tidak ada agen yang berhasil dibagikan. Periksa email/kepemilikan agen.",
+        variant: okCount > 0 ? "default" : "destructive",
+      });
+      if (okCount > 0) setHandoverEmail("");
+    } catch (e: any) {
+      toast({ title: "Gagal menyerahkan tim", description: e?.message || "Coba lagi.", variant: "destructive" });
+    } finally { setHandoverBusy(false); }
+  };
+
   const reset = () => {
     setStep("intro"); setOrgName(""); setMission("");
     setMembers([{ localId: "m1", role: "orchestrator", title: "", responsibility: "", systemPrompt: "" }]);
     setAnalysis(null); setPreview(null); setCreated(null); setCreateError(null);
+    setHandoverEmail(""); setHandoverRole("viewer"); setHandoverResult(null);
     setComposedDomain(null); setMaxSpecialists(3); setReadiness(null);
     setActiveDraftId(null); setActiveDraftName("");
     holdRef.current = false;
@@ -1744,6 +1780,52 @@ export default function OrganizationBuilderPage() {
                 );
               })()}
             </div>
+
+            {/* Serah-terima ke Klien (Fase D) — bagikan seluruh tim ke email klien */}
+            {created && Object.values(created.idMap || {}).filter(Boolean).length > 0 && (
+              <div className="text-left rounded-xl border bg-white dark:bg-card p-4 mt-2 mb-4" data-testid="card-handover">
+                <div className="flex items-center gap-2 mb-1">
+                  <UserPlus className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                  <h3 className="text-sm font-bold text-gray-900 dark:text-white">Serahkan Tim ke Klien</h3>
+                </div>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-3">
+                  Beri klien akses ke {Object.values(created.idMap || {}).filter(Boolean).length} agen tim ini sekaligus. Jika belum punya akun, mereka diundang lewat email dan akses otomatis aktif saat mendaftar.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Input
+                    type="email"
+                    placeholder="email klien"
+                    value={handoverEmail}
+                    onChange={(e) => setHandoverEmail(e.target.value)}
+                    className="flex-1"
+                    data-testid="input-handover-email"
+                  />
+                  <Select value={handoverRole} onValueChange={(v) => setHandoverRole(v as "viewer" | "editor")}>
+                    <SelectTrigger className="w-full sm:w-36" data-testid="select-handover-role"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="viewer">Hanya lihat</SelectItem>
+                      <SelectItem value="editor">Bisa ubah</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    onClick={handoverTeam}
+                    disabled={handoverBusy || handoverEmail.trim().length < 3}
+                    className="bg-violet-600 hover:bg-violet-500 text-white gap-2"
+                    data-testid="btn-handover"
+                  >
+                    {handoverBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
+                    Serahkan
+                  </Button>
+                </div>
+                {handoverResult && (
+                  <p className="text-[11px] text-gray-600 dark:text-gray-400 mt-2" data-testid="text-handover-result">
+                    {handoverResult.shared + handoverResult.pending} dari {handoverResult.total} agen dibagikan
+                    {handoverResult.pending ? ` · ${handoverResult.pending} menunggu klien mendaftar` : ""}
+                    {handoverResult.failed ? ` · ${handoverResult.failed} gagal` : ""}.
+                  </p>
+                )}
+              </div>
+            )}
 
             <div className="flex flex-wrap gap-3 justify-center mt-4">
               <Link href="/dashboard">
