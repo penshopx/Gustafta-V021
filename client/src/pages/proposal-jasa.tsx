@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, FileSignature, Loader2, Sparkles, Copy, Check, Download, Users, ListChecks, CalendarDays, AlertTriangle, Wand2 } from "lucide-react";
+import { ArrowLeft, FileSignature, Loader2, Sparkles, Copy, Check, Download, Users, ListChecks, CalendarDays, AlertTriangle, Wand2, PackageCheck } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { proposalTeamToOrgMembers } from "@shared/proposal-to-org";
 
@@ -17,6 +17,7 @@ interface ProposalResult {
   solusi: string;
   lingkup_kerja: string[];
   tim_agen: { tim?: string; peran: string; tugas: string; gerbang?: string }[];
+  claw_rekomendasi?: { nama: string; sebagai?: string; kenapa_cocok?: string }[];
   tahapan: { fase: string; durasi: string; hasil: string }[];
   rekomendasi_tier: string;
   estimasi: { setup: number; bulanan: number; catatan: string };
@@ -68,6 +69,15 @@ function proposalToText(r: ProposalResult): string {
         const gate = g && g !== "-" ? ` (◆ ${g})` : "";
         lines.push(`• ${a.peran}: ${a.tugas}${gate}`);
       });
+    });
+    lines.push("");
+  }
+  if (r.claw_rekomendasi?.length) {
+    lines.push("MANAJEMEN AI SIAP PAKAI (CLAW)");
+    r.claw_rekomendasi.forEach((c) => {
+      const sebagai = (c.sebagai || "").trim();
+      lines.push(`• ${c.nama}${sebagai ? ` → ${sebagai}` : ""}`);
+      if ((c.kenapa_cocok || "").trim()) lines.push(`  ${c.kenapa_cocok!.trim()}`);
     });
     lines.push("");
   }
@@ -369,6 +379,31 @@ export default function ProposalJasa() {
                       </Section>
                     );
                   })()}
+
+                  {(result.claw_rekomendasi?.length ?? 0) > 0 && (
+                    <Section title="Manajemen AI Siap Pakai (Claw)" icon={<PackageCheck className="h-4 w-4 text-amber-400" />}>
+                      <p className="text-[11px] text-white/40 mb-2.5">
+                        Paket claw siap pakai yang cocok jadi departemen manajemen AI di perusahaan klien — lebih cepat &amp; teruji dibanding merakit dari nol. Ini produk premium berlisensi (biaya lisensi + bulanan tersendiri); harga final &amp; keputusan berisiko tetap di tangan manusia (◆).
+                      </p>
+                      <div className="space-y-2.5">
+                        {result.claw_rekomendasi!.map((c, i) => (
+                          <div key={i} className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-3" data-testid={`card-claw-${i}`}>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-sm text-white font-medium" data-testid={`text-claw-nama-${i}`}>{c.nama}</span>
+                              {(c.sebagai || "").trim() && (
+                                <Badge variant="outline" className="border-amber-500/40 text-amber-200 text-[10px]">
+                                  {c.sebagai}
+                                </Badge>
+                              )}
+                            </div>
+                            {(c.kenapa_cocok || "").trim() && (
+                              <p className="text-xs text-white/50 mt-1">{c.kenapa_cocok}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </Section>
+                  )}
 
                   {result.tahapan.length > 0 && (
                     <Section title="Tahapan Pengerjaan" icon={<CalendarDays className="h-4 w-4 text-emerald-400" />}>
