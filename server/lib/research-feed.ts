@@ -25,11 +25,15 @@ const AD_KB_PREFIX = "Materi Iklan Harian";
 const AD_PLATFORM_KB_PREFIX = "Panduan Platform Iklan";
 const RETENTION_KB_PREFIX = "Sequence Retensi Harian";
 const FOUNDATION_KB_PREFIX = "Fondasi Gustafta";
+const CLOSING_KB_PREFIX = "Amunisi Jualan Harian";
+const SALES_PLAYBOOK_KB_PREFIX = "Fondasi Penjualan";
 
 // Agen "Pembuat Materi Iklan" — mengubah temuan riset harian jadi materi iklan siap pakai.
 export const AD_MATERIAL_SLUG = "mkt-materi-iklan";
 // Agen "Perawatan Pelanggan" — susun email/WA sequence retensi dari output marketing + fondasi.
 export const RETENTION_SLUG = "mkt-retensi-sequence";
+// Agen "Asisten Closing" — bantu menutup penjualan: jawab keberatan + skrip WA + follow-up prospek.
+export const CLOSING_SLUG = "mkt-closing-asisten";
 
 // Client OpenAI lokal (pola sama dgn rag-service): dipakai untuk generate materi iklan.
 let _adOpenai: OpenAI | null = null;
@@ -756,6 +760,193 @@ ${content}`;
   return { generated: true, chunks: chunks.length };
 }
 
+/**
+ * Dokumen FONDASI PENJUALAN — playbook jualan statis: cara menutup penjualan Gustafta
+ * dengan jujur. Kerangka menjawab keberatan + prinsip skrip closing. Jadi grounding
+ * agen Asisten Closing & generator amunisi jualan harian. Bukan LLM; spesifik & jujur.
+ */
+export function buildSalesPlaybookDoc(): string {
+  return `FONDASI PENJUALAN GUSTAFTA — Playbook menutup penjualan (jujur)
+Rujukan untuk melayani calon pembeli & menyusun skrip closing. Selalu selaras dengan Fondasi Gustafta
+(visi, Trilogi, produk & jasa). JANGAN memakai urgensi palsu, klaim hasil pasti, atau ROI fiktif.
+
+═══ 3 JALUR JUALAN (arahkan sesuai kebutuhan calon pembeli) ═══
+- Chatbot Biasa (rakit sendiri, no-code) = lisensi standar + bulanan → untuk yang mau hemat & suka utak-atik.
+- Chatbot Premium (siap pakai) = lisensi premium (K1 Rp1jt · K2 Rp2,5jt · K3 Rp5jt · K4 Rp10jt) + bulanan
+  → untuk yang mau langsung jalan tanpa merakit.
+- Jasa Order (custom, dibuatkan Gustafta) = setup sekali (termasuk lisensi) + bulanan → untuk kebutuhan khusus.
+Pintu masuk termurah: Starter Kit Rp245.000 (sekali) + trial 7 hari. Trilogi (Buku I Rp245rb / bundle Rp499rb)
+= langkah kecil bagi yang "masih mikir". Biaya bulanan (hosting+token) berlaku SEMUA produk.
+
+═══ KERANGKA MENJAWAB KEBERATAN (dengar → akui → jelaskan → ajak langkah kecil) ═══
+- "Mahal": bandingkan dengan biaya merekrut orang; mulai dari Starter Kit Rp245rb atau Trilogi dulu; naik tier bertahap.
+- "Ribet / gaptek": Chatbot Biasa no-code; kalau tetap enggan, ada Premium siap pakai atau Jasa Order (dibuatkan).
+- "Beda apa sama ChatGPT / chatbot lain": Gustafta bukan 1 bot, tapi merakit TIM AI (organisasi AI) yang
+  grounded pada pengetahuan Anda sendiri. Positioning: mempersenjatai usaha Anda, bukan menyaingi.
+- "Untungnya apa buat usaha saya": kaitkan ke domain nyata (kontraktor→tender/SBU, UMKM→konten harian);
+  metrik = waktu kembali & fokus ke hal strategis.
+- "Nanti dulu / masih mikir": tawarkan langkah kecil (Starter Kit / Trilogi / trial 7 hari), bukan tekanan.
+- "Hasilnya pasti?": JUJUR — tidak menjanjikan hasil pasti; ada ◆ gerbang manusia; bukti = tools nyata (RAB, K3 Vision).
+- "Bulanan buat apa": hosting + token model AI; berlaku untuk semua produk.
+
+═══ PRINSIP SKRIP CLOSING (WhatsApp) ═══
+- Hangat & personal, pakai {nama}. Nilai/empati dulu, ajakan belakangan.
+- Satu ajakan jelas (link checkout / jadwal ngobrol / ambil Starter Kit). Jangan bertumpuk.
+- Sediakan opsi langkah kecil supaya mudah bilang "ya".
+- ◆ GERBANG MANUSIA: jangan janjikan harga khusus/diskon/garansi di luar wewenang; jika ragu, eskalasi ke founder.
+- Tandai klaim belum terverifikasi: [ASUMSI: ... | basis: ... | verifikasi-ke: ...].`;
+}
+
+/**
+ * Seed FONDASI PENJUALAN sebagai KB pada agen closing (idempoten by prefix). Prune-scope terpisah.
+ */
+export async function ensureSalesPlaybookLibrary(
+  agentId: number,
+): Promise<{ created: boolean; chunks: number }> {
+  const { db } = await import("../db");
+  const { sql } = await import("drizzle-orm");
+  const existing = await db.execute(sql`
+    SELECT id FROM knowledge_bases
+    WHERE agent_id = ${agentId} AND name LIKE ${SALES_PLAYBOOK_KB_PREFIX + "%"}
+    LIMIT 1
+  `);
+  if ((existing.rows?.length ?? 0) > 0) return { created: false, chunks: 0 };
+
+  const doc = buildSalesPlaybookDoc();
+  const kb = await storage.createKnowledgeBase({
+    agentId: String(agentId),
+    name: `${SALES_PLAYBOOK_KB_PREFIX} — Playbook Menutup Penjualan`,
+    type: "text",
+    content: doc,
+    description: "Playbook jualan kanonik Gustafta (jalur jualan, keberatan, prinsip closing)",
+    extractedText: doc,
+    sourceUrl: "",
+    sourceAuthority: "Gustafta (kanonik)",
+    status: "active",
+  });
+  const chunks = await processKnowledgeBaseForRAG(parseInt(kb.id), agentId, doc, kb.name);
+  if (chunks.length > 0) await storage.createChunks(chunks);
+  return { created: true, chunks: chunks.length };
+}
+
+/**
+ * Agen "Asisten Closing" menyusun AMUNISI JUALAN harian: (A) keberatan umum + jawaban terbaik,
+ * (B) skrip closing WhatsApp siap salin-tempel per situasi, (C) pesan follow-up prospek (belum beli).
+ * Bahan: konteks marketing hari ini + Fondasi Penjualan + Fondasi Gustafta. Disimpan KB prune-scope
+ * sendiri. Semua = draf bantu jualan; keputusan & pengiriman = founder (◆ gerbang manusia).
+ */
+export async function generateDailyClosingKit(
+  agentId: number,
+  marketingContext: string,
+): Promise<{ generated: boolean; chunks: number; reason?: string }> {
+  const client = getAdOpenAI();
+  if (!client) return { generated: false, chunks: 0, reason: "no-openai-key" };
+
+  const agent = await storage.getAgent(String(agentId));
+  const persona = agent?.systemPrompt || "Kamu Asisten Closing Gustafta.";
+  const model =
+    agent?.aiModel &&
+    !agent.aiModel.startsWith("deepseek") &&
+    !agent.aiModel.startsWith("qwen") &&
+    !agent.aiModel.startsWith("gemini") &&
+    agent.aiModel !== "custom"
+      ? agent.aiModel
+      : "gpt-4o-mini";
+  const today = new Date().toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta", dateStyle: "full" });
+  const foundation = buildGustaftaFoundationDoc();
+  const playbook = buildSalesPlaybookDoc();
+
+  const userPrompt = `Tanggal: ${today}
+
+Susun AMUNISI JUALAN hari ini untuk membantu founder MENUTUP PENJUALAN. Ambil bahan dari FONDASI
+PENJUALAN + FONDASI GUSTAFTA + KONTEKS MARKETING HARI INI (sudut/materi terbaru) di bawah.
+
+FORMAT KELUARAN (ikuti persis):
+A) KEBERATAN & JAWABAN — 5-7 keberatan umum calon pembeli. Tiap butir: Keberatan · Jawaban terbaik
+   (empati dulu, jujur, kaitkan ke jalur produk yang pas).
+B) SKRIP CLOSING WHATSAPP (siap salin-tempel) — 4 situasi: (1) baru tanya-tanya, (2) ragu harga,
+   (3) membandingkan / masih mikir, (4) sudah tertarik (arahkan ke langkah beli). Pakai {nama},
+   hangat, satu ajakan jelas.
+C) FOLLOW-UP PROSPEK (belum beli) — 3 pesan pendek bertahap (mis. Hari ke-1/3/7), value-first,
+   ajakan lembut, sertakan langkah kecil (Starter Kit / Trilogi / trial).
+
+Aturan: bahasa Indonesia hangat & personal. JANGAN urgensi palsu / janji hasil pasti / ROI fiktif.
+Jangan janjikan diskon/garansi di luar wewenang → tandai "◆ konfirmasi founder". Tandai klaim belum
+terverifikasi dengan [ASUMSI: ... | basis: ... | verifikasi-ke: ...].
+
+===== KONTEKS MARKETING HARI INI =====
+${(marketingContext || "(tidak ada materi marketing hari ini — gunakan fondasi saja)").slice(0, 4000)}
+===== SELESAI =====
+
+===== FONDASI PENJUALAN (rujuk ini) =====
+${playbook}
+===== SELESAI =====
+
+===== FONDASI GUSTAFTA (rujuk ini) =====
+${foundation}
+===== SELESAI =====`;
+
+  let content = "";
+  try {
+    const resp = await client.chat.completions.create(
+      {
+        model,
+        temperature: 0.7,
+        max_tokens: 3500,
+        messages: [
+          { role: "system", content: persona },
+          { role: "user", content: userPrompt },
+        ],
+      },
+      { timeout: 60000 },
+    );
+    content = resp.choices?.[0]?.message?.content?.trim() || "";
+  } catch (e) {
+    return { generated: false, chunks: 0, reason: (e as Error).message };
+  }
+  if (!content) return { generated: false, chunks: 0, reason: "empty" };
+
+  const stamp = new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" });
+  const doc = `AMUNISI JUALAN HARIAN — Gustafta
+Dibuat otomatis: ${stamp} WIB
+Dasar: output tim marketing hari ini + Fondasi Penjualan + Fondasi Gustafta. Alat bantu founder untuk
+melayani calon pembeli & menutup penjualan. Keputusan & pengiriman final = founder (◆ gerbang manusia).
+
+${content}`;
+
+  const { db } = await import("../db");
+  const { sql } = await import("drizzle-orm");
+  await db.execute(sql`
+    DELETE FROM knowledge_chunks
+    WHERE knowledge_base_id IN (
+      SELECT id FROM knowledge_bases
+      WHERE agent_id = ${agentId} AND name LIKE ${CLOSING_KB_PREFIX + "%"}
+    )
+  `);
+  await db.execute(sql`
+    DELETE FROM knowledge_bases
+    WHERE agent_id = ${agentId} AND name LIKE ${CLOSING_KB_PREFIX + "%"}
+  `);
+
+  const kb = await storage.createKnowledgeBase({
+    agentId: String(agentId),
+    name: `${CLOSING_KB_PREFIX} — ${new Date().toISOString().slice(0, 10)}`,
+    type: "text",
+    content: doc,
+    description: "Amunisi jualan harian: keberatan+jawaban, skrip closing WA, follow-up prospek (auto-generated)",
+    extractedText: doc,
+    sourceUrl: "",
+    sourceAuthority: "Asisten Closing Gustafta (AI, dari output marketing + fondasi penjualan)",
+    status: "active",
+  });
+
+  const chunks = await processKnowledgeBaseForRAG(parseInt(kb.id), agentId, doc, kb.name);
+  if (chunks.length > 0) {
+    await storage.createChunks(chunks);
+  }
+  return { generated: true, chunks: chunks.length };
+}
+
 export interface StreamResult {
   slug: string;
   agentId: number;
@@ -770,6 +961,8 @@ export interface SweepResult {
   adMaterials?: { agentId: number; generated: boolean; chunks: number; reason?: string; content?: string };
   foundationLibrary?: { agentId: number; created: boolean; chunks: number };
   retention?: { agentId: number; generated: boolean; chunks: number; reason?: string };
+  salesPlaybook?: { agentId: number; created: boolean; chunks: number };
+  closingKit?: { agentId: number; generated: boolean; chunks: number; reason?: string };
   skipped: string[];
   // Kompatibilitas mundur (kode/UI lama yang membaca .local / .global).
   local?: StreamResult;
@@ -832,6 +1025,7 @@ export async function runResearchSweep(): Promise<SweepResult> {
   // Tahap 1 (di atas): RISET pasar/lokal/global → feed KB.
   // Tahap 2: MATERI IKLAN per platform (dari temuan riset).
   // Tahap 3: SEQUENCE RETENSI email/WA (dari output marketing + Fondasi Gustafta).
+  // Tahap 4: AMUNISI JUALAN (keberatan+jawaban, skrip closing WA, follow-up prospek).
   // Semua fire-and-forget: kegagalan satu tahap tidak menggagalkan tahap lain / sweep.
   // ══════════════════════════════════════════════════════════════════════════
 
@@ -887,6 +1081,37 @@ export async function runResearchSweep(): Promise<SweepResult> {
     }
   } catch (e) {
     console.error(`[Pipeline] generate sequence retensi gagal:`, (e as Error).message);
+  }
+
+  // ── TAHAP 4 — AMUNISI JUALAN (bantu closing) ──
+  // Konteks = materi iklan hari ini (sudut segar) + temuan pasar; Fondasi Penjualan & Fondasi
+  // Gustafta di-inject di dalam generator. Semua = draf bantu jualan, bukan auto-kirim.
+  try {
+    const closeAgent = await storage.getAgentBySlug(CLOSING_SLUG);
+    if (closeAgent) {
+      const closeAgentId = Number(closeAgent.id);
+      // Seed Fondasi Penjualan + Fondasi Gustafta (idempoten) → grounding chat & generator.
+      try {
+        result.salesPlaybook = {
+          agentId: closeAgentId,
+          ...(await ensureSalesPlaybookLibrary(closeAgentId)),
+        };
+        await ensureRetentionFoundationLibrary(closeAgentId);
+      } catch (e) {
+        console.error(`[Pipeline] seed fondasi penjualan gagal:`, (e as Error).message);
+      }
+      const closeCtx = [result.adMaterials?.content, docsBySlug[RESEARCH_MARKET_SLUG]]
+        .filter(Boolean)
+        .join("\n\n");
+      result.closingKit = {
+        agentId: closeAgentId,
+        ...(await generateDailyClosingKit(closeAgentId, closeCtx)),
+      };
+    } else {
+      result.skipped.push(CLOSING_SLUG);
+    }
+  } catch (e) {
+    console.error(`[Pipeline] generate amunisi jualan gagal:`, (e as Error).message);
   }
 
   return result;
