@@ -23,9 +23,13 @@ const FEED_KB_PREFIX = "Feed Riset";
 const METHOD_KB_PREFIX = "Panduan Metode Riset";
 const AD_KB_PREFIX = "Materi Iklan Harian";
 const AD_PLATFORM_KB_PREFIX = "Panduan Platform Iklan";
+const RETENTION_KB_PREFIX = "Sequence Retensi Harian";
+const FOUNDATION_KB_PREFIX = "Fondasi Gustafta";
 
 // Agen "Pembuat Materi Iklan" — mengubah temuan riset harian jadi materi iklan siap pakai.
 export const AD_MATERIAL_SLUG = "mkt-materi-iklan";
+// Agen "Perawatan Pelanggan" — susun email/WA sequence retensi dari output marketing + fondasi.
+export const RETENTION_SLUG = "mkt-retensi-sequence";
 
 // Client OpenAI lokal (pola sama dgn rag-service): dipakai untuk generate materi iklan.
 let _adOpenai: OpenAI | null = null;
@@ -453,7 +457,7 @@ export async function ensureAdPlatformLibrary(agentId: number): Promise<{ create
 export async function generateDailyAdMaterials(
   agentId: number,
   researchContext: string,
-): Promise<{ generated: boolean; chunks: number; reason?: string }> {
+): Promise<{ generated: boolean; chunks: number; reason?: string; content?: string }> {
   const client = getAdOpenAI();
   if (!client) return { generated: false, chunks: 0, reason: "no-openai-key" };
   if (!researchContext.trim()) return { generated: false, chunks: 0, reason: "no-research" };
@@ -556,6 +560,199 @@ ${content}`;
   if (chunks.length > 0) {
     await storage.createChunks(chunks);
   }
+  return { generated: true, chunks: chunks.length, content: doc };
+}
+
+/**
+ * Dokumen FONDASI GUSTAFTA — visi (AI Organization Builder), Trilogi "Dari Monolog
+ * ke Dialog", serta produk & jasa. Jadi sumber kebenaran agar setiap sequence retensi
+ * selaras dengan positioning & penawaran. Statis (bukan LLM); spesifik & jujur.
+ */
+export function buildGustaftaFoundationDoc(): string {
+  return `FONDASI GUSTAFTA — Visi, Trilogi, Produk & Jasa
+Sumber kebenaran untuk menyusun komunikasi ke pelanggan. Selaraskan setiap pesan dengan ini.
+
+═══ VISI: AI ORGANIZATION BUILDER ═══
+Gustafta mengubah PENGETAHUAN MANUSIA menjadi ORGANISASI AI yang mampu BERPIKIR, BERKOLABORASI,
+MENGHASILKAN KARYA, dan MEMBANGUN BISNIS BERKELANJUTAN. Bukan sekadar "alat bikin chatbot" —
+tapi cara merakit tim AI Anda sendiri.
+Positioning "arms dealer": Gustafta MEMPERSENJATAI pelaku usaha (kontraktor, konsultan, biro jasa,
+asosiasi, profesional, UMKM) dengan AI — BUKAN menggantikan atau menyaingi mereka. Konten domain
+(legalitas, tender/LKPP, SBU/SKK, K3, ISO) = BUKTI/contoh, BUKAN lini jasa yang kita jual.
+
+═══ TRILOGI "DARI MONOLOG KE DIALOG" ═══
+Buku edukasi yang jadi jembatan pemikiran menuju platform. Untuk karyawan, profesional, &
+calon pensiunan. Inti: berhenti bekerja sendirian (monolog), mulai berkolaborasi dengan AI (dialog).
+- Buku I — fondasi berpikir bersama AI; individu naik level dari operator menjadi pengarah.
+- Buku II — KOLABORASI: model tim hybrid manusia+AI. Pola inti: Manusia beri niat & batas → Tim Agen
+  kerjakan yang repetitif → kembalikan waktu → ◆ GERBANG MANUSIA untuk keputusan → hasil berlipat.
+  7 prinsip: mulai dari yang repetitif; agen harus punya "suara" yang mengenal Anda; gerbang manusia
+  wajib untuk keputusan soal manusia/uang besar/aksi tak-terbalikkan; 3 agen cukup di awal; log +
+  ringkasan otomatis; eskalasi jujur; metrik baru = waktu kembali & penilaian naik (bukan jam kerja).
+- Buku III — penerapan/keberlanjutan: dari kolaborasi ke membangun bisnis/organisasi AI.
+Harga: Buku I Rp245.000 · Bundle 3 buku Rp499.000 (early bird; normal Rp945.000).
+
+═══ PRODUK & JASA ═══
+3 jalur dapat chatbot: (a) Chatbot Biasa (rakit sendiri) = lisensi standar + bulanan ·
+(b) Chatbot Premium (siap pakai) = lisensi premium + bulanan · (c) Jasa Order (custom) = setup
+sekali (termasuk lisensi) + bulanan. Biaya bulanan hosting+token berlaku untuk SEMUA produk.
+4 tier langganan: Starter → Profesional → Bisnis → Enterprise (naik tier = naik kuota + chatbot
+premium + Mini Apps). Starter Kit Rp245.000 (sekali) = onboarding lintas-tier (lisensi + panduan +
+trial 7 hari), BUKAN tier. Kelas Premium lisensi: K1 Rp1jt · K2 Rp2,5jt · K3 Rp5jt · K4 Rp10jt.
+Program Creator (marketplace): bagi hasil 80% Creator / 20% Gustafta dihitung dari biaya LISENSI saja.
+Kemampuan platform: 900+ agen, tim AI kolaboratif (orkestrasi sub-agen), Mini Apps, AI Tools
+(RAB Kalkulator, K3 Vision), Store/template.
+
+═══ ATURAN KOMUNIKASI ═══
+- Bahasa Indonesia hangat & personal — seperti mengenal pelanggan, bukan korporat kaku.
+- Jangan janji hasil pasti / ROI fiktif. Statistik hanya konteks umum bersumber, bukan janji produk.
+- ◆ GERBANG MANUSIA: pengiriman email/WA final diputuskan founder. Agen hanya menyiapkan draf.
+- Tandai klaim belum terverifikasi: [ASUMSI: ... | basis: ... | verifikasi-ke: ...].`;
+}
+
+/**
+ * Seed FONDASI GUSTAFTA sebagai KB pada agen retensi (idempoten by prefix).
+ * Prune-scope terpisah — tidak tersentuh cleanup feed/materi iklan/sequence harian.
+ */
+export async function ensureRetentionFoundationLibrary(
+  agentId: number,
+): Promise<{ created: boolean; chunks: number }> {
+  const { db } = await import("../db");
+  const { sql } = await import("drizzle-orm");
+  const existing = await db.execute(sql`
+    SELECT id FROM knowledge_bases
+    WHERE agent_id = ${agentId} AND name LIKE ${FOUNDATION_KB_PREFIX + "%"}
+    LIMIT 1
+  `);
+  if ((existing.rows?.length ?? 0) > 0) return { created: false, chunks: 0 };
+
+  const doc = buildGustaftaFoundationDoc();
+  const kb = await storage.createKnowledgeBase({
+    agentId: String(agentId),
+    name: `${FOUNDATION_KB_PREFIX} — Visi, Trilogi, Produk & Jasa`,
+    type: "text",
+    content: doc,
+    description: "Fondasi kanonik Gustafta (visi, Trilogi, produk/jasa) untuk komunikasi pelanggan",
+    extractedText: doc,
+    sourceUrl: "",
+    sourceAuthority: "Gustafta (kanonik)",
+    status: "active",
+  });
+  const chunks = await processKnowledgeBaseForRAG(parseInt(kb.id), agentId, doc, kb.name);
+  if (chunks.length > 0) await storage.createChunks(chunks);
+  return { created: true, chunks: chunks.length };
+}
+
+/**
+ * Agen "Perawatan Pelanggan" menyusun SEQUENCE RETENSI harian (email + WhatsApp) untuk
+ * memelihara hubungan berkelanjutan dgn pelanggan. Bahan: konteks marketing hari ini
+ * (materi iklan/riset) + FONDASI GUSTAFTA (visi, Trilogi, produk/jasa). Disimpan sebagai KB
+ * dgn prune-scope sendiri. Pengiriman = ◆ gerbang manusia (founder), bukan auto-kirim.
+ */
+export async function generateDailyRetentionSequence(
+  agentId: number,
+  marketingContext: string,
+): Promise<{ generated: boolean; chunks: number; reason?: string }> {
+  const client = getAdOpenAI();
+  if (!client) return { generated: false, chunks: 0, reason: "no-openai-key" };
+
+  const agent = await storage.getAgent(String(agentId));
+  const persona = agent?.systemPrompt || "Kamu Perawatan Pelanggan Gustafta.";
+  const model =
+    agent?.aiModel &&
+    !agent.aiModel.startsWith("deepseek") &&
+    !agent.aiModel.startsWith("qwen") &&
+    !agent.aiModel.startsWith("gemini") &&
+    agent.aiModel !== "custom"
+      ? agent.aiModel
+      : "gpt-4o-mini";
+  const today = new Date().toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta", dateStyle: "full" });
+  const foundation = buildGustaftaFoundationDoc();
+
+  const userPrompt = `Tanggal: ${today}
+
+Susun SEQUENCE PERAWATAN PELANGGAN (email + WhatsApp) untuk memelihara hubungan berkelanjutan
+dengan pelanggan Gustafta yang SUDAH ada (retensi & nurture). Ambil bahan dari FONDASI GUSTAFTA
+(visi, Trilogi, produk & jasa) + KONTEKS MARKETING HARI INI (sudut/materi terbaru) di bawah.
+
+FORMAT KELUARAN (ikuti persis):
+A) SEQUENCE EMAIL (4-5 email bertahap). Tiap email: Tujuan · Kirim di (Hari ke-) · Subject line ·
+   Preview text · Isi (personal, hangat, nilai dulu) · CTA. Sisipkan minimal satu email yang
+   mengangkat VISI/Trilogi (dari monolog ke dialog) agar hubungan terasa bermakna, bukan jualan terus.
+B) SEQUENCE WHATSAPP (4-5 pesan pendek). Tiap pesan: Kirim di (Hari ke-) · Isi (santai, value-first,
+   maksimal beberapa kalimat, boleh emoji secukupnya) · CTA lembut.
+C) CATATAN OPERASIONAL: variabel personalisasi ({nama}, {produk}, dll.) + di titik mana ◆ gerbang
+   manusia (founder menyetujui sebelum kirim).
+
+Aturan: bahasa Indonesia hangat & personal. Jangan janji hasil pasti/ROI. Tandai klaim belum
+terverifikasi dengan [ASUMSI: ... | basis: ... | verifikasi-ke: ...].
+
+===== KONTEKS MARKETING HARI INI =====
+${(marketingContext || "(tidak ada materi marketing hari ini — gunakan fondasi saja)").slice(0, 4500)}
+===== SELESAI =====
+
+===== FONDASI GUSTAFTA (rujuk ini) =====
+${foundation}
+===== SELESAI =====`;
+
+  let content = "";
+  try {
+    const resp = await client.chat.completions.create(
+      {
+        model,
+        temperature: 0.7,
+        max_tokens: 3500,
+        messages: [
+          { role: "system", content: persona },
+          { role: "user", content: userPrompt },
+        ],
+      },
+      { timeout: 60000 },
+    );
+    content = resp.choices?.[0]?.message?.content?.trim() || "";
+  } catch (e) {
+    return { generated: false, chunks: 0, reason: (e as Error).message };
+  }
+  if (!content) return { generated: false, chunks: 0, reason: "empty" };
+
+  const stamp = new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" });
+  const doc = `SEQUENCE RETENSI HARIAN — Gustafta
+Dibuat otomatis: ${stamp} WIB
+Dasar: output tim marketing hari ini + Fondasi Gustafta (visi, Trilogi, produk/jasa). Draf untuk
+memelihara hubungan dengan pelanggan. Pengiriman final = keputusan founder (◆ gerbang manusia).
+
+${content}`;
+
+  const { db } = await import("../db");
+  const { sql } = await import("drizzle-orm");
+  await db.execute(sql`
+    DELETE FROM knowledge_chunks
+    WHERE knowledge_base_id IN (
+      SELECT id FROM knowledge_bases
+      WHERE agent_id = ${agentId} AND name LIKE ${RETENTION_KB_PREFIX + "%"}
+    )
+  `);
+  await db.execute(sql`
+    DELETE FROM knowledge_bases
+    WHERE agent_id = ${agentId} AND name LIKE ${RETENTION_KB_PREFIX + "%"}
+  `);
+
+  const kb = await storage.createKnowledgeBase({
+    agentId: String(agentId),
+    name: `${RETENTION_KB_PREFIX} — ${new Date().toISOString().slice(0, 10)}`,
+    type: "text",
+    content: doc,
+    description: "Sequence email/WA retensi harian (auto-generated)",
+    extractedText: doc,
+    sourceUrl: "",
+    sourceAuthority: "Perawatan Pelanggan Gustafta (AI, dari output marketing + fondasi)",
+    status: "active",
+  });
+
+  const chunks = await processKnowledgeBaseForRAG(parseInt(kb.id), agentId, doc, kb.name);
+  if (chunks.length > 0) {
+    await storage.createChunks(chunks);
+  }
   return { generated: true, chunks: chunks.length };
 }
 
@@ -570,7 +767,9 @@ export interface StreamResult {
 export interface SweepResult {
   streams: StreamResult[];
   methodLibrary?: { agentId: number; created: boolean; chunks: number };
-  adMaterials?: { agentId: number; generated: boolean; chunks: number; reason?: string };
+  adMaterials?: { agentId: number; generated: boolean; chunks: number; reason?: string; content?: string };
+  foundationLibrary?: { agentId: number; created: boolean; chunks: number };
+  retention?: { agentId: number; generated: boolean; chunks: number; reason?: string };
   skipped: string[];
   // Kompatibilitas mundur (kode/UI lama yang membaca .local / .global).
   local?: StreamResult;
@@ -628,9 +827,15 @@ export async function runResearchSweep(): Promise<SweepResult> {
     }
   }
 
-  // Setelah riset segar: agen Pembuat Materi Iklan menjalankan tugasnya —
-  // ubah temuan pasar + pain point produk hari ini jadi materi iklan siap pakai.
-  // Fire-and-forget: kegagalan di sini tidak boleh menggagalkan sweep riset.
+  // ══════════════════════════════════════════════════════════════════════════
+  // PIPELINE MARKETING GUSTAFTA — tahap lanjutan (berjalan berurutan tiap hari).
+  // Tahap 1 (di atas): RISET pasar/lokal/global → feed KB.
+  // Tahap 2: MATERI IKLAN per platform (dari temuan riset).
+  // Tahap 3: SEQUENCE RETENSI email/WA (dari output marketing + Fondasi Gustafta).
+  // Semua fire-and-forget: kegagalan satu tahap tidak menggagalkan tahap lain / sweep.
+  // ══════════════════════════════════════════════════════════════════════════
+
+  // ── TAHAP 2 — MATERI IKLAN ──
   try {
     const adAgent = await storage.getAgentBySlug(AD_MATERIAL_SLUG);
     if (adAgent) {
@@ -638,7 +843,7 @@ export async function runResearchSweep(): Promise<SweepResult> {
       try {
         await ensureAdPlatformLibrary(Number(adAgent.id));
       } catch (e) {
-        console.error(`[ResearchFeed] seed panduan platform gagal:`, (e as Error).message);
+        console.error(`[Pipeline] seed panduan platform gagal:`, (e as Error).message);
       }
       const ctx = [docsBySlug[RESEARCH_MARKET_SLUG], docsBySlug[RESEARCH_LOCAL_SLUG]]
         .filter(Boolean)
@@ -651,7 +856,37 @@ export async function runResearchSweep(): Promise<SweepResult> {
       result.skipped.push(AD_MATERIAL_SLUG);
     }
   } catch (e) {
-    console.error(`[ResearchFeed] generate materi iklan gagal:`, (e as Error).message);
+    console.error(`[Pipeline] generate materi iklan gagal:`, (e as Error).message);
+  }
+
+  // ── TAHAP 3 — SEQUENCE RETENSI (email/WA) ──
+  // Konteks = materi iklan hari ini (sudah mensintesis riset) + temuan pasar; fondasi
+  // (visi/Trilogi/produk-jasa) di-inject di dalam generator. Retensi tidak auto-kirim.
+  try {
+    const retAgent = await storage.getAgentBySlug(RETENTION_SLUG);
+    if (retAgent) {
+      const retAgentId = Number(retAgent.id);
+      // Seed Fondasi Gustafta (idempoten) — jadi rujukan chat & grounding sequence.
+      try {
+        result.foundationLibrary = {
+          agentId: retAgentId,
+          ...(await ensureRetentionFoundationLibrary(retAgentId)),
+        };
+      } catch (e) {
+        console.error(`[Pipeline] seed fondasi gustafta gagal:`, (e as Error).message);
+      }
+      const retCtx = [result.adMaterials?.content, docsBySlug[RESEARCH_MARKET_SLUG]]
+        .filter(Boolean)
+        .join("\n\n");
+      result.retention = {
+        agentId: retAgentId,
+        ...(await generateDailyRetentionSequence(retAgentId, retCtx)),
+      };
+    } else {
+      result.skipped.push(RETENTION_SLUG);
+    }
+  } catch (e) {
+    console.error(`[Pipeline] generate sequence retensi gagal:`, (e as Error).message);
   }
 
   return result;
