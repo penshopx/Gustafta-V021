@@ -22,6 +22,7 @@ export const RESEARCH_MARKET_SLUG = "riset-iklan-pasar";
 const FEED_KB_PREFIX = "Feed Riset";
 const METHOD_KB_PREFIX = "Panduan Metode Riset";
 const AD_KB_PREFIX = "Materi Iklan Harian";
+const AD_PLATFORM_KB_PREFIX = "Panduan Platform Iklan";
 
 // Agen "Pembuat Materi Iklan" — mengubah temuan riset harian jadi materi iklan siap pakai.
 export const AD_MATERIAL_SLUG = "mkt-materi-iklan";
@@ -347,10 +348,107 @@ export async function ensureResearchMethodLibrary(agentId: number): Promise<{ cr
   return { created: true, chunks: chunks.length };
 }
 
+// ── Panduan Platform Iklan (spesifikasi format + cara beriklan per platform) ──
+function buildAdPlatformLibraryDoc(): string {
+  return `PANDUAN PLATFORM IKLAN — Spesifikasi Format & Cara Beriklan
+Dokumen referensi untuk menyelaraskan materi iklan dengan tiap platform + langkah memasang
+iklannya. Jujur: spesifikasi & antarmuka platform BISA BERUBAH sewaktu-waktu — selalu
+verifikasi angka final di dashboard resmi masing-masing platform sebelum eksekusi.
+
+════════════════════════════════════════════════════════════
+BAGIAN A — SPESIFIKASI FORMAT (rasio, durasi, batas teks)
+════════════════════════════════════════════════════════════
+• TIKTOK — Video 9:16 vertikal (1080x1920). Durasi ideal 9-15 detik (boleh s/d 60 detik).
+  Hook 3 detik pertama WAJIB kuat. Gaya native/UGC (seperti konten organik), bukan iklan kaku.
+  Caption pendek + hashtag relevan. Suara/lagu tren menambah jangkauan.
+• INSTAGRAM — Reels/Story: 9:16 (1080x1920), Reels s/d 90 detik. Feed: 1:1 (1080x1080) atau
+  4:5 (1080x1350). Caption s/d 2200 karakter tetapi ~125 karakter pertama yang paling terlihat.
+  Visual estetik + hook teks di frame pertama.
+• FACEBOOK — Feed: gambar 1.91:1 (1200x628) atau 1:1 (1080x1080). Primary text ideal ~125
+  karakter, headline ~40 karakter, deskripsi ~30 karakter. Reels/Story 9:16. Cocok untuk
+  penawaran + tombol CTA (Pelajari/Kirim Pesan/WhatsApp).
+• YOUTUBE — In-stream skippable 16:9 (hook WAJIB di 5 detik pertama sebelum tombol Skip
+  muncul). Bumper 6 detik (tak bisa di-skip, untuk awareness singkat). Shorts 9:16. CTA jelas
+  di akhir + deskripsi.
+• (Opsional) GOOGLE SEARCH — Iklan teks: hingga 15 headline (30 karakter) + 4 deskripsi (90
+  karakter). Menangkap orang yang SUDAH mencari (niat beli tinggi), mis. "jasa sertifikasi SBU".
+• (Opsional) LINKEDIN — B2B, cocok untuk segmen profesional/kontraktor/perusahaan. Single
+  image 1200x627, ~150 karakter teks yang terlihat. Targeting berbasis jabatan/industri.
+• (Opsional) WHATSAPP — Bukan iklan mandiri; jadi TUJUAN klik dari FB/IG ("Click-to-WhatsApp").
+  Siapkan pesan pembuka + katalog.
+
+════════════════════════════════════════════════════════════
+BAGIAN B — CARA BERIKLAN PER PLATFORM (langkah ringkas)
+════════════════════════════════════════════════════════════
+[TIKTOK] TikTok Ads Manager (ads.tiktok.com). Buat akun bisnis → Campaign (tujuan: Traffic/
+  Lead) → Ad Group (targeting: lokasi Indonesia, usia, minat) → set budget harian kecil dulu
+  untuk tes → unggah 3-5 variasi video (hook beda) → gunakan TikTok Creative Center untuk
+  riset lagu/tren. Matikan yang boros, gandakan yang menang.
+[INSTAGRAM + FACEBOOK] Keduanya satu pintu: Meta Ads Manager (business.facebook.com).
+  Hubungkan Halaman FB + akun IG → Campaign (tujuan) → Ad Set (targeting rinci: lokasi, minat,
+  perilaku; retargeting via Meta Pixel) → pilih penempatan (Feed/Reels/Story) → budget →
+  pasang creative. Pasang Meta Pixel di landing page untuk melacak konversi. A/B test creative.
+[YOUTUBE] Lewat Google Ads (ads.google.com); video diunggah ke YouTube dulu. Campaign tipe
+  Video → targeting (demografi, minat, kata kunci, penempatan) → pilih format (skippable
+  in-stream / bumper) → budget. Pastikan hook sebelum detik ke-5 + CTA di akhir.
+[GOOGLE SEARCH] Google Ads → Search campaign → susun kata kunci niat beli → tulis headline/
+  deskripsi → arahkan ke landing page yang relevan. Bagus untuk menangkap permintaan aktif.
+[LINKEDIN] Campaign Manager LinkedIn → objective → targeting jabatan/industri/ukuran
+  perusahaan → single image/video → budget. Biaya per klik cenderung lebih mahal, tetapi
+  audiens profesional lebih tersasar.
+
+════════════════════════════════════════════════════════════
+BAGIAN C — ATURAN UNTUK GUSTAFTA
+════════════════════════════════════════════════════════════
+• JANGAN pakai 1 creative untuk semua platform — sesuaikan rasio, durasi, dan gaya per platform.
+• Mulai budget kecil untuk menguji, skalakan hanya yang terbukti. Keputusan spend = FOUNDER
+  (◆ gerbang manusia).
+• Tandai klaim/angka yang belum terverifikasi dengan [ASUMSI: {nilai} | basis: {sumber} |
+  verifikasi-ke: {pihak}].`;
+}
+
 /**
- * Ubah temuan riset harian menjadi MATERI IKLAN siap pakai, lalu simpan sebagai KB
- * (prefix "Materi Iklan Harian") pada agen Pembuat Materi Iklan → terambil saat chat.
- * Aman: bila tak ada OpenAI key, lewati tanpa error. Prune materi lama sebelum tulis.
+ * Pastikan agen Pembuat Materi Iklan punya KB panduan platform (idempoten, statis).
+ * Prefix beda dari feed & materi harian → TIDAK ikut ter-prune.
+ */
+export async function ensureAdPlatformLibrary(agentId: number): Promise<{ created: boolean; chunks: number }> {
+  const { db } = await import("../db");
+  const { sql } = await import("drizzle-orm");
+
+  const existing = await db.execute(sql`
+    SELECT id FROM knowledge_bases
+    WHERE agent_id = ${agentId} AND name LIKE ${AD_PLATFORM_KB_PREFIX + "%"}
+    LIMIT 1
+  `);
+  const rows = (existing as any).rows ?? existing;
+  if (Array.isArray(rows) && rows.length > 0) {
+    return { created: false, chunks: 0 };
+  }
+
+  const doc = buildAdPlatformLibraryDoc();
+  const kb = await storage.createKnowledgeBase({
+    agentId: String(agentId),
+    name: `${AD_PLATFORM_KB_PREFIX} — Format & Cara Beriklan`,
+    type: "text",
+    content: doc,
+    description: "Spesifikasi format + cara beriklan per platform (statis)",
+    extractedText: doc,
+    sourceUrl: "",
+    sourceAuthority: "Playbook internal Gustafta (platform iklan)",
+    status: "active",
+  });
+
+  const chunks = await processKnowledgeBaseForRAG(parseInt(kb.id), agentId, doc, kb.name);
+  if (chunks.length > 0) {
+    await storage.createChunks(chunks);
+  }
+  return { created: true, chunks: chunks.length };
+}
+
+/**
+ * Ubah temuan riset harian menjadi MATERI IKLAN siap pakai (selaras format tiap platform),
+ * lalu simpan sebagai KB (prefix "Materi Iklan Harian") pada agen Pembuat Materi Iklan →
+ * terambil saat chat. Aman: bila tak ada OpenAI key, lewati tanpa error. Prune materi lama.
  */
 export async function generateDailyAdMaterials(
   agentId: number,
@@ -372,12 +470,33 @@ export async function generateDailyAdMaterials(
       : "gpt-4o-mini";
   const today = new Date().toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta", dateStyle: "full" });
 
+  const platformDoc = buildAdPlatformLibraryDoc();
+
   const userPrompt = `Tanggal: ${today}
 
-Berikut TEMUAN RISET TERBARU hari ini (agregasi berita publik). Ubah menjadi materi iklan siap pakai sesuai instruksimu — 2-3 sudut lengkap (hook, primary text, headline, CTA, konsep visual, skrip video) untuk produk Gustafta. Tandai klaim belum terverifikasi dengan [ASUMSI: ... | basis: ... | verifikasi-ke: ...].
+Berikut TEMUAN RISET TERBARU hari ini (agregasi berita publik) dan PANDUAN PLATFORM IKLAN.
+Ubah menjadi materi iklan siap pakai untuk produk Gustafta, DISELARASKAN dengan format tiap
+platform. Tandai klaim belum terverifikasi dengan [ASUMSI: ... | basis: ... | verifikasi-ke: ...].
+
+FORMAT KELUARAN (ikuti persis):
+1) INTI KREATIF — 2-3 sudut (angle) iklan dari temuan riset. Tiap sudut: nama sudut + pain
+   point/temuan yang jadi dasarnya + pesan utama.
+2) ADAPTASI PER PLATFORM — untuk SETIAP platform berikut, adaptasikan sudut terkuat sesuai
+   spesifikasinya (rasio, durasi, batas karakter):
+   - TIKTOK (9:16, 9-15 dtk): hook 3 detik, skrip video singkat, caption + hashtag.
+   - INSTAGRAM (Reels 9:16 & Feed 1:1/4:5): hook frame pertama, caption (~125 kar. pertama kuat), CTA.
+   - FACEBOOK (Feed 1.91:1/1:1): primary text ~125 kar., headline ~40 kar., deskripsi ~30 kar., CTA.
+   - YOUTUBE (in-stream 16:9 + Shorts 9:16): hook sebelum detik ke-5, skrip 15-20 dtk, CTA akhir.
+   (Sebutkan juga konsep visual singkat per platform.)
+3) CARA BERIKLAN — langkah ringkas memasang iklan di tiap platform (Ads Manager mana, targeting,
+   budget tes kecil dulu) + pengingat bahwa keputusan spend = founder (◆ gerbang manusia).
 
 ===== TEMUAN RISET =====
-${researchContext.slice(0, 8000)}
+${researchContext.slice(0, 6000)}
+===== SELESAI =====
+
+===== PANDUAN PLATFORM IKLAN (rujuk spesifikasi ini) =====
+${platformDoc}
 ===== SELESAI =====`;
 
   let content = "";
@@ -386,7 +505,7 @@ ${researchContext.slice(0, 8000)}
       {
         model,
         temperature: 0.7,
-        max_tokens: 2500,
+        max_tokens: 3500,
         messages: [
           { role: "system", content: persona },
           { role: "user", content: userPrompt },
@@ -515,6 +634,12 @@ export async function runResearchSweep(): Promise<SweepResult> {
   try {
     const adAgent = await storage.getAgentBySlug(AD_MATERIAL_SLUG);
     if (adAgent) {
+      // Seed panduan platform (idempoten) agar tersedia untuk chat & jadi rujukan spesifikasi.
+      try {
+        await ensureAdPlatformLibrary(Number(adAgent.id));
+      } catch (e) {
+        console.error(`[ResearchFeed] seed panduan platform gagal:`, (e as Error).message);
+      }
       const ctx = [docsBySlug[RESEARCH_MARKET_SLUG], docsBySlug[RESEARCH_LOCAL_SLUG]]
         .filter(Boolean)
         .join("\n\n");
