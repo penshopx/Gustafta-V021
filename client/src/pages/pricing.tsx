@@ -535,6 +535,21 @@ export default function Pricing() {
           <p className="mt-4 text-xs text-muted-foreground">
             Belum punya produk? <a href="/store" className="text-primary underline underline-offset-2 hover:opacity-80">Pilih di Store dulu →</a>
           </p>
+
+          {/* Trust strip */}
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 max-w-3xl mx-auto">
+            {[
+              { icon: Shield, text: "Pembayaran aman via Scalev" },
+              { icon: Zap, text: "Aktivasi otomatis setelah bayar" },
+              { icon: Check, text: "Tanpa biaya tersembunyi" },
+              { icon: Headphones, text: "Support WhatsApp" },
+            ].map(({ icon: Icon, text }) => (
+              <div key={text} className="flex items-center gap-2 text-xs font-medium text-muted-foreground" data-testid={`trust-${text.toLowerCase().replace(/\s+/g, "-")}`}>
+                <Icon className="h-4 w-4 text-green-500 shrink-0" />
+                {text}
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* ── KATALOG CHATBOT ── */}
