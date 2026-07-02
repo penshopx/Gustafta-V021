@@ -21156,6 +21156,110 @@ PENTING: Kembalikan HANYA JSON valid tanpa markdown code block, dengan format pe
     }
   });
 
+  // POST /api/tools/proposal-jasa — Generator Penawaran/Proposal Jasa Order (GPT-4o)
+  // Draf proposal + estimasi harga untuk calon klien Jasa Order (Gustafta merakit custom).
+  // Grounded: Fondasi Penjualan + Fondasi Gustafta + harga kanonik (SERVICE_TIERS/HOSTING).
+  app.post("/api/tools/proposal-jasa", async (req: any, res: any) => {
+    try {
+      const { namaKlien, kebutuhan, budget, kontak, tenggat } = req.body as {
+        namaKlien?: string; kebutuhan?: string; budget?: string; kontak?: string; tenggat?: string;
+      };
+      if (!kebutuhan || kebutuhan.trim().length < 15) {
+        return res.status(400).json({ message: "Deskripsi kebutuhan terlalu singkat (min. 15 karakter)" });
+      }
+      const { OpenAI } = await import("openai");
+      const apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+      if (!apiKey) return res.status(503).json({ message: "Layanan AI belum dikonfigurasi (OPENAI_API_KEY tidak ada)" });
+      const openai = new OpenAI({ apiKey });
+
+      const { buildSalesPlaybookDoc, buildGustaftaFoundationDoc } = await import("./lib/research-feed");
+      const playbook = buildSalesPlaybookDoc();
+      const foundation = buildGustaftaFoundationDoc();
+
+      const pricingRef = `ACUAN HARGA KANONIK (rujuk, jangan mengarang angka lain):
+JASA ORDER = biaya SETUP sekali (sudah termasuk lisensi) + biaya BULANAN (hosting+token). Starter Kit dibundel GRATIS.
+Tier Jasa (setup sekali, pilih yang paling pas dengan kompleksitas):
+- Tier 1 "Chatbot Dasar" Rp 1.499.000 — FAQ, info produk, layanan dasar.
+- Tier 2 "Chatbot Menengah" Rp 2.499.000 — multi-fungsi, lead gen, sales assist.
+- Tier 3 "Chatbot Kompleks" Rp 4.900.000 — orkestrasi, knowledge base luas.
+- Tier 4 "Chatbot Enterprise" Rp 7.490.000 — multi-domain, agentic penuh.
+Biaya BULANAN (hosting, berlaku semua produk): Rp 199.000/bln · Rp 299.000/3bln · Rp 999.000/6bln · Rp 1.999.000/thn.
+Jika kebutuhan di luar 4 tier (sangat besar/khusus), tandai estimasi sebagai [ASUMSI:...] dan sarankan diskusi lanjut.`;
+
+      const systemPrompt = `Anda adalah "Penyusun Penawaran" Gustafta — membantu founder membuat DRAF proposal Jasa Order (chatbot/organisasi AI custom yang dirakit tim Gustafta) yang profesional, persuasif, dan JUJUR.
+
+Prinsip:
+- Selaras dengan Fondasi Penjualan & Fondasi Gustafta (visi AI Organization Builder: merakit TIM AI grounded, bukan 1 bot).
+- JANGAN urgensi palsu, janji hasil pasti, atau ROI fiktif. Angka harga HANYA dari acuan kanonik.
+- Rekomendasikan SATU tier jasa yang paling pas + jelaskan alasannya. Estimasi = setup sekali + bulanan.
+- Tandai apa pun yang belum pasti dengan [ASUMSI: ... | basis: ... | verifikasi-ke: ...].
+- Ini DRAF; harga/lingkup final & pengiriman = keputusan founder (◆ gerbang manusia). Sertakan catatan ini di penutup.
+
+${pricingRef}
+
+===== FONDASI PENJUALAN =====
+${playbook}
+===== FONDASI GUSTAFTA =====
+${foundation}
+===== SELESAI =====
+
+Balas HANYA dengan JSON valid (tanpa markdown fence) sesuai skema:
+{
+  "judul": "string — judul proposal",
+  "klien": "string — nama klien atau 'Calon Klien'",
+  "ringkasan_kebutuhan": "string — parafrase kebutuhan klien 2-3 kalimat",
+  "solusi": "string — narasi solusi Gustafta (tim AI yang dirakit) 3-5 kalimat",
+  "lingkup_kerja": ["string", "..."] ,
+  "tim_agen": [{"peran":"string","tugas":"string"}],
+  "tahapan": [{"fase":"string","durasi":"string","hasil":"string"}],
+  "rekomendasi_tier": "string — nama tier + harga setup, mis. 'Tier 2 — Chatbot Menengah (Rp 2.499.000)'",
+  "estimasi": {"setup": number, "bulanan": number, "catatan": "string"},
+  "syarat_ketentuan": ["string","..."],
+  "asumsi": ["string — pakai format [ASUMSI:...]"],
+  "penutup": "string — ajakan langkah lanjut + catatan ◆ gerbang manusia"
+}`;
+
+      const userPrompt = `Buat draf proposal Jasa Order berdasar input berikut:
+- Nama klien: ${namaKlien?.trim() || "(tidak disebutkan)"}
+- Kontak: ${kontak?.trim() || "(tidak disebutkan)"}
+- Target tenggat: ${tenggat?.trim() || "(fleksibel)"}
+- Perkiraan budget klien: ${budget?.trim() || "(tidak disebutkan — sarankan tier paling sesuai kebutuhan)"}
+- Kebutuhan/deskripsi:
+${kebutuhan.trim()}`;
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o",
+        temperature: 0.6,
+        max_tokens: 3000,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+      });
+
+      const raw = completion.choices?.[0]?.message?.content?.trim() || "{}";
+      let data: any;
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        return res.status(502).json({ message: "AI mengembalikan format tak terduga, coba lagi" });
+      }
+      // Normalisasi defensif agar UI aman.
+      data.lingkup_kerja = Array.isArray(data.lingkup_kerja) ? data.lingkup_kerja : [];
+      data.tim_agen = Array.isArray(data.tim_agen) ? data.tim_agen : [];
+      data.tahapan = Array.isArray(data.tahapan) ? data.tahapan : [];
+      data.syarat_ketentuan = Array.isArray(data.syarat_ketentuan) ? data.syarat_ketentuan : [];
+      data.asumsi = Array.isArray(data.asumsi) ? data.asumsi : [];
+      data.estimasi = data.estimasi && typeof data.estimasi === "object" ? data.estimasi : { setup: 0, bulanan: 0, catatan: "" };
+
+      res.json(data);
+    } catch (err: any) {
+      console.error("[Proposal Jasa]", err.message);
+      res.status(500).json({ message: err.message || "Terjadi kesalahan internal" });
+    }
+  });
+
   // POST /api/tools/k3-vision — AI Vision K3 Inspector (GPT-4o Vision)
   app.post("/api/tools/k3-vision", async (req: any, res: any) => {
     try {
