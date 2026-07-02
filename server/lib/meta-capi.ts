@@ -45,13 +45,28 @@ export interface MetaCapiResult {
   error?: string;
 }
 
+function sanitizePixelId(raw?: string): string | undefined {
+  if (!raw) return undefined;
+  const digits = raw.replace(/[^0-9]/g, "");
+  return digits || undefined;
+}
+
+function sanitizeToken(raw?: string): string | undefined {
+  if (!raw) return undefined;
+  const trimmed = raw.replace(/\s+/g, "");
+  return trimmed || undefined;
+}
+
 export function isMetaCapiConfigured(): boolean {
-  return !!(process.env.META_CAPI_ACCESS_TOKEN && process.env.META_PIXEL_ID);
+  return !!(
+    sanitizeToken(process.env.META_CAPI_ACCESS_TOKEN) &&
+    sanitizePixelId(process.env.META_PIXEL_ID)
+  );
 }
 
 export async function sendMetaPurchaseEvent(params: MetaPurchaseParams): Promise<MetaCapiResult> {
-  const accessToken = process.env.META_CAPI_ACCESS_TOKEN;
-  const pixelId = params.pixelId || process.env.META_PIXEL_ID;
+  const accessToken = sanitizeToken(process.env.META_CAPI_ACCESS_TOKEN);
+  const pixelId = sanitizePixelId(params.pixelId) || sanitizePixelId(process.env.META_PIXEL_ID);
 
   if (!accessToken) {
     return { sent: false, skippedReason: "META_CAPI_ACCESS_TOKEN belum diset" };
