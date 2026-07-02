@@ -13898,7 +13898,26 @@ Jika informasi tidak ditemukan, isi dengan string kosong "".
     tenders: z.array(tenderIngestItemSchema).min(1).max(500),
   });
 
-  app.post("/api/tender-ingest", async (req, res) => {
+  // Rate limiter sederhana per-IP untuk jalur ingest publik (30 request/menit)
+  const ingestHits = new Map<string, number[]>();
+  const ingestRateLimit = (req: any, res: any, next: any) => {
+    const ip = String(req.ip || req.socket?.remoteAddress || "unknown");
+    const now = Date.now();
+    const hits = (ingestHits.get(ip) || []).filter((t) => now - t < 60_000);
+    if (hits.length >= 30) {
+      return res.status(429).json({ error: "Terlalu banyak request, coba lagi sebentar" });
+    }
+    hits.push(now);
+    ingestHits.set(ip, hits);
+    if (ingestHits.size > 1000) {
+      for (const [k, v] of ingestHits) {
+        if (v.every((t) => now - t >= 60_000)) ingestHits.delete(k);
+      }
+    }
+    next();
+  };
+
+  app.post("/api/tender-ingest", ingestRateLimit, async (req, res) => {
     try {
       const ingestKey = process.env.TENDER_INGEST_KEY;
       if (!ingestKey) {
@@ -13933,6 +13952,7 @@ Jika informasi tidak ditemukan, isi dengan string kosong "".
       }
 
       let saved = 0;
+      try {
       for (const item of parsed.data.tenders) {
         await storage.upsertTender({
           sourceId: relaySource.id,
@@ -13952,6 +13972,14 @@ Jika informasi tidak ditemukan, isi dengan string kosong "".
           rawData: {},
         } as any);
         saved++;
+      }
+      } catch (loopErr) {
+        // Catat status error di sumber agar terlihat di UI monitor
+        await storage.updateTenderSource(String(relaySource.id), {
+          scrapeStatus: "error",
+          lastError: `Ingest gagal setelah ${saved} tender: ${(loopErr as Error).message}`,
+        } as any).catch(() => {});
+        throw loopErr;
       }
 
       await storage.updateTenderSource(String(relaySource.id), {

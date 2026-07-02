@@ -24,7 +24,7 @@
 
 const GUSTAFTA_URL = (process.env.GUSTAFTA_URL || "").replace(/\/+$/, "");
 const INGEST_KEY = process.env.TENDER_INGEST_KEY || "";
-const JUMLAH = Math.min(Number(process.env.JUMLAH || 100), 500);
+const JUMLAH = Math.min(Math.max(Math.floor(Number(process.env.JUMLAH) || 100), 1), 500);
 
 if (!GUSTAFTA_URL || !INGEST_KEY) {
   console.error("ERROR: set env GUSTAFTA_URL dan TENDER_INGEST_KEY terlebih dahulu.");

@@ -1770,7 +1770,9 @@ export const tenders = pgTable("tenders", {
   rawData: jsonb("raw_data").default({}),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => [
+  uniqueIndex("tenders_source_tender_unique").on(table.sourceId, table.tenderId),
+]);
 
 export const insertTenderSchema = createInsertSchema(tenders).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertTender = z.infer<typeof insertTenderSchema>;
