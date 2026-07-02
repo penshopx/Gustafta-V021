@@ -16558,6 +16558,72 @@ Return HANYA JSON berikut (tanpa penjelasan lain):
     }
   });
 
+  // Jadikan Early Adopter: aktifkan langganan tier penuh (gratis) untuk user tertentu,
+  // tanpa user harus membuat permintaan paket / bayar. Admin pilih tier + durasi.
+  app.post("/api/admin/users/:userId/early-adopter", isAuthenticated, requireAdmin, async (req: any, res: any) => {
+    try {
+      const { userId } = req.params;
+      const { plan = "enterprise", durationDays = 365 } = req.body || {};
+
+      const GUSTAFTA_PLAN_KEYS = ["starter", "profesional", "bisnis", "enterprise"];
+      if (!GUSTAFTA_PLAN_KEYS.includes(plan)) {
+        return res.status(400).json({ error: "Tier tidak valid. Gunakan starter, profesional, bisnis, atau enterprise." });
+      }
+      const duration = Number(durationDays);
+      if (!Number.isFinite(duration) || duration < 1 || duration > 3650) {
+        return res.status(400).json({ error: "Durasi tidak valid (1–3650 hari)." });
+      }
+
+      const [user] = await db.select().from(users).where(eq(users.id, userId));
+      if (!user) return res.status(404).json({ error: "Pengguna tidak ditemukan." });
+
+      const { PLAN_CONFIGS } = await import("@shared/feature-plans");
+      const planConfig = (PLAN_CONFIGS as any)[plan];
+      const chatbotLimit = Math.min(planConfig?.maxAgents ?? 3, 200);
+
+      const now = new Date();
+      const endDate = new Date(now.getTime() + duration * 24 * 60 * 60 * 1000);
+
+      // Pastikan akun user aktif
+      if (user.isActive === false) {
+        await db.update(users).set({ isActive: true, updatedAt: new Date() }).where(eq(users.id, userId));
+        invalidateUserActiveCache(userId);
+      }
+
+      // Atomik: nonaktifkan semua langganan aktif lama lalu catat 1 grant baru,
+      // agar user tidak pernah punya lebih dari satu baris "active" sekaligus.
+      await db.transaction(async (tx) => {
+        await tx.update(subscriptionsTable)
+          .set({ status: "expired", updatedAt: new Date() })
+          .where(and(
+            eq(subscriptionsTable.userId, userId),
+            eq(subscriptionsTable.status, "active"),
+          ));
+        await tx.insert(subscriptionsTable).values({
+          userId,
+          plan,
+          status: "active",
+          amount: 0,
+          currency: "IDR",
+          chatbotLimit,
+          mayarOrderId: `EARLY-${plan.toUpperCase()}-${userId.slice(0, 8)}-${Date.now()}`,
+          startDate: now,
+          endDate,
+        });
+      });
+
+      res.json({
+        success: true,
+        message: `Early Adopter aktif: tier ${plan} gratis ${duration} hari (s/d ${endDate.toLocaleDateString("id-ID")}).`,
+        plan,
+        endDate: endDate.toISOString(),
+      });
+    } catch (error: any) {
+      console.error("Admin early-adopter error:", error);
+      res.status(500).json({ error: "Gagal mengaktifkan Early Adopter." });
+    }
+  });
+
   app.patch("/api/admin/users/:userId/role", isAuthenticated, requireSuperAdmin, async (req: any, res: any) => {
     try {
       const { userId } = req.params;

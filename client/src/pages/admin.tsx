@@ -14,7 +14,7 @@ import {
   CheckCircle2, XCircle, Shield, ArrowLeft, Copy,
   UserCheck, AlertCircle, RefreshCw, Crown, UserCog, Wrench, Scale, Database,
   ShoppingBag, Plus, ExternalLink, Package, Trash2, Pencil, MessageCircle, Loader2,
-  Link2, Zap, Globe, BookOpen, GraduationCap
+  Link2, Zap, Globe, BookOpen, GraduationCap, Gift
 } from "lucide-react";
 
 // ---- Types ----
@@ -287,6 +287,9 @@ export default function AdminPage() {
   const [newStatus, setNewStatus] = useState("active");
   const [newEndDate, setNewEndDate] = useState("");
   const [waDialog, setWaDialog] = useState<{ open: boolean; sub: AdminSubscription | null }>({ open: false, sub: null });
+  const [earlyDialog, setEarlyDialog] = useState<{ open: boolean; user: AdminUser | null }>({ open: false, user: null });
+  const [earlyPlan, setEarlyPlan] = useState("enterprise");
+  const [earlyDuration, setEarlyDuration] = useState("365");
   const [appUrl, setAppUrl] = useState<string>(window.location.origin);
 
   useEffect(() => {
@@ -460,6 +463,20 @@ export default function AdminPage() {
       toast({ title: "Status pengguna diperbarui." });
     },
     onError: () => toast({ title: "Gagal memperbarui status.", variant: "destructive" }),
+  });
+
+  const earlyAdopterMutation = useMutation({
+    mutationFn: ({ userId, plan, durationDays }: { userId: string; plan: string; durationDays: number }) =>
+      apiRequest("POST", `/api/admin/users/${userId}/early-adopter`, { plan, durationDays }),
+    onSuccess: async (data: any) => {
+      const result = await data.json().catch(() => ({}));
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/subscriptions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+      setEarlyDialog({ open: false, user: null });
+      toast({ title: "Early Adopter aktif", description: result?.message || "Langganan gratis diaktifkan." });
+    },
+    onError: () => toast({ title: "Gagal mengaktifkan Early Adopter.", variant: "destructive" }),
   });
 
   const toggleAdminMutation = useMutation({
@@ -993,20 +1010,32 @@ export default function AdminPage() {
                               {user.role === "superadmin" ? (
                                 <span className="text-xs text-muted-foreground italic">—</span>
                               ) : (
-                                <Button
-                                  variant={user.isActive !== false ? "outline" : "default"}
-                                  size="sm"
-                                  className={`gap-1 text-xs ${user.isActive !== false ? "border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" : "bg-green-600 hover:bg-green-700 text-white"}`}
-                                  onClick={() => toggleUserMutation.mutate(user.id)}
-                                  disabled={toggleUserMutation.isPending}
-                                  data-testid={`button-toggle-user-${user.id}`}
-                                >
-                                  {user.isActive !== false ? (
-                                    <><ToggleRight className="h-3.5 w-3.5" /> Nonaktifkan</>
-                                  ) : (
-                                    <><ToggleLeft className="h-3.5 w-3.5" /> Aktifkan</>
-                                  )}
-                                </Button>
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="gap-1 text-xs border-amber-300 text-amber-700 hover:bg-amber-50 dark:text-amber-300 dark:hover:bg-amber-900/20"
+                                    onClick={() => { setEarlyPlan("enterprise"); setEarlyDuration("365"); setEarlyDialog({ open: true, user }); }}
+                                    disabled={earlyAdopterMutation.isPending}
+                                    data-testid={`button-early-adopter-${user.id}`}
+                                  >
+                                    <Gift className="h-3.5 w-3.5" /> Early Adopter
+                                  </Button>
+                                  <Button
+                                    variant={user.isActive !== false ? "outline" : "default"}
+                                    size="sm"
+                                    className={`gap-1 text-xs ${user.isActive !== false ? "border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" : "bg-green-600 hover:bg-green-700 text-white"}`}
+                                    onClick={() => toggleUserMutation.mutate(user.id)}
+                                    disabled={toggleUserMutation.isPending}
+                                    data-testid={`button-toggle-user-${user.id}`}
+                                  >
+                                    {user.isActive !== false ? (
+                                      <><ToggleRight className="h-3.5 w-3.5" /> Nonaktifkan</>
+                                    ) : (
+                                      <><ToggleLeft className="h-3.5 w-3.5" /> Aktifkan</>
+                                    )}
+                                  </Button>
+                                </div>
                               )}
                             </td>
                           </tr>
@@ -2090,7 +2119,70 @@ export default function AdminPage() {
         </Tabs>
       </main>
 
-      {/* ========== APPROVE DIALOG ========== */}
+      {/* ========== EARLY ADOPTER DIALOG ========== */}
+      <Dialog open={earlyDialog.open} onOpenChange={(o) => setEarlyDialog({ open: o, user: earlyDialog.user })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Gift className="h-5 w-5 text-amber-600" />
+              Jadikan Early Adopter
+            </DialogTitle>
+          </DialogHeader>
+          {earlyDialog.user && (
+            <div className="space-y-4">
+              <div className="bg-muted/50 rounded-lg p-3 text-sm space-y-1">
+                <p><strong>Nama:</strong> {[earlyDialog.user.firstName, earlyDialog.user.lastName].filter(Boolean).join(" ") || "—"}</p>
+                <p><strong>Email:</strong> {earlyDialog.user.email || "—"}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">Tier</label>
+                  <select
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                    value={earlyPlan}
+                    onChange={(e) => setEarlyPlan(e.target.value)}
+                    data-testid="select-early-plan"
+                  >
+                    <option value="enterprise">Enterprise (semua fitur)</option>
+                    <option value="bisnis">Bisnis</option>
+                    <option value="profesional">Profesional</option>
+                    <option value="starter">Starter</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">Durasi (hari)</label>
+                  <Input
+                    type="number"
+                    value={earlyDuration}
+                    onChange={(e) => setEarlyDuration(e.target.value)}
+                    min="1" max="3650"
+                    data-testid="input-early-duration"
+                  />
+                </div>
+              </div>
+              <div className="rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-3 text-xs text-amber-800 dark:text-amber-200">
+                Langganan langsung <strong>aktif &amp; gratis</strong> (Rp 0) tanpa user perlu memilih paket atau membayar. User tetap berperan biasa (bukan admin), semua fitur sesuai tier terbuka.
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEarlyDialog({ open: false, user: null })}>Batal</Button>
+            <Button
+              className="bg-amber-600 hover:bg-amber-700 text-white gap-2"
+              disabled={earlyAdopterMutation.isPending}
+              onClick={() => earlyDialog.user && earlyAdopterMutation.mutate({
+                userId: earlyDialog.user.id,
+                plan: earlyPlan,
+                durationDays: parseInt(earlyDuration) || 365,
+              })}
+              data-testid="button-confirm-early-adopter"
+            >
+              {earlyAdopterMutation.isPending ? "Memproses..." : "Aktifkan Gratis"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={approveDialog.open} onOpenChange={(o) => setApproveDialog({ open: o, request: approveDialog.request })}>
         <DialogContent>
           <DialogHeader>
