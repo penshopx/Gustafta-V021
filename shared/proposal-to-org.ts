@@ -46,6 +46,54 @@ function cleanGate(gerbang?: string): string[] | undefined {
 const DEFAULT_TOP_GATE =
   "Keputusan final berisiko (harga, lingkup, pengiriman ke klien) — diserahkan ke manusia.";
 
+/**
+ * Fase G+ — jembatan Dialog Gustafta (lead-gen publik) → Organization Builder.
+ *
+ * Dialog menghasilkan cetak biru SATU chatbot (bukan tim). Konverter ini
+ * mengubahnya jadi benih organisasi berisi SATU orkestrator (Ketua Tim) yang
+ * mewakili konsep chatbot itu, plus misi yang dirangkai dari persona/target.
+ * Setelah dimuat, pengguna tinggal menekan "Sarankan Tim" di builder untuk
+ * mengembangkannya jadi tim penuh. Deterministik & murni (mudah diuji).
+ */
+export interface DialogBlueprintSeed {
+  judul?: string;
+  ringkasan?: string;
+  namaChatbot?: string;
+  persona?: string;
+  targetPengguna?: string;
+}
+
+export interface OrgDraftSeed {
+  orgName: string;
+  mission: string;
+  members: OrgMemberSeed[];
+  maxSpecialists: number;
+}
+
+export function dialogBlueprintToOrgDraft(bp: DialogBlueprintSeed): OrgDraftSeed {
+  const nama = (bp?.namaChatbot || bp?.judul || "Asisten AI").trim() || "Asisten AI";
+  const persona = (bp?.persona || "").trim();
+  const target = (bp?.targetPengguna || "").trim();
+  const ringkasan = (bp?.ringkasan || "").trim();
+  const missionParts = [
+    ringkasan,
+    target ? `Target pengguna: ${target}.` : "",
+    persona ? `Karakter: ${persona}.` : "",
+  ].filter(Boolean);
+  const responsibility =
+    persona ||
+    ringkasan ||
+    `Menjadi asisten utama ${nama} — memahami kebutuhan pengguna dan mengarahkan ke jawaban yang tepat.`;
+  return {
+    orgName: `Tim ${nama}`.slice(0, 120),
+    mission: (missionParts.join(" ") || `Membangun tim AI untuk ${nama}.`).slice(0, 600),
+    members: [
+      { localId: "m1", role: "orchestrator", title: nama.slice(0, 120), responsibility: responsibility.slice(0, 600) },
+    ],
+    maxSpecialists: 3,
+  };
+}
+
 export function proposalTeamToOrgMembers(timAgen: ProposalTeamMember[]): OrgMemberSeed[] {
   const valid = (Array.isArray(timAgen) ? timAgen : []).filter(
     (m) => m && typeof m.peran === "string" && m.peran.trim(),

@@ -12,6 +12,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { dialogBlueprintToOrgDraft } from "@shared/proposal-to-org";
+
+const ORG_PREFILL_KEY = "gustafta_org_prefill_v1";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface Msg { role: "user" | "assistant"; content: string; }
@@ -431,6 +434,15 @@ export default function DialogGustaftaPage() {
     setShowShareOptions(false);
   };
 
+  // Jembatan Dialog → Organization Builder: bawa konsep 1 chatbot jadi benih tim.
+  const handleRakitTim = () => {
+    if (!blueprint) return;
+    const draft = dialogBlueprintToOrgDraft(blueprint);
+    const payload = { ...draft, members: draft.members.map((m) => ({ ...m, systemPrompt: "" })) };
+    try { sessionStorage.setItem(ORG_PREFILL_KEY, JSON.stringify(payload)); } catch { /* storage diblokir — abaikan */ }
+    navigate("/organization-builder");
+  };
+
   // ── Reset ────────────────────────────────────────────────────────────────
   const handleReset = () => {
     clearSession();
@@ -844,6 +856,9 @@ export default function DialogGustaftaPage() {
                   </Link>
                 )}
                 <div className="text-xs text-white/50 text-center">Blueprint ini adalah bagian dari Starter Kit Anda</div>
+                <Button onClick={handleRakitTim} className="w-full bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white gap-2 font-semibold" data-testid="button-blueprint-rakit-tim">
+                  <Sparkles className="w-4 h-4" /> Kembangkan Jadi Tim AI
+                </Button>
                 <Button onClick={shareWA} className="w-full bg-green-600 hover:bg-green-700 text-white gap-2 font-semibold" data-testid="button-blueprint-share-wa">
                   <MessageCircle className="w-4 h-4" /> Kirim ke WhatsApp
                 </Button>
