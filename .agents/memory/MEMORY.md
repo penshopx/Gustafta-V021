@@ -33,4 +33,5 @@
 - [jsonb double-encoding](jsonb-double-encoding.md) — jsonb column can store a JSON *string*; Array.isArray gates then silently skip orchestration. Normalize at read+write; audit with jsonb_typeof.
 - [Orchestrator boot demotion](orchestrator-boot-demotion.md) — fixOrphanedOrchestrators() demotes is_orchestrator agents with no toolbox at boot; but runtime orchestration keys ONLY off non-empty agenticSubAgents, so teams still delegate. Don't fight the flag.
 - [code_execution sandbox quirks](code-execution-sandbox-quirks.md) — no process.env in sandbox; use executeSql callback; it returns command tag not RETURNING rows (SELECT back to get ids).
+- [Research Team news feed](research-team-feed.md) — free Google News RSS → per-agent KB (RAG); feed agents by slug; prune only "Feed Riset%"; sweep endpoint must authz EVERY agent it mutates.
 - [Plan gating: tier not badge](plan-badge-vs-tier.md) — gate by `plan.tier < PLAN_CONFIGS[min].tier`, never `meetsMinPlan(badge.toLowerCase())` (badge=PRO/GRATIS ≠ tier key → runtime throw). requirePlan middleware misses req.user.id — gate inline.
