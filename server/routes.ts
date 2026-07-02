@@ -2556,17 +2556,22 @@ SKK berlaku 5 tahun. Perpanjangan via: Pengembangan Keprofesian Berkelanjutan (P
   // Owner/admin dari agen feed yang boleh memicu. Resolusi agen via slug (bukan ID).
   app.post("/api/research/sweep", isAuthenticated, async (req, res) => {
     try {
-      const { runResearchSweep, FEED_STREAMS } = await import("./lib/research-feed");
-      // Sweep MENULIS ke SEMUA agen stream feed. Otorisasi wajib untuk SETIAP agen
-      // yang akan dimutasi (cegah cross-agent privilege bleed bila kepemilikan berbeda).
-      // Topik feed = fixed defaults di FEED_STREAMS (tak ada input user → tak ada vektor abuse).
+      const { runResearchSweep, FEED_STREAMS, AD_MATERIAL_SLUG, RETENTION_SLUG, CLOSING_SLUG } =
+        await import("./lib/research-feed");
+      // Sweep MENULIS ke SEMUA agen stream feed + agen pipeline (materi iklan, retensi, closing).
+      // Otorisasi wajib untuk SETIAP agen yang akan dimutasi (cegah cross-agent privilege bleed
+      // bila kepemilikan berbeda). Topik feed = fixed defaults (tak ada input user → tak ada vektor abuse).
       const feedAgents = (await Promise.all(
         FEED_STREAMS.map((s) => storage.getAgentBySlug(s.slug)),
       )).filter(Boolean);
       if (feedAgents.length === 0) {
         return res.status(404).json({ error: "Agen feed riset belum dibuat (slug riset-viral-lokal / riset-tren-global / riset-iklan-pasar tidak ditemukan)." });
       }
-      for (const a of feedAgents) {
+      // Agen pipeline tambahan yang juga dimutasi sweep (skip bila belum dibuat — sweep juga skip).
+      const pipelineAgents = (await Promise.all(
+        [AD_MATERIAL_SLUG, RETENTION_SLUG, CLOSING_SLUG].map((slug) => storage.getAgentBySlug(slug)),
+      )).filter(Boolean);
+      for (const a of [...feedAgents, ...pipelineAgents]) {
         const auth = await assertCanMutateAgent(req, a);
         if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
       }
