@@ -271,3 +271,36 @@ export function formatTeamPlansForPrompt(): string {
     .map((t) => formatTierTeamPlan(TIER_TEAM_PLANS[t]))
     .join("\n\n");
 }
+
+/** Ambil nomor tier (1–4) dari string bebas seperti "Tier 2 — Chatbot Menengah". null bila tak ada. */
+export function parseTierNumber(input: string | undefined | null): TierNumber | null {
+  if (!input) return null;
+  const m = String(input).match(/tier\s*([1-4])/i);
+  if (!m) return null;
+  const n = Number(m[1]);
+  return n >= 1 && n <= 4 ? (n as TierNumber) : null;
+}
+
+/**
+ * Ubah cetak biru sebuah tier jadi susunan `tim_agen` (shape Proposal/Org):
+ * `{ tim, peran, tugas, gerbang }`. Deterministik — jaminan tier→struktur tim
+ * saat AI gagal menghasilkan tim. `gerbang` = gabungan gates TANPA glyph ◆
+ * (◆ ditambah hanya saat render), "-" bila tak ada. Lead (Tier 4) jadi anggota
+ * di grup "Koordinasi Pusat".
+ */
+export function tierPlanToTimAgen(
+  tier: TierNumber,
+): { tim: string; peran: string; tugas: string; gerbang: string }[] {
+  const plan = TIER_TEAM_PLANS[tier];
+  const toGate = (m: TeamMemberBlueprint) => (m.gates && m.gates.length ? m.gates.join("; ") : "-");
+  const out: { tim: string; peran: string; tugas: string; gerbang: string }[] = [];
+  if (plan.lead) {
+    out.push({ tim: "Koordinasi Pusat", peran: plan.lead.title, tugas: plan.lead.responsibility, gerbang: toGate(plan.lead) });
+  }
+  for (const team of plan.teams) {
+    for (const m of team.members) {
+      out.push({ tim: team.name, peran: m.title, tugas: m.responsibility, gerbang: toGate(m) });
+    }
+  }
+  return out;
+}

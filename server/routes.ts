@@ -30,7 +30,7 @@ import {
   type MiniAppType,
 } from "@shared/schema";
 import { priceForClass, isPremiumClass, resolveLicensePrice, DEFAULT_LICENSE_PRICE } from "@shared/premium-classes";
-import { formatTeamPlansForPrompt } from "@shared/team-blueprints";
+import { formatTeamPlansForPrompt, parseTierNumber, tierPlanToTimAgen } from "@shared/team-blueprints";
 import { z } from "zod";
 import multer from "multer";
 import path from "path";
@@ -21378,6 +21378,14 @@ ${kebutuhan.trim()}`;
       data.syarat_ketentuan = Array.isArray(data.syarat_ketentuan) ? data.syarat_ketentuan : [];
       data.asumsi = Array.isArray(data.asumsi) ? data.asumsi : [];
       data.estimasi = data.estimasi && typeof data.estimasi === "object" ? data.estimasi : { setup: 0, bulanan: 0, catatan: "" };
+
+      // Jaminan tier→tim: bila AI tak menghasilkan tim_agen, isi deterministik dari cetak biru
+      // tier yang direkomendasikan (baseline sebagai lantai bila kosong). Tim custom hasil AI yang
+      // sudah terisi dibiarkan apa adanya — ia sudah di-ground ke cetak biru tier & disesuaikan klien.
+      if (data.tim_agen.length === 0) {
+        const recTier = parseTierNumber(data.rekomendasi_tier);
+        if (recTier) data.tim_agen = tierPlanToTimAgen(recTier);
+      }
 
       res.json(data);
     } catch (err: any) {
