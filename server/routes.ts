@@ -14211,6 +14211,30 @@ Jika informasi tidak ditemukan, isi dengan string kosong "".
     return "konstruksi";
   }
 
+  // Gating berbayar untuk Tender Alert: butuh langganan aktif Starter+.
+  // Mengembalikan userId bila lolos, atau null (respons 401/403 sudah dikirim).
+  async function gateTenderAlert(req: any, res: any): Promise<string | null> {
+    const userId = req.user?.id || req.user?.claims?.sub;
+    if (!userId) {
+      res.status(401).json({ error: "Login diperlukan", reason: "not_authenticated" });
+      return null;
+    }
+    const { resolvePlan, PLAN_CONFIGS } = await import("@shared/feature-plans");
+    const sub = await storage.getActiveSubscription(String(userId));
+    const plan = resolvePlan(sub?.plan, sub?.status === "active");
+    if (plan.tier < PLAN_CONFIGS.starter.tier) {
+      res.status(403).json({
+        error: `Tender Alert memerlukan paket ${PLAN_CONFIGS.starter.name} atau lebih tinggi.`,
+        reason: "insufficient_plan",
+        requiredPlan: "starter",
+        currentPlan: sub?.plan ?? "free",
+        upgradeUrl: "/pricing",
+      });
+      return null;
+    }
+    return String(userId);
+  }
+
   // GET profile notifikasi user
   app.get("/api/tender-alerts/profile", isAuthenticated, async (req: any, res) => {
     try {
@@ -14222,10 +14246,11 @@ Jika informasi tidak ditemukan, isi dengan string kosong "".
     }
   });
 
-  // POST buat/update profil notifikasi
+  // POST buat/update profil notifikasi (berbayar: Starter+)
   app.post("/api/tender-alerts/profile", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id || req.user?.claims?.sub || "guest";
+      const userId = await gateTenderAlert(req, res);
+      if (!userId) return;
       const data = { ...req.body, userId };
       const profile = await storage.upsertTenderAlertProfile(data);
       res.json(profile);
@@ -14234,10 +14259,11 @@ Jika informasi tidak ditemukan, isi dengan string kosong "".
     }
   });
 
-  // GET tender yang cocok dengan profil user
+  // GET tender yang cocok dengan profil user (berbayar: Starter+)
   app.get("/api/tender-alerts/matches", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id || req.user?.claims?.sub || "guest";
+      const userId = await gateTenderAlert(req, res);
+      if (!userId) return;
       const profile = await storage.getTenderAlertProfile(userId);
       if (!profile) return res.json([]);
       const matches = await storage.getTendersMatchingProfile(profile, 50);
@@ -14247,10 +14273,41 @@ Jika informasi tidak ditemukan, isi dengan string kosong "".
     }
   });
 
-  // POST kirim test notifikasi WA
+  // POST kirim test notifikasi Email (berbayar: Starter+)
+  app.post("/api/tender-alerts/test-email", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = await gateTenderAlert(req, res);
+      if (!userId) return;
+      const profile = await storage.getTenderAlertProfile(userId);
+      const to = (req.body?.email || profile?.email || "").trim();
+      if (!to) return res.status(400).json({ error: "Alamat email belum diisi di profil notifikasi." });
+      if (!process.env.BREVO_API_KEY) {
+        return res.json({ ok: false, message: "Pengiriman email belum aktif (BREVO_API_KEY belum diset)." });
+      }
+      const matches = profile ? await storage.getTendersMatchingProfile(profile, 5) : [];
+      const { sendTenderAlertEmail } = await import("./lib/email");
+      const result = await sendTenderAlertEmail({
+        to,
+        companyName: profile?.companyName,
+        matches,
+        sectors: profile?.sectors as string[] | undefined,
+        kualifikasi: profile?.kualifikasi as string[] | undefined,
+      });
+      if (result.sent) {
+        res.json({ ok: true, message: `Email test terkirim ke ${to}` });
+      } else {
+        res.json({ ok: false, message: `Gagal kirim email: ${result.reason}${result.detail ? " — " + result.detail : ""}` });
+      }
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // POST kirim test notifikasi WA (berbayar: Starter+)
   app.post("/api/tender-alerts/test-notify", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id || req.user?.claims?.sub || "guest";
+      const userId = await gateTenderAlert(req, res);
+      if (!userId) return;
       const profile = await storage.getTenderAlertProfile(userId);
       if (!profile?.waPhone) return res.status(400).json({ error: "Nomor WA belum diisi di profil notifikasi." });
 

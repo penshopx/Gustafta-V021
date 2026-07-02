@@ -59,7 +59,7 @@ SUPERADMIN_EMAILS = "penshopx@gmail.com"
 ADMIN_EMAILS = "tutip98@outlook.com"
 SMTP_HOST = "smtp-relay.brevo.com"
 SMTP_PORT = "587"
-BREVO_SENDER_EMAIL = "noreply@gustafta.my.id"
+BREVO_SENDER_EMAIL = "penshopx@gmail.com"
 SCALEV_API_KEY = "REDACTED_SCALEV_KEY"
 BREVO_API_KEY = "REDACTED_BREVO_KEY"
 
