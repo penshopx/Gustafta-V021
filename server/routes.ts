@@ -1470,6 +1470,81 @@ export async function registerRoutes(
     return { ok: true };
   }
 
+  // Bagikan SATU agen ke satu email (kolaborator bila akun ada, jika tidak →
+  // undangan tertunda). Logika tunggal ini dipakai baik oleh endpoint kolaborator
+  // per-agen MAUPUN serah-terima tim (bulk) supaya perilaku + notifikasi identik
+  // dan tidak drift. TIDAK melakukan otorisasi — pemanggil WAJIB sudah lulus
+  // assertCanManageCollaborators(req, agent) lebih dulu.
+  async function shareAgentWithEmailInternal(opts: {
+    agent: any;
+    email: string;
+    role: "editor" | "viewer";
+    inviterId: string;
+    inviterName: string | null;
+  }): Promise<{ status: number; body: any }> {
+    const { agent, email, role, inviterId, inviterName } = opts;
+    const agentId = String((agent as any).id);
+    const ownerId = (agent as any).userId || "";
+    if (!ownerId) return { status: 400, body: { error: "Agen sistem tidak bisa dibagikan" } };
+
+    const targetUser = await storage.getUserByEmail(email);
+    if (!targetUser) {
+      // Belum punya akun → undangan tertunda + email ajakan daftar. Saat user
+      // mendaftar dengan email ini, grant diterapkan otomatis.
+      const pending = await storage.addOrUpdatePendingInvite({ agentId, email, role, invitedBy: inviterId });
+      try {
+        void sendAgentInviteToSignup({
+          to: email,
+          agentName: (agent as any).name || "Agen AI",
+          role,
+          inviterName,
+        }).catch((err) => console.error("[collaborators] invite-to-signup error:", err));
+      } catch (notifyErr) {
+        console.error("[collaborators] failed to dispatch invite-to-signup:", notifyErr);
+      }
+      return { status: 202, body: { pending: true, invite: pending } };
+    }
+    if (targetUser.id === ownerId) {
+      return { status: 400, body: { error: "Pemilik agen tidak perlu ditambahkan sebagai kolaborator" } };
+    }
+
+    const created = await storage.addOrUpdateCollaborator({ agentId, userId: targetUser.id, role, invitedBy: inviterId });
+
+    const recipientName = [targetUser.firstName, targetUser.lastName].filter(Boolean).join(" ").trim();
+    const agentName = (agent as any).name || "Agen AI";
+    const roleLabel = role === "editor" ? "editor" : "viewer";
+
+    // Notifikasi in-app: independen dari email supaya penerima tetap menemukan
+    // share meski BREVO_API_KEY tidak ada. Fire-and-forget.
+    try {
+      await storage.createNotification({
+        userId: targetUser.id,
+        type: NOTIFICATION_TYPES.AGENT_SHARED,
+        title: `${inviterName || "Seseorang"} membagikan agen "${agentName}"`,
+        message: `Anda kini punya akses ${roleLabel} ke agen "${agentName}".`,
+        link: "/dashboard",
+        agentId: Number((agent as any).id) || null,
+      });
+    } catch (notifyErr) {
+      console.error("[collaborators] failed to create in-app notification:", notifyErr);
+    }
+
+    // Email pemberitahuan. Fire-and-forget: gagal kirim tak boleh membatalkan share.
+    try {
+      void sendAgentShareNotification({
+        to: targetUser.email,
+        recipientName: recipientName || null,
+        agentName,
+        role,
+        inviterName,
+      }).catch((err) => console.error("[collaborators] share notification error:", err));
+    } catch (notifyErr) {
+      console.error("[collaborators] failed to dispatch share notification:", notifyErr);
+    }
+
+    return { status: 201, body: created };
+  }
+
   // Notice sekali-pakai untuk pengguna yang baru saja diberi akses agen lewat
   // undangan email (pending invite). Dibaca saat login pertama lalu di-clear dari
   // session, supaya klien bisa menampilkan toast "Anda kini punya akses ke <agen>".
@@ -1511,11 +1586,6 @@ export async function registerRoutes(
       const auth = await assertCanManageCollaborators(req, agent);
       if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
 
-      const ownerId = (agent as any).userId || "";
-      if (!ownerId) {
-        return res.status(400).json({ error: "Agen sistem tidak bisa dibagikan" });
-      }
-
       const parsed = z.object({
         email: z.string().email("Email tidak valid"),
         role: collaboratorRoleSchema.default("viewer"),
@@ -1529,73 +1599,14 @@ export async function registerRoutes(
       const inviterName = [inviterUser.first_name || inviterUser.firstName, inviterUser.last_name || inviterUser.lastName]
         .filter(Boolean).join(" ").trim() || inviterUser.email || null;
 
-      const targetUser = await storage.getUserByEmail(parsed.data.email);
-      if (!targetUser) {
-        // No account yet → create a pending invite + email an invitation to sign up.
-        // On successful registration with this email the grant is auto-applied.
-        const pending = await storage.addOrUpdatePendingInvite({
-          agentId: req.params.id as string,
-          email: parsed.data.email,
-          role: parsed.data.role,
-          invitedBy: inviterId,
-        });
-        try {
-          void sendAgentInviteToSignup({
-            to: parsed.data.email,
-            agentName: (agent as any).name || "Agen AI",
-            role: parsed.data.role,
-            inviterName,
-          }).catch((err) => console.error("[collaborators] invite-to-signup error:", err));
-        } catch (notifyErr) {
-          console.error("[collaborators] failed to dispatch invite-to-signup:", notifyErr);
-        }
-        return res.status(202).json({ pending: true, invite: pending });
-      }
-      if (targetUser.id === ownerId) {
-        return res.status(400).json({ error: "Pemilik agen tidak perlu ditambahkan sebagai kolaborator" });
-      }
-
-      const created = await storage.addOrUpdateCollaborator({
-        agentId: req.params.id as string,
-        userId: targetUser.id,
+      const result = await shareAgentWithEmailInternal({
+        agent,
+        email: parsed.data.email,
         role: parsed.data.role,
-        invitedBy: inviterId,
+        inviterId,
+        inviterName,
       });
-
-      const recipientName = [targetUser.firstName, targetUser.lastName].filter(Boolean).join(" ").trim();
-      const agentName = (agent as any).name || "Agen AI";
-      const roleLabel = parsed.data.role === "editor" ? "editor" : "viewer";
-
-      // In-app notification: email-independent so the recipient reliably discovers
-      // the share even when BREVO_API_KEY is absent. Fire-and-forget.
-      try {
-        await storage.createNotification({
-          userId: targetUser.id,
-          type: NOTIFICATION_TYPES.AGENT_SHARED,
-          title: `${inviterName || "Seseorang"} membagikan agen "${agentName}"`,
-          message: `Anda kini punya akses ${roleLabel} ke agen "${agentName}".`,
-          link: "/dashboard",
-          agentId: Number((agent as any).id) || null,
-        });
-      } catch (notifyErr) {
-        console.error("[collaborators] failed to create in-app notification:", notifyErr);
-      }
-
-      // Notify the invited user by email. Fire-and-forget: a send failure must
-      // never break the share itself (gracefully degrades if BREVO_API_KEY absent).
-      try {
-        void sendAgentShareNotification({
-          to: targetUser.email,
-          recipientName: recipientName || null,
-          agentName,
-          role: parsed.data.role,
-          inviterName,
-        }).catch((err) => console.error("[collaborators] share notification error:", err));
-      } catch (notifyErr) {
-        console.error("[collaborators] failed to dispatch share notification:", notifyErr);
-      }
-
-      res.status(201).json(created);
+      res.status(result.status).json(result.body);
     } catch (error) {
       console.error("add collaborator error:", error);
       res.status(500).json({ error: "Failed to add collaborator" });
@@ -1677,6 +1688,82 @@ export async function registerRoutes(
     } catch (error) {
       console.error("remove pending invite error:", error);
       res.status(500).json({ error: "Failed to remove pending invite" });
+    }
+  });
+
+  // Serah-terima TIM ke klien (Fase D). Bagikan SEMUA agen sebuah tim ke satu
+  // email klien dalam satu aksi (mis. setelah Organization Builder membuat tim).
+  // Per-agen tetap lewat assertCanManageCollaborators(req, agent) — hanya agen
+  // milik pemanggil (atau admin) yang dibagikan; sisanya dilaporkan gagal, bukan
+  // membuat seluruh aksi 403. Logika share identik dengan endpoint per-agen
+  // (shareAgentWithEmailInternal) supaya notifikasi & undangan tertunda konsisten.
+  app.post("/api/organization/handover", isAuthenticated, async (req, res) => {
+    try {
+      const parsed = z.object({
+        agentIds: z.array(z.string().min(1)).min(1, "Pilih minimal satu agen").max(50, "Maksimal 50 agen sekaligus"),
+        email: z.string().email("Email tidak valid"),
+        role: collaboratorRoleSchema.default("viewer"),
+      }).safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0]?.message || "Input tidak valid" });
+      }
+
+      const inviterId = (req.user as any)?.claims?.sub || (req.user as any)?.id || "";
+      const inviterUser = (req.user as any)?.claims || (req.user as any) || {};
+      const inviterName = [inviterUser.first_name || inviterUser.firstName, inviterUser.last_name || inviterUser.lastName]
+        .filter(Boolean).join(" ").trim() || inviterUser.email || null;
+
+      const uniqueIds = Array.from(new Set(parsed.data.agentIds.map(String)));
+      const results: Array<{ agentId: string; name?: string; ok: boolean; status: number; pending?: boolean; error?: string }> = [];
+      let shared = 0, pending = 0, failed = 0;
+
+      for (const agentId of uniqueIds) {
+        const agent = await storage.getAgent(agentId);
+        if (!agent) {
+          results.push({ agentId, ok: false, status: 404, error: "Agen tidak ditemukan" });
+          failed++;
+          continue;
+        }
+        const auth = await assertCanManageCollaborators(req, agent);
+        if (!auth.ok) {
+          // Jangan bocorkan nama agen yang bukan milik pemanggil (anti-probing metadata).
+          results.push({ agentId, ok: false, status: auth.status, error: auth.error });
+          failed++;
+          continue;
+        }
+        try {
+          const r = await shareAgentWithEmailInternal({
+            agent,
+            email: parsed.data.email,
+            role: parsed.data.role,
+            inviterId,
+            inviterName,
+          });
+          const ok = r.status < 400;
+          results.push({
+            agentId,
+            name: (agent as any).name,
+            ok,
+            status: r.status,
+            pending: r.status === 202,
+            error: ok ? undefined : r.body?.error,
+          });
+          if (ok) {
+            if (r.status === 202) pending++; else shared++;
+          } else {
+            failed++;
+          }
+        } catch (e) {
+          console.error("[handover] share error:", e);
+          results.push({ agentId, name: (agent as any).name, ok: false, status: 500, error: "Gagal membagikan" });
+          failed++;
+        }
+      }
+
+      res.json({ email: parsed.data.email, role: parsed.data.role, total: uniqueIds.length, shared, pending, failed, results });
+    } catch (error) {
+      console.error("organization handover error:", error);
+      res.status(500).json({ error: "Gagal menyerahkan tim" });
     }
   });
 

@@ -230,6 +230,21 @@ for (const [label, literal] of DOC_EXPORT_GATED) {
   });
 }
 
+// ── 3b. Serah-terima tim (Fase D): bulk share WAJIB cek kepemilikan PER-agen ──
+// POST /api/organization/handover membagikan banyak agen sekaligus. Tanpa cek
+// per-agen, pemanggil bisa menyelipkan agentId milik user lain / agen sistem dan
+// membocorkan aksesnya (IDOR massal). Guard: assertCanManageCollaborators(req, agent).
+test("POST /api/organization/handover cek assertCanManageCollaborators per-agen (anti IDOR bulk)", () => {
+  const block = routeBlock('app.post("/api/organization/handover"');
+  assert.match(
+    block,
+    /assertCanManageCollaborators\s*\(\s*req\s*,/,
+    "handover WAJIB memanggil assertCanManageCollaborators(req, agent) untuk SETIAP agen sebelum membagikannya.",
+  );
+  // Loop per-agen (getAgent dipanggil di dalam iterasi) — bukan satu cek global.
+  assert.match(block, /for\s*\(/, "handover harus mengiterasi agentIds dan mengecek tiap agen.");
+});
+
 // ── 4. Sanity: aktivasi agen (Tahap 14) tetap dijaga sebelum mutasi singleton global ──
 test("POST /api/agents/:id/activate mengecek kepemilikan/admin sebelum setActiveAgent (Tahap 14)", () => {
   const block = routeBlock('app.post("/api/agents/:id/activate"');
