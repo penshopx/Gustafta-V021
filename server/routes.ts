@@ -30,6 +30,7 @@ import {
   type MiniAppType,
 } from "@shared/schema";
 import { priceForClass, isPremiumClass, resolveLicensePrice, DEFAULT_LICENSE_PRICE } from "@shared/premium-classes";
+import { formatTeamPlansForPrompt } from "@shared/team-blueprints";
 import { z } from "zod";
 import multer from "multer";
 import path from "path";
@@ -21190,16 +21191,23 @@ Rp 199.000/bln · Rp 299.000/3bln · Rp 999.000/6bln · Rp 1.999.000/thn.
 - Tier 4 "Chatbot Enterprise" mulai Rp 7.490.000 — multi-domain, agentic penuh.
 Biaya setup BOLEH disesuaikan (umumnya naik) dari baseline tier tergantung: kompleksitas chatbot, luas lingkup, jumlah agen/integrasi, dan tenaga/orang yang terlibat. Sajikan setup sebagai "mulai dari X" atau rentang wajar, sebutkan faktor penyesuainya, dan tandai penyesuaian di luar baseline dengan [ASUMSI: ... | basis: ... | verifikasi-ke: founder]. JANGAN menurunkan setup di bawah baseline tier tanpa alasan jelas.`;
 
+      const teamRef = formatTeamPlansForPrompt();
+
       const systemPrompt = `Anda adalah "Penyusun Penawaran" Gustafta — membantu founder membuat DRAF proposal Jasa Order (chatbot/organisasi AI custom yang dirakit tim Gustafta) yang profesional, persuasif, dan JUJUR.
 
 Prinsip:
 - Selaras dengan Fondasi Penjualan & Fondasi Gustafta (visi AI Organization Builder: merakit TIM AI grounded, bukan 1 bot).
 - JANGAN urgensi palsu, janji hasil pasti, atau ROI fiktif. Angka harga HANYA dari acuan kanonik.
 - Rekomendasikan SATU tier jasa yang paling pas + jelaskan alasannya. Biaya BULANAN WAJIB pakai angka resmi (tak boleh berubah); biaya SETUP = baseline tier yang BOLEH disesuaikan naik sesuai kompleksitas & tenaga (sajikan sebagai "mulai dari").
+- Susun "tim_agen" BERDASARKAN "CETAK BIRU TIM" tier yang direkomendasikan (boleh disesuaikan naik sesuai kebutuhan). Untuk Tier 4, kelompokkan anggota ke BEBERAPA tim (multi-departemen) dan sertakan Kepala Kantor sebagai koordinator. Untuk tier kecil, isi field "tim" dengan nama tim yang sama untuk semua anggota.
+- Untuk setiap anggota tim, tuliskan ◆ gerbang manusia (keputusan yang wajib lewat founder) bila relevan; pakai "-" bila tak ada. Ambil gerbang default dari cetak biru tim.
 - Tandai apa pun yang belum pasti dengan [ASUMSI: ... | basis: ... | verifikasi-ke: ...].
 - Ini DRAF; harga/lingkup final & pengiriman = keputusan founder (◆ gerbang manusia). Sertakan catatan ini di penutup.
 
 ${pricingRef}
+
+===== CETAK BIRU TIM PER TIER (acuan menyusun tim_agen) =====
+${teamRef}
 
 ===== FONDASI PENJUALAN =====
 ${playbook}
@@ -21214,7 +21222,7 @@ Balas HANYA dengan JSON valid (tanpa markdown fence) sesuai skema:
   "ringkasan_kebutuhan": "string — parafrase kebutuhan klien 2-3 kalimat",
   "solusi": "string — narasi solusi Gustafta (tim AI yang dirakit) 3-5 kalimat",
   "lingkup_kerja": ["string", "..."] ,
-  "tim_agen": [{"peran":"string","tugas":"string"}],
+  "tim_agen": [{"tim":"string — nama tim/departemen, mis. 'Tim Marketing' (tier kecil: satu tim yang sama untuk semua)","peran":"string","tugas":"string","gerbang":"string — ◆ keputusan yang WAJIB lewat founder; '-' bila tak ada"}],
   "tahapan": [{"fase":"string","durasi":"string","hasil":"string"}],
   "rekomendasi_tier": "string — nama tier + harga setup, mis. 'Tier 2 — Chatbot Menengah (Rp 2.499.000)'",
   "estimasi": {"setup": number, "bulanan": number, "catatan": "string"},
@@ -21251,7 +21259,12 @@ ${kebutuhan.trim()}`;
       }
       // Normalisasi defensif agar UI aman.
       data.lingkup_kerja = Array.isArray(data.lingkup_kerja) ? data.lingkup_kerja : [];
-      data.tim_agen = Array.isArray(data.tim_agen) ? data.tim_agen : [];
+      data.tim_agen = (Array.isArray(data.tim_agen) ? data.tim_agen : []).map((m: any) => ({
+        tim: typeof m?.tim === "string" ? m.tim : "",
+        peran: typeof m?.peran === "string" ? m.peran : "",
+        tugas: typeof m?.tugas === "string" ? m.tugas : "",
+        gerbang: typeof m?.gerbang === "string" ? m.gerbang.replace(/^[◆\s]+/, "").trim() : "",
+      }));
       data.tahapan = Array.isArray(data.tahapan) ? data.tahapan : [];
       data.syarat_ketentuan = Array.isArray(data.syarat_ketentuan) ? data.syarat_ketentuan : [];
       data.asumsi = Array.isArray(data.asumsi) ? data.asumsi : [];
