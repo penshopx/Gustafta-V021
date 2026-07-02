@@ -3,8 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, FileSignature, Loader2, Sparkles, Copy, Check, Download, Users, ListChecks, CalendarDays, AlertTriangle } from "lucide-react";
-import { Link } from "wouter";
+import { ArrowLeft, FileSignature, Loader2, Sparkles, Copy, Check, Download, Users, ListChecks, CalendarDays, AlertTriangle, Wand2 } from "lucide-react";
+import { Link, useLocation } from "wouter";
+import { proposalTeamToOrgMembers } from "@shared/proposal-to-org";
+
+/** Kunci handoff Proposal → Organization Builder (dibaca sekali lalu dihapus). */
+const ORG_PREFILL_KEY = "gustafta_org_prefill_v1";
 
 interface ProposalResult {
   judul: string;
@@ -105,6 +109,21 @@ export default function ProposalJasa() {
   const [result, setResult] = useState<ProposalResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [, setLocation] = useLocation();
+
+  function handleRakitTim() {
+    if (!result) return;
+    const seeds = proposalTeamToOrgMembers(result.tim_agen || []);
+    if (seeds.length === 0) return;
+    const payload = {
+      orgName: (result.klien ? `Tim untuk ${result.klien}` : result.judul || "Tim dari Proposal").slice(0, 120),
+      mission: result.ringkasan_kebutuhan || result.solusi || "",
+      members: seeds.map((s) => ({ ...s, systemPrompt: "" })),
+      maxSpecialists: 3,
+    };
+    try { sessionStorage.setItem(ORG_PREFILL_KEY, JSON.stringify(payload)); } catch { /* storage diblokir — abaikan */ }
+    setLocation("/organization-builder");
+  }
 
   async function handleGenerate() {
     if (kebutuhan.trim().length < 15) {
@@ -332,6 +351,20 @@ export default function ProposalJasa() {
                               })}
                             </div>
                           ))}
+                          <div className="pt-2">
+                            <Button
+                              onClick={handleRakitTim}
+                              variant="outline"
+                              className="w-full gap-2 border-violet-500/40 text-violet-200 hover:bg-violet-500/10"
+                              data-testid="btn-rakit-tim"
+                            >
+                              <Wand2 className="h-4 w-4" />
+                              Rakit Tim Ini di Organization Builder
+                            </Button>
+                            <p className="text-[11px] text-white/30 mt-1.5 text-center">
+                              Prefill anggota tim ke perakit — Anda tetap meninjau &amp; menyesuaikan sebelum dibuat.
+                            </p>
+                          </div>
                         </div>
                       </Section>
                     );

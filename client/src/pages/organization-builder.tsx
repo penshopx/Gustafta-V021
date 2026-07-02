@@ -210,6 +210,8 @@ const pct = (n: number) => Math.round((n || 0) * 100);
 
 /* ── Draft auto-save (localStorage) ── */
 const DRAFT_KEY = "gustafta_org_builder_draft_v1";
+/** Kunci handoff Proposal → Organization Builder (dibaca sekali lalu dihapus). */
+const ORG_PREFILL_KEY = "gustafta_org_prefill_v1";
 interface OrgDraft { orgName: string; mission: string; members: MemberDraft[]; maxSpecialists: number }
 interface SavedDraftSummary { id: number; name: string; mission: string; memberCount: number; updatedAt: string }
 /* Tahap 39: pertanyaan dialog org-level (cermin /api/organization/dialogue → nextQuestions). */
@@ -368,8 +370,20 @@ export default function OrganizationBuilderPage() {
   const bootRef = useRef(false);
   const holdRef = useRef(false);
 
-  /* ── Draft auto-save: muat sekali saat mount, tawarkan lanjutkan ── */
+  /* ── Handoff dari Proposal ("Rakit Tim Ini") + draft auto-save: muat saat mount ── */
   useEffect(() => {
+    // Prioritas: prefill dari Proposal (sekali pakai, langsung ke langkah anggota).
+    try {
+      const prefillRaw = sessionStorage.getItem(ORG_PREFILL_KEY);
+      if (prefillRaw) {
+        sessionStorage.removeItem(ORG_PREFILL_KEY);
+        applyDraft(JSON.parse(prefillRaw));
+        setStep("members");
+        bootRef.current = true;
+        toast({ title: "Tim dari proposal dimuat", description: "Tinjau & sesuaikan anggota, lalu lanjutkan." });
+        return;
+      }
+    } catch { /* abaikan prefill rusak */ }
     try {
       const raw = localStorage.getItem(DRAFT_KEY);
       if (raw) {
