@@ -2111,5 +2111,12 @@ function startScheduler() {
   // ── Tender Alert Notifikasi — 08:00 WIB (WA harian per profil BUJK) ────────
   scheduleAtWIB("Tender Alert 08:00", 8, 0, runTenderAlertNotification);
 
-  log("[Scheduler] Started — broadcast cek setiap 2 menit | tender scraping 06:00 & 13:00 WIB | alert notifikasi 08:00 WIB");
+  // ── Research Feed sweep — 06:30 WIB (isi KB tim riset dari Google News RSS) ──
+  scheduleAtWIB("Research Feed Sweep", 6, 30, async () => {
+    const { runResearchSweep } = await import("./lib/research-feed");
+    const result = await runResearchSweep();
+    log(`[Research Feed] sweep selesai: lokal=${result.local?.chunks ?? "-"} chunk, global=${result.global?.chunks ?? "-"} chunk, skip=[${result.skipped.join(",")}]`);
+  });
+
+  log("[Scheduler] Started — broadcast cek setiap 2 menit | tender scraping 06:00 & 13:00 WIB | alert notifikasi 08:00 WIB | research feed 06:30 WIB");
 }
