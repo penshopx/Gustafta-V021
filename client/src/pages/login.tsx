@@ -134,7 +134,7 @@ export default function LoginPage() {
       await apiRequest("POST", "/api/auth/verify-email", { email: pendingEmail, code: otp });
       await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       trackCompleteRegistration({ content_name: "Email Registration" });
-      toast({ title: "Email terverifikasi!", description: "Selamat datang di Gustafta." });
+      toast({ title: "Email terverifikasi!", description: `Selamat datang di ${partner?.brandName || "Gustafta"}.` });
       navigate(returnUrl);
     } catch (err: any) {
       toast({ title: "Verifikasi gagal", description: (err?.message || "").replace(/^\d+: /, ""), variant: "destructive" });
@@ -497,7 +497,7 @@ export default function LoginPage() {
                   <p className="text-xs text-muted-foreground pl-6">
                     Klik <span className="font-medium">"Kirim ulang kode OTP"</span> di bawah untuk mencoba lagi. Jika masalah berlanjut, hubungi{" "}
                     <a
-                      href="https://wa.me/6282299417818?text=Halo%2C+email+OTP+saya+gagal+terkirim+di+Gustafta"
+                      href={`https://wa.me/6282299417818?text=${encodeURIComponent(`Halo, email OTP saya gagal terkirim di ${partner?.brandName || "Gustafta"}`)}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-primary underline"
@@ -695,7 +695,7 @@ export default function LoginPage() {
         <p className="text-center text-xs text-muted-foreground mt-4">
           Dengan masuk, Anda menyetujui{" "}
           <a href="#" className="underline hover:text-foreground">Syarat & Ketentuan</a>{" "}
-          Gustafta.
+          {partner?.brandName || "Gustafta"}.
         </p>
       </div>
     </div>
