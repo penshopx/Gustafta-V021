@@ -635,6 +635,22 @@ export const subscriptionsTable = pgTable("subscriptions_new", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Durable per-owner monthly message usage counter (platform owner/plan path).
+// Replaces the previous in-memory Map so counts survive server restarts and
+// stay consistent across multiple instances (autoscale/deploy). Keyed by
+// owner + calendar month ("2026-05").
+export const ownerMonthlyUsageTable = pgTable("owner_monthly_usage", {
+  id: serial("id").primaryKey(),
+  ownerUserId: varchar("owner_user_id", { length: 255 }).notNull(),
+  month: varchar("month", { length: 7 }).notNull(),
+  count: integer("count").default(0).notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  ownerMonthUnique: uniqueIndex("owner_monthly_usage_owner_month_idx").on(table.ownerUserId, table.month),
+}));
+
+export type OwnerMonthlyUsage = typeof ownerMonthlyUsageTable.$inferSelect;
+
 // ==================== ZOD VALIDATION SCHEMAS ====================
 
 // User Profile schema with avatar support

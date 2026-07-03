@@ -268,6 +268,10 @@ export interface IStorage {
   expireSubscriptions(): Promise<number>;
   incrementTrialMessages(subscriptionId: string): Promise<number>;
 
+  // Durable platform-owner monthly message usage (survives restarts, shared across instances)
+  getOwnerMonthlyUsage(ownerUserId: string, month: string): Promise<number>;
+  incrementOwnerMonthlyUsage(ownerUserId: string, month: string): Promise<number>;
+
   // User dialog completion methods
   getUserDialogCompleted(userId: string): Promise<boolean>;
   setUserDialogCompleted(userId: string): Promise<void>;
@@ -1811,6 +1815,16 @@ export class MemStorage implements IStorage {
   }
 
   async incrementTrialMessages(_subscriptionId: string): Promise<number> { return 0; }
+  private ownerMonthlyUsage = new Map<string, number>();
+  async getOwnerMonthlyUsage(ownerUserId: string, month: string): Promise<number> {
+    return this.ownerMonthlyUsage.get(`${ownerUserId}:${month}`) ?? 0;
+  }
+  async incrementOwnerMonthlyUsage(ownerUserId: string, month: string): Promise<number> {
+    const key = `${ownerUserId}:${month}`;
+    const next = (this.ownerMonthlyUsage.get(key) ?? 0) + 1;
+    this.ownerMonthlyUsage.set(key, next);
+    return next;
+  }
   async getUserDialogCompleted(_userId: string): Promise<boolean> { return false; }
   async setUserDialogCompleted(_userId: string): Promise<void> {}
   private userClawPackages = new Map<string, string[]>();

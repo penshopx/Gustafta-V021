@@ -3981,9 +3981,6 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
     }
   });
 
-  // In-memory monthly message usage tracker for platform owners (resets on server restart or new month)
-  const ownerMonthlyUsage = new Map<string, { month: string; count: number }>();
-
   // Streaming message endpoint for real-time AI responses
   app.post("/api/messages/stream", chatIpRateLimiter, chatAgentIdRateLimiter, async (req, res) => {
     try {
@@ -4059,8 +4056,9 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
             const limit = plan.maxMessagesPerMonth; // -1 = unlimited
             if (limit > 0) {
               const monthKey = new Date().toISOString().slice(0, 7); // "2026-05"
-              const current = ownerMonthlyUsage.get(ownerId);
-              const used = current?.month === monthKey ? current.count : 0;
+              // Durable, DB-backed monthly counter (survives restarts, shared
+              // across instances). Keyed by owner + calendar month.
+              const used = await storage.getOwnerMonthlyUsage(ownerId, monthKey);
               if (used >= limit) {
                 return res.status(429).json({
                   error: `Kuota pesan bulanan Anda (${limit.toLocaleString("id-ID")} pesan) sudah habis. Upgrade paket untuk melanjutkan.`,
@@ -4071,7 +4069,7 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
                   upgradeUrl: "/onboarding",
                 });
               }
-              ownerMonthlyUsage.set(ownerId, { month: monthKey, count: used + 1 });
+              await storage.incrementOwnerMonthlyUsage(ownerId, monthKey);
             }
           }
         }
