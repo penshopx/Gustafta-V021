@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import {
   trackLead, trackViewContent, trackContact,
-  trackInitiateCheckout, trackCustomEvent,
+  trackInitiateCheckout, trackCustomEvent, withMetaAttribution,
 } from "@/hooks/use-meta-pixel";
 import {
   Flame, Check, Star, Lightbulb, Users, Zap, Target, BadgeCheck,
@@ -64,10 +64,21 @@ export default function TrilogiLanding() {
     trackViewContent({ content_name: "Trilogi Ebook Landing", content_category: "Ebook" });
   }, []);
 
-  const handleBundleClick = () => {
-    trackInitiateCheckout({ content_name: "Trilogi Bundle", value: TRILOGI.bundle.amount, currency: "IDR" });
-    trackCustomEvent("WhatsApp_Click", { source: "trilogi-landing" });
+  const openCheckout = (
+    e: { preventDefault: () => void },
+    url: string,
+    label: string,
+    value: number,
+  ) => {
+    e.preventDefault();
+    trackInitiateCheckout({ content_name: label, value, currency: "IDR" });
+    trackCustomEvent("Checkout_Click", { source: "trilogi-landing", label });
+    window.open(withMetaAttribution(url), "_blank", "noopener,noreferrer");
   };
+  const handleBundleClick = (e: { preventDefault: () => void }) =>
+    openCheckout(e, SCALEV_BUNDLE, "Trilogi Bundle", TRILOGI.bundle.amount);
+  const handleBuku1Click = (e: { preventDefault: () => void }) =>
+    openCheckout(e, SCALEV_BUKU1, "Trilogi Buku 1", TRILOGI.bukuSatu.amount);
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800 font-sans" data-testid="page-trilogi-landing">
@@ -396,7 +407,7 @@ export default function TrilogiLanding() {
 
           {/* Buku 1 saja */}
           <p className="text-gray-500 text-sm mb-2">Belum siap bundle? Mulai dari yang dasar dulu:</p>
-          <a href={SCALEV_BUKU1} target="_blank" rel="noopener noreferrer"
+          <a href={SCALEV_BUKU1} target="_blank" rel="noopener noreferrer" onClick={handleBuku1Click}
             className="text-blue-600 hover:text-blue-500 font-semibold underline text-sm"
             data-testid="link-buku1">
             Ambil Buku I Saja (Early Bird {TRILOGI.bukuSatu.price}) →

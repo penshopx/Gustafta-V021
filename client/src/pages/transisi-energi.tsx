@@ -3,10 +3,17 @@ import { Button } from "@/components/ui/button";
 import { SharedHeader } from "@/components/shared-header";
 import { useAuth } from "@/hooks/use-auth";
 import { useTrialCTA } from "@/hooks/use-trial-cta";
+import { trackInitiateCheckout, withMetaAttribution } from "@/hooks/use-meta-pixel";
 import {
   Check, ArrowRight, MessageCircle, Leaf, Sun, Wind,
   BarChart3, Shield, Globe, Zap, TrendingUp, FileText,
 } from "lucide-react";
+
+function openCheckout(e: { preventDefault: () => void }, url: string, label: string, value: number) {
+  e.preventDefault();
+  trackInitiateCheckout({ content_name: label, value, currency: "IDR" });
+  window.open(withMetaAttribution(url), "_blank", "noopener,noreferrer");
+}
 
 const WA_URL = "https://wa.me/6282299417818?text=Halo%20Gustafta%2C%20saya%20ingin%20konsultasi%20solusi%20AI%20untuk%20transisi%20energi%20dan%20lingkungan";
 const CHECKOUT_URL = "https://dialog.gustafta.my.id/c/checkout?variant_ids=533206&qty=1";
@@ -267,7 +274,8 @@ export default function TransisiEnergiPage() {
             Regulasi lingkungan dan EBT berubah cepat. AI Gustafta siap menjadi navigator Anda.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <a href={CHECKOUT_URL} target="_blank" rel="noopener noreferrer">
+            <a href={CHECKOUT_URL} target="_blank" rel="noopener noreferrer"
+              onClick={(e) => openCheckout(e, CHECKOUT_URL, "Bundle Trilogi (Transisi Energi)", 499000)}>
               <Button size="lg" className="bg-white text-green-800 hover:bg-green-50 font-bold gap-2 px-8 h-12" data-testid="btn-cta-bundle">
                 Ambil Bundle Trilogi <ArrowRight className="h-5 w-5" />
               </Button>

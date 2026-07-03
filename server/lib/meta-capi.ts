@@ -35,6 +35,11 @@ export interface MetaPurchaseParams {
   eventSourceUrl?: string;
   testEventCode?: string;
   eventName?: string;
+  /** Browser attribution cookies forwarded from checkout (sent to Meta as-is, NOT hashed). */
+  fbp?: string;
+  fbc?: string;
+  /** Optional stable identifier for the buyer (hashed before send). */
+  externalId?: string;
 }
 
 export interface MetaCapiResult {
@@ -75,7 +80,7 @@ export async function sendMetaPurchaseEvent(params: MetaPurchaseParams): Promise
     return { sent: false, skippedReason: "META_PIXEL_ID belum diset (dan tidak ada pixel per-agen)" };
   }
 
-  const userData: Record<string, string[]> = {};
+  const userData: Record<string, string[] | string> = {};
   if (params.email) userData.em = [sha256(normalizeEmail(params.email))];
   if (params.phone) userData.ph = [sha256(normalizePhone(params.phone))];
   if (params.name) {
@@ -83,9 +88,13 @@ export async function sendMetaPurchaseEvent(params: MetaPurchaseParams): Promise
     if (parts[0]) userData.fn = [sha256(normalizeName(parts[0]))];
     if (parts.length > 1) userData.ln = [sha256(normalizeName(parts[parts.length - 1]))];
   }
+  if (params.externalId) userData.external_id = [sha256(params.externalId.trim().toLowerCase())];
+  // Browser cookies are sent as-is (Meta requirement — do NOT hash fbp/fbc).
+  if (params.fbp) userData.fbp = params.fbp;
+  if (params.fbc) userData.fbc = params.fbc;
 
-  if (!userData.em && !userData.ph) {
-    return { sent: false, skippedReason: "Tidak ada email/telepon pelanggan untuk matching" };
+  if (!userData.em && !userData.ph && !userData.fbp && !userData.fbc) {
+    return { sent: false, skippedReason: "Tidak ada sinyal matching (email/telepon/fbp/fbc)" };
   }
 
   const event: Record<string, any> = {

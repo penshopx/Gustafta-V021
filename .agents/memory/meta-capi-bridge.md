@@ -14,3 +14,18 @@ description: Server-side Purchase events to Meta from the Scalev webhook — why
 - PII must be SHA-256 hashed & normalized (email lowercase/trim; Indonesian phone digits-only with leading 0 → 62).
 - Access token goes in the POST body, not the URL (avoids proxy/log leakage).
 - Verify config via admin endpoints `/api/admin/meta-capi/status` and `/test` (supports `test_event_code` → Meta Events Manager Test Events tab).
+
+## Pixel ID must be sanitized to digits-only everywhere
+**Rule:** Any place that consumes `META_PIXEL_ID` (or `VITE_META_PIXEL_ID`) must strip non-digits before use — the browser `fbq('init', ...)`, the public config endpoint, and CAPI. **Why:** the secret was once stored as `"ID 2571064406673063"` (copy-paste artifact); an `"ID "` prefix silently breaks both pixel init and CAPI with no error. **How:** `String(raw).replace(/[^0-9]/g,"")` — done in `sanitizePixelId` (server meta-capi + client meta-pixel) and inline in the `/api/config/meta-pixel` route.
+
+## Browser pixel id comes from runtime endpoint, not build-time VITE var
+**Rule:** The browser pixel resolves its id at runtime from `GET /api/config/meta-pixel` (server `META_PIXEL_ID`), falling back to `VITE_META_PIXEL_ID`. **Why:** pixel id is public and checkout is OFF-SITE (Scalev `dialog.gustafta.my.id`), so relying on a build-time VITE var meant prod had the pixel INACTIVE whenever only the server secret was set. Runtime fetch keeps one source of truth.
+
+## fbp/fbc bridge across the off-site Scalev checkout
+**Rule:** Landing-page checkout CTAs open the Scalev URL through `withMetaAttribution(url)` (appends `fbp`,`fbc`,`esu`); the webhook extracts those back and forwards to CAPI. **Why:** browser and server Purchase share `event_id=scalev_{orderId}` so Meta merges them — no double count, better match quality. **How to apply:** the bridge is best-effort — it only works if Scalev echoes the custom URL params into the webhook; CAPI still sends via hashed email/phone if fbp/fbc are absent, so never make fbp/fbc required.
+
+## Double-count risk is operational, not code
+**Rule:** The only remaining Purchase double-count risk is Scalev's OWN native Meta integration firing with a DIFFERENT event_id (uncontrollable from our code). **How to apply:** must be turned OFF in the Scalev dashboard — a code review can't catch this, tell the user.
+
+## Dev server does not hot-reload
+`Start application` runs `tsx server/index.ts` (source, not dist) and does NOT auto-reload on edits — restart the workflow to pick up server route changes before curl-verifying.
