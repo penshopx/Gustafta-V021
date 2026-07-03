@@ -36,6 +36,7 @@ type PartnerForm = {
   cheapModel: string;
   seatsPerUnit: number;
   monthlyQuota: number;
+  adminEmails: string;
   hidePlatformBranding: boolean;
   active: boolean;
 };
@@ -52,6 +53,7 @@ const emptyForm: PartnerForm = {
   cheapModel: "gpt-4o-mini",
   seatsPerUnit: 3,
   monthlyQuota: 0,
+  adminEmails: "",
   hidePlatformBranding: true,
   active: true,
 };
@@ -93,6 +95,10 @@ export default function AdminPartnersPage() {
         logoUrl: form.logoUrl || null,
         primaryColor: form.primaryColor || null,
         tagline: form.tagline || null,
+        adminEmails: form.adminEmails
+          .split(",")
+          .map((e) => e.trim().toLowerCase())
+          .filter(Boolean),
       };
       if (editId) {
         return await apiRequest("PATCH", `/api/admin/partners/${editId}`, payload);
@@ -173,6 +179,7 @@ export default function AdminPartnersPage() {
       cheapModel: p.cheapModel || "gpt-4o-mini",
       seatsPerUnit: p.seatsPerUnit,
       monthlyQuota: p.monthlyQuota,
+      adminEmails: (p.adminEmails || []).join(", "),
       hidePlatformBranding: p.hidePlatformBranding,
       active: p.active,
     });
@@ -364,6 +371,11 @@ export default function AdminPartnersPage() {
               </div>
             </div>
             <p className="text-xs text-muted-foreground -mt-2">Kuota 0 = tak terbatas. Kuota di-pool per mitra (bukan per pengguna).</p>
+            <div className="space-y-2">
+              <Label htmlFor="p-admins">Email Pengurus Mitra (Partner-Admin)</Label>
+              <Input id="p-admins" value={form.adminEmails} onChange={(e) => setForm({ ...form, adminEmails: e.target.value })} placeholder="ketua@aspekindo.or.id, admin@aspekindo.or.id" data-testid="input-partner-admins" />
+              <p className="text-xs text-muted-foreground">Pisahkan dengan koma. Mereka bisa login lalu buka <code>/partner</code> untuk melihat pemakaian & meminta top-up kursi/kuota mandiri.</p>
+            </div>
             <div className="flex items-center justify-between">
               <div>
                 <Label htmlFor="p-hide">Sembunyikan brand Gustafta</Label>
