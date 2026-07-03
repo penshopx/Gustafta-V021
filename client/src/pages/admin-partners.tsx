@@ -315,7 +315,7 @@ export default function AdminPartnersPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="p-host">Host (domain)</Label>
-              <Input id="p-host" value={form.host} onChange={(e) => setForm({ ...form, host: e.target.value })} placeholder="chat.aspekindo-pub.com" data-testid="input-partner-host" />
+              <Input id="p-host" value={form.host} onChange={(e) => setForm({ ...form, host: e.target.value })} placeholder="dialog.aspekindo-pub.com" data-testid="input-partner-host" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
