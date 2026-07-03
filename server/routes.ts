@@ -17182,6 +17182,15 @@ Return HANYA JSON berikut (tanpa penjelasan lain):
     }
   });
 
+  // ── Meta Pixel — konfigurasi publik untuk browser pixel ────────────────────
+  // Frontend mengambil Pixel ID dari sini (satu sumber = server META_PIXEL_ID),
+  // jadi tidak perlu VITE_META_PIXEL_ID build-time. Pixel ID memang publik.
+  app.get("/api/config/meta-pixel", (_req: any, res: any) => {
+    res.set("Cache-Control", "public, max-age=300");
+    const cleaned = (process.env.META_PIXEL_ID || "").replace(/[^0-9]/g, "");
+    res.json({ pixelId: cleaned || null });
+  });
+
   // ── Meta Conversions API — status & tes (Admin) ────────────────────────────
   app.get("/api/admin/meta-capi/status", isAuthenticated, requireAdmin, async (_req: any, res: any) => {
     const { isMetaCapiConfigured } = await import("./lib/meta-capi");
@@ -17246,6 +17255,14 @@ Return HANYA JSON berikut (tanpa penjelasan lain):
       const customerPhone: string = customer.phone || "";
       const grossRevenue: number = parseFloat(data.gross_revenue || data.net_revenue || "0");
       const finalVariants: Record<string, number> = data.final_variants || {};
+      // Sinyal browser (fbp/fbc) yang mungkin diteruskan Scalev dari query checkout.
+      // Best-effort: cek beberapa lokasi umum. Bila kosong, CAPI tetap jalan pakai email/telepon.
+      const metaFbp: string | undefined =
+        data.fbp || payload.fbp || customer.fbp || data.custom_fields?.fbp || data.metadata?.fbp || undefined;
+      const metaFbc: string | undefined =
+        data.fbc || payload.fbc || customer.fbc || data.custom_fields?.fbc || data.metadata?.fbc || undefined;
+      const metaEventSourceUrl: string | undefined =
+        data.esu || payload.esu || data.custom_fields?.esu || data.metadata?.esu || undefined;
 
       if (!orderId) {
         return res.status(200).json({ received: true, note: "No order_id" });
@@ -17291,6 +17308,10 @@ Return HANYA JSON berikut (tanpa penjelasan lain):
             name: customerName || undefined,
             contentName: contentName || Object.keys(finalVariants)[0] || undefined,
             pixelId: agentPixelId,
+            fbp: metaFbp,
+            fbc: metaFbc,
+            externalId: customerEmail || undefined,
+            eventSourceUrl: metaEventSourceUrl,
           });
           if (!result.sent && result.skippedReason) {
             console.log(`[Meta CAPI] Dilewati untuk order ${orderId}: ${result.skippedReason}`);
