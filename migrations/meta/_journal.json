@@ -50,6 +50,13 @@
       "when": 1782818268639,
       "tag": "0006_marvelous_harpoon",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1783055208375,
+      "tag": "0007_woozy_molecule_man",
+      "breakpoints": true
     }
   ]
 }

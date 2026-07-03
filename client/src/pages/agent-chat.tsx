@@ -912,7 +912,9 @@ export default function AgentChat() {
             setTrialState(ts);
           }
 
-          document.title = `${data.name} - Gustafta AI`;
+          document.title = partnerBranding
+            ? `${data.name}${partnerBranding.brandName ? ` - ${partnerBranding.brandName}` : ""}`
+            : `${data.name} - Gustafta AI`;
 
           const metaTheme = document.querySelector('meta[name="theme-color"]');
           if (metaTheme) metaTheme.setAttribute("content", data.color || "#6366f1");
