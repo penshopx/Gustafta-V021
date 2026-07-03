@@ -118,6 +118,121 @@ test("cutoff bersifat KETAT lebih-kecil: baris tepat di bulan cutoff tidak perna
   assert.equal(await storage.getOwnerMonthlyUsage(owner, justOld), 0, "baris tepat SEBELUM cutoff harus terhapus.");
 });
 
+// Cutoff yang DIHARAPKAN, dihitung dengan aritmetika bulan manual yang
+// INDEPENDEN dari formula job (tanpa Date.UTC). Ini "sumber kebenaran" kedua:
+// kalau formula job (yang pakai Date.UTC month-underflow) drift, ia tak lagi
+// sama dengan hitungan manual ini dan test gagal keras.
+function expectedCutoffMonth(now: Date): string {
+  const year = now.getUTCFullYear();
+  const month0 = now.getUTCMonth(); // 0..11
+  let m = month0 - 2;
+  let y = year;
+  if (m < 0) {
+    m += 12;
+    y -= 1;
+  }
+  return `${y}-${String(m + 1).padStart(2, "0")}`;
+}
+
+test("cutoff job SELALU tepat = bulan berjalan minus 2, lintas ribuan tanggal 'now'", () => {
+  // Uji setiap HARI dari 2020-01-01 s.d. 2035-12-31 (mencakup batas bulan/tahun,
+  // Januari/Februari, dan tahun kabisat 2020/2024/2028/2032). Untuk tiap tanggal
+  // ini menegakkan dua hal sekaligus:
+  //   1) formula job == hitungan bulan manual independen (tidak drift), dan
+  //   2) cutoff TIDAK PERNAH jatuh di bulan berjalan atau 2 bulan sebelumnya
+  //      (jendela retensi yang menegakkan kuota harus selalu selamat).
+  const start = Date.UTC(2020, 0, 1);
+  const end = Date.UTC(2035, 11, 31);
+  const DAY = 24 * 60 * 60 * 1000;
+
+  let checked = 0;
+  for (let t = start; t <= end; t += DAY) {
+    const now = new Date(t);
+
+    const cutoff = cutoffMonthFor(now); // formula PERSIS seperti job
+    const expected = expectedCutoffMonth(now); // aritmetika independen
+
+    // (1) Formula job cocok dengan hitungan manual — tak ada off-by-one bulan.
+    assert.equal(
+      cutoff,
+      expected,
+      `cutoff drift pada ${now.toISOString()}: job=${cutoff} vs manual=${expected}`,
+    );
+
+    // Jendela retensi (yang HARUS selamat): bulan berjalan + 2 sebelumnya.
+    const current = ym(now);
+    const prev1 = ym(monthOffset(now, -1));
+    const prev2 = ym(monthOffset(now, -2));
+
+    // (2) Cutoff harus TEPAT = prev2 (batas bawah retensi). Karena penghapusan
+    //     bersifat KETAT lebih-kecil (< cutoff), baris di bulan prev2 selamat,
+    //     jadi prev2 adalah nilai cutoff yang benar & aman.
+    assert.equal(
+      cutoff,
+      prev2,
+      `cutoff (${cutoff}) harus TEPAT = batas retensi prev2 (${prev2}) pada ${now.toISOString()}`,
+    );
+
+    // Bahaya nyata: cutoff yang MERAYAP MASUK jendela retensi. Karena hapus =
+    //   (bulan < cutoff), cutoff di bulan berjalan akan menghapus prev1 & prev2,
+    //   dan cutoff di prev1 akan menghapus prev2 — keduanya mereset kuota hidup.
+    //   Cutoff HARUS ketat lebih lama dari prev1 (dan otomatis dari current).
+    assert.ok(
+      cutoff < prev1,
+      `cutoff (${cutoff}) harus < prev1 (${prev1}) — kalau tidak, retensi bocor pada ${now.toISOString()}`,
+    );
+    assert.notEqual(cutoff, current, `cutoff jatuh di BULAN BERJALAN pada ${now.toISOString()} — bisa hapus kuota hidup!`);
+    assert.notEqual(cutoff, prev1, `cutoff jatuh di bulan -1 (masih retensi) pada ${now.toISOString()} — akan hapus prev2!`);
+
+    checked++;
+  }
+
+  // Sanity: benar-benar menguji rentang besar, bukan loop kosong.
+  assert.ok(checked > 5000, `harus memeriksa ribuan tanggal, hanya ${checked}`);
+});
+
+test("cutoff pada batas bulan/tahun & kabisat tepat current-minus-2 (kasus eksplisit)", () => {
+  // Kasus tabel eksplisit untuk keterbacaan: [tahun, bulan0, hari] → cutoff.
+  const cases: Array<[number, number, number, string]> = [
+    [2026, 0, 1, "2025-11"], // 1 Jan → Nov tahun lalu (lintas tahun)
+    [2026, 0, 31, "2025-11"], // akhir Jan
+    [2026, 1, 1, "2025-12"], // 1 Feb → Des tahun lalu
+    [2026, 1, 28, "2025-12"], // akhir Feb (non-kabisat)
+    [2024, 1, 29, "2023-12"], // 29 Feb (kabisat) → Des tahun lalu
+    [2026, 2, 1, "2026-01"], // 1 Mar → Jan (tahun sama)
+    [2026, 11, 31, "2026-10"], // 31 Des → Okt
+    [2026, 6, 15, "2026-05"], // pertengahan Juli → Mei
+    [2020, 2, 15, "2020-01"], // Mar tahun kabisat → Jan
+    [2020, 0, 15, "2019-11"], // Jan 2020 → Nov 2019
+  ];
+
+  for (const [y, m0, d, want] of cases) {
+    const now = new Date(Date.UTC(y, m0, d));
+    assert.equal(
+      cutoffMonthFor(now),
+      want,
+      `cutoff salah untuk ${now.toISOString()}`,
+    );
+  }
+});
+
+test("mid-month vs akhir-bulan menghasilkan cutoff yang sama (hari tak boleh mempengaruhi bulan cutoff)", () => {
+  // Menegaskan cutoff hanya bergantung pada BULAN, bukan hari — jadi menjalankan
+  // job pada tanggal 1 vs tanggal 31 tak pernah menggeser jendela retensi.
+  for (let year = 2020; year <= 2035; year++) {
+    for (let month = 0; month < 12; month++) {
+      const first = new Date(Date.UTC(year, month, 1));
+      // Hari terakhir bulan = hari 0 dari bulan berikutnya.
+      const last = new Date(Date.UTC(year, month + 1, 0));
+      assert.equal(
+        cutoffMonthFor(first),
+        cutoffMonthFor(last),
+        `cutoff berbeda antara awal & akhir ${year}-${month + 1}`,
+      );
+    }
+  }
+});
+
 test("cleanup tidak menyentuh baris owner lain dan menghormati per-owner isolation", async () => {
   const storage = new MemStorage();
   const now = new Date(Date.UTC(2026, 6, 15));
