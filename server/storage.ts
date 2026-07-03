@@ -271,6 +271,7 @@ export interface IStorage {
   // Durable platform-owner monthly message usage (survives restarts, shared across instances)
   getOwnerMonthlyUsage(ownerUserId: string, month: string): Promise<number>;
   incrementOwnerMonthlyUsage(ownerUserId: string, month: string): Promise<number>;
+  deleteOwnerMonthlyUsageBefore(month: string): Promise<number>;
 
   // User dialog completion methods
   getUserDialogCompleted(userId: string): Promise<boolean>;
@@ -1824,6 +1825,17 @@ export class MemStorage implements IStorage {
     const next = (this.ownerMonthlyUsage.get(key) ?? 0) + 1;
     this.ownerMonthlyUsage.set(key, next);
     return next;
+  }
+  async deleteOwnerMonthlyUsageBefore(month: string): Promise<number> {
+    let deleted = 0;
+    for (const key of Array.from(this.ownerMonthlyUsage.keys())) {
+      const rowMonth = key.slice(key.lastIndexOf(":") + 1);
+      if (rowMonth < month) {
+        this.ownerMonthlyUsage.delete(key);
+        deleted++;
+      }
+    }
+    return deleted;
   }
   async getUserDialogCompleted(_userId: string): Promise<boolean> { return false; }
   async setUserDialogCompleted(_userId: string): Promise<void> {}
