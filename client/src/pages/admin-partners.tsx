@@ -20,9 +20,9 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Building2, Plus, Trash2, ArrowLeft, Pencil, Users, UserPlus, Globe } from "lucide-react";
+import { Building2, Plus, Trash2, ArrowLeft, Pencil, Users, UserPlus, Globe, Check, X, Inbox } from "lucide-react";
 import { useAgents } from "@/hooks/use-agents";
-import type { Partner } from "@shared/schema";
+import type { Partner, PartnerTopupRequest } from "@shared/schema";
 
 type PartnerForm = {
   slug: string;
@@ -159,6 +159,30 @@ export default function AdminPartnersPage() {
     },
   });
 
+  const { data: topupRequests = [] } = useQuery<PartnerTopupRequest[]>({
+    queryKey: ["/api/admin/partners/topup-requests"],
+    enabled: isAuthenticated,
+  });
+
+  const pendingByPartner = topupRequests.reduce<Record<number, PartnerTopupRequest[]>>((acc, r) => {
+    (acc[r.partnerId] ||= []).push(r);
+    return acc;
+  }, {});
+
+  const topupMutation = useMutation({
+    mutationFn: async ({ id, action }: { id: number; action: "approve" | "reject" }) => {
+      return await apiRequest("PATCH", `/api/admin/partners/topup-requests/${id}`, { action });
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/partners/topup-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/partners"] });
+      toast({ title: variables.action === "approve" ? "Permintaan disetujui" : "Permintaan ditolak" });
+    },
+    onError: (e: any) => {
+      toast({ title: "Gagal", description: e?.message || "Tidak dapat memproses permintaan", variant: "destructive" });
+    },
+  });
+
   const openCreate = () => {
     setEditId(null);
     setForm(emptyForm);
@@ -238,6 +262,7 @@ export default function AdminPartnersPage() {
           <div className="space-y-3">
             {partners.map((p) => {
               const linkedAgent = (agents as any[]).find((a) => String(a.id) === p.defaultAgentId);
+              const pending = pendingByPartner[p.id] || [];
               return (
                 <Card key={p.id} data-testid={`card-partner-${p.id}`}>
                   <CardContent className="pt-4">
@@ -251,6 +276,12 @@ export default function AdminPartnersPage() {
                           {p.hidePlatformBranding && (
                             <Badge variant="outline" className="text-xs">Brand Gustafta disembunyikan</Badge>
                           )}
+                          {pending.length > 0 && (
+                            <Badge variant="destructive" className="text-xs gap-1" data-testid={`badge-pending-topup-${p.id}`}>
+                              <Inbox className="w-3 h-3" />
+                              {pending.length} permintaan top-up
+                            </Badge>
+                          )}
                         </div>
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                           <Globe className="w-3 h-3" />
@@ -263,6 +294,47 @@ export default function AdminPartnersPage() {
                           <span>Seats/unit: <strong>{p.seatsPerUnit}</strong></span>
                           <span>Kuota/bulan: <strong>{p.monthlyQuota === 0 ? "Tak terbatas" : `${p.monthlyQuota.toLocaleString("id-ID")} (${p.quotaUsed.toLocaleString("id-ID")} terpakai)`}</strong></span>
                         </div>
+                        {pending.length > 0 && (
+                          <div className="mt-3 space-y-2 rounded-md border border-dashed p-3" data-testid={`list-topup-partner-${p.id}`}>
+                            <p className="text-xs font-medium text-muted-foreground">Permintaan top-up menunggu persetujuan</p>
+                            {pending.map((r) => (
+                              <div key={r.id} className="flex items-start justify-between gap-3 text-xs" data-testid={`row-topup-${r.id}`}>
+                                <div className="flex-1 space-y-0.5">
+                                  <div>
+                                    <strong>+{r.amount.toLocaleString("id-ID")}</strong>{" "}
+                                    {r.kind === "seats" ? "kursi/unit" : "kuota/bulan"}
+                                    <span className="text-muted-foreground"> · dari {r.requestedByEmail}</span>
+                                  </div>
+                                  {r.note && <p className="text-muted-foreground italic">"{r.note}"</p>}
+                                </div>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 px-2"
+                                    disabled={topupMutation.isPending}
+                                    onClick={() => topupMutation.mutate({ id: r.id, action: "approve" })}
+                                    data-testid={`button-approve-topup-${r.id}`}
+                                  >
+                                    <Check className="w-3.5 h-3.5 mr-1 text-green-600" />
+                                    Setujui
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-7 px-2"
+                                    disabled={topupMutation.isPending}
+                                    onClick={() => topupMutation.mutate({ id: r.id, action: "reject" })}
+                                    data-testid={`button-reject-topup-${r.id}`}
+                                  >
+                                    <X className="w-3.5 h-3.5 mr-1 text-destructive" />
+                                    Tolak
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
                         <Button

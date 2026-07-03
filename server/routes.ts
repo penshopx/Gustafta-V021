@@ -16600,6 +16600,79 @@ Buat dokumen KB berkualitas tinggi untuk topik ini.`;
     }
   });
 
+  // ==================== Admin: Partner Top-Up Requests ====================
+  // ADMIN: daftar permintaan top-up (default hanya pending). Beri ?status=all untuk semua.
+  app.get("/api/admin/partners/topup-requests", isAuthenticated, async (req: any, res) => {
+    try {
+      if (!(await isRequestAdmin(req))) return res.status(403).json({ error: "Akses ditolak" });
+      const statusFilter = String(req.query.status || "pending");
+      const base = db.select().from(partnerTopupRequests);
+      const rows = statusFilter === "all"
+        ? await base.orderBy(desc(partnerTopupRequests.createdAt))
+        : await db.select().from(partnerTopupRequests)
+            .where(eq(partnerTopupRequests.status, statusFilter))
+            .orderBy(desc(partnerTopupRequests.createdAt));
+      res.json(rows);
+    } catch (error) {
+      res.status(500).json({ error: "Gagal memuat permintaan top-up" });
+    }
+  });
+
+  // ADMIN: setujui/tolak permintaan top-up.
+  // Approve → tambahkan increase ke partner (seats→seatsPerUnit, quota→monthlyQuota) + set status resolved.
+  // Reject → set status rejected. Keduanya atomik dan hanya berlaku untuk request yang masih pending.
+  app.patch("/api/admin/partners/topup-requests/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      if (!(await isRequestAdmin(req))) return res.status(403).json({ error: "Akses ditolak" });
+      const action = req.body.action === "approve" ? "approve" : req.body.action === "reject" ? "reject" : null;
+      if (!action) return res.status(400).json({ error: "Aksi tidak valid (approve/reject)." });
+      const reqId = Number(req.params.id);
+      if (!Number.isFinite(reqId)) return res.status(400).json({ error: "ID tidak valid." });
+
+      const result = await db.transaction(async (tx) => {
+        const [request] = await tx.select().from(partnerTopupRequests)
+          .where(eq(partnerTopupRequests.id, reqId))
+          .for("update");
+        if (!request) return { error: "notfound" as const };
+        if (request.status !== "pending") return { error: "resolved" as const };
+
+        if (action === "approve") {
+          const [partner] = await tx.select().from(partners)
+            .where(eq(partners.id, request.partnerId))
+            .for("update");
+          if (!partner) return { error: "partner_notfound" as const };
+          if (request.kind === "seats") {
+            await tx.update(partners)
+              .set({ seatsPerUnit: partner.seatsPerUnit + request.amount, updatedAt: new Date() })
+              .where(eq(partners.id, partner.id));
+          } else {
+            await tx.update(partners)
+              .set({ monthlyQuota: partner.monthlyQuota + request.amount, updatedAt: new Date() })
+              .where(eq(partners.id, partner.id));
+          }
+          const [updated] = await tx.update(partnerTopupRequests)
+            .set({ status: "resolved", resolvedAt: new Date() })
+            .where(eq(partnerTopupRequests.id, reqId))
+            .returning();
+          return { request: updated };
+        }
+
+        const [updated] = await tx.update(partnerTopupRequests)
+          .set({ status: "rejected", resolvedAt: new Date() })
+          .where(eq(partnerTopupRequests.id, reqId))
+          .returning();
+        return { request: updated };
+      });
+
+      if (result.error === "notfound") return res.status(404).json({ error: "Permintaan tidak ditemukan." });
+      if (result.error === "resolved") return res.status(409).json({ error: "Permintaan sudah diproses." });
+      if (result.error === "partner_notfound") return res.status(404).json({ error: "Mitra tidak ditemukan." });
+      res.json(result.request);
+    } catch (error) {
+      res.status(500).json({ error: "Gagal memproses permintaan top-up" });
+    }
+  });
+
   // ─── AI Big Idea Generator ────────────────────────────────────
   const extractFileUpload = multer({
     storage: multer.memoryStorage(),
