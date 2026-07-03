@@ -60,12 +60,17 @@ const createdPartnerIds: number[] = [];
 const createdSubscriptionIds: number[] = [];
 
 // Skenario. Diisi di before().
-let agentA = "", agentB = "", agentC = "", agentD = "", agentOther = "", agentOwned = "";
-let partnerAId = 0, partnerBId = 0, partnerCId = 0, partnerDId = 0;
+let agentA = "", agentB = "", agentC = "", agentD = "", agentOther = "", agentOwned = "", agentE = "";
+let partnerAId = 0, partnerBId = 0, partnerCId = 0, partnerDId = 0, partnerEId = 0;
 const hostA = `${RUN}-a.example.com`;
 const hostB = `${RUN}-b.example.com`;
 const hostC = `${RUN}-c.example.com`;
 const hostD = `${RUN}-d.example.com`;
+const hostE = `${RUN}-e.example.com`;
+// Uji balapan (Task #14): pool Mitra E hanya mengizinkan M sukses dari N request
+// serentak. M < N agar sisa (N-M) harus ditolak 429.
+const RACE_QUOTA = 5; // M — kapasitas pool Mitra E.
+const RACE_BURST = 20; // N — jumlah request serentak (N > M).
 // Pemilik agen (untuk membuktikan jalur kuota PEMILIK saat host cocok tapi agentId beda).
 const ownerX = `${RUN}-owner-x`;
 
@@ -170,6 +175,13 @@ before(async () => {
   partnerCId = await makePartner({ slug: "c", host: hostC, defaultAgentId: agentC, monthlyQuota: 100 });
   // Mitra D: pool HABIS (quota 1, used 1 bulan ini) untuk uji host-cocok/agent-beda.
   partnerDId = await makePartner({ slug: "d", host: hostD, defaultAgentId: agentD, monthlyQuota: 1, quotaUsed: 1, quotaMonth: CUR_MONTH });
+  // Mitra E: pool tepat M (RACE_QUOTA), kosong bulan ini — untuk uji balapan
+  // (N request serentak, hanya M yang boleh sukses).
+  agentE = await makePublicAgent("Agen E");
+  // Naikkan batas guest jauh di atas burst agar gerbang guest (default 10) TIDAK
+  // ikut menolak — supaya seluruh N request menembus ke jalur kuota MITRA.
+  await storage.updateAgent(agentE, { guestMessageLimit: RACE_BURST * 5 } as any);
+  partnerEId = await makePartner({ slug: "e", host: hostE, defaultAgentId: agentE, monthlyQuota: RACE_QUOTA, quotaUsed: 0, quotaMonth: CUR_MONTH });
 
   const app = express();
   app.use(express.json({ limit: "5mb" }));
@@ -223,6 +235,36 @@ test("request ke host Mitra A men-decrement HANYA pool A (pool B tak tersentuh)"
   const bAfter = await quotaUsed(partnerBId);
   assert.equal(aAfter, aBefore + 2, "quotaUsed Mitra A harus bertambah tepat 2 (dua request).");
   assert.equal(bAfter, bBefore, "quotaUsed Mitra B TIDAK boleh berubah oleh request ke host A.");
+});
+
+// ── 1b. Balapan: N request serentak ke satu pool berkapasitas M < N ──────────
+// Membuktikan keamanan-balapan dari commit kuota atomik (CASE-WHEN increment +
+// refund berbasis GREATEST di server/routes.ts ~4340). Tanpa penguncian per
+// baris yang benar, balapan bisa membiarkan pool terlampaui atau merusak
+// penghitung. Kita tembak N request SEKALIGUS (Promise.all) ke pool kapasitas M.
+test("N request serentak ke pool kapasitas M: tepat M sukses, (N-M) → 429, quotaUsed final == M", async () => {
+  const before = await quotaUsed(partnerEId);
+  assert.equal(before, 0, "prasyarat: pool Mitra E harus kosong sebelum burst.");
+
+  // Tembak semua request dalam satu ledakan; jangan await satu per satu.
+  const results = await Promise.all(
+    Array.from({ length: RACE_BURST }, () => send(hostE, agentE)),
+  );
+
+  const rejected = results.filter((r) => r.status === 429);
+  const accepted = results.filter((r) => r.status !== 429);
+
+  // Semua penolakan harus karena kuota mitra (bukan gerbang lain).
+  for (const r of rejected) {
+    assert.match(r.body, /partner_quota_exceeded/, "penolakan burst harus partner_quota_exceeded.");
+  }
+
+  assert.equal(accepted.length, RACE_QUOTA, `tepat M=${RACE_QUOTA} request boleh sukses.`);
+  assert.equal(rejected.length, RACE_BURST - RACE_QUOTA, `sisa (N-M)=${RACE_BURST - RACE_QUOTA} harus 429.`);
+
+  const after = await quotaUsed(partnerEId);
+  assert.equal(after, RACE_QUOTA,
+    `quotaUsed final harus tepat M=${RACE_QUOTA}: tak ada over-count (pool terlampaui) maupun refund yang hilang.`);
 });
 
 test("host B + agentId A → tak ada konteks mitra: pool A maupun B tak tersentuh (anti cross-domain drain)", async () => {
