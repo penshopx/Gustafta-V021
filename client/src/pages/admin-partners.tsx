@@ -95,11 +95,9 @@ export default function AdminPartnersPage() {
         tagline: form.tagline || null,
       };
       if (editId) {
-        const res = await apiRequest("PATCH", `/api/admin/partners/${editId}`, payload);
-        return res.json();
+        return await apiRequest("PATCH", `/api/admin/partners/${editId}`, payload);
       }
-      const res = await apiRequest("POST", "/api/admin/partners", payload);
-      return res.json();
+      return await apiRequest("POST", "/api/admin/partners", payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/partners"] });
@@ -115,8 +113,7 @@ export default function AdminPartnersPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const res = await apiRequest("DELETE", `/api/admin/partners/${id}`);
-      return res.json();
+      return await apiRequest("DELETE", `/api/admin/partners/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/partners"] });
@@ -127,11 +124,10 @@ export default function AdminPartnersPage() {
 
   const addSeatMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", `/api/admin/partners/${seatsTarget!.id}/seats`, {
+      return await apiRequest("POST", `/api/admin/partners/${seatsTarget!.id}/seats`, {
         email: newSeatEmail,
         role: newSeatRole,
       });
-      return res.json();
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/partners", seatsTarget?.id, "seats"] });
@@ -149,8 +145,7 @@ export default function AdminPartnersPage() {
   const removeSeatMutation = useMutation({
     mutationFn: async ({ userId, email }: { userId?: string; email?: string }) => {
       const qs = userId ? `userId=${encodeURIComponent(userId)}` : `email=${encodeURIComponent(email || "")}`;
-      const res = await apiRequest("DELETE", `/api/admin/partners/${seatsTarget!.id}/seats?${qs}`);
-      return res.json();
+      return await apiRequest("DELETE", `/api/admin/partners/${seatsTarget!.id}/seats?${qs}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/partners", seatsTarget?.id, "seats"] });
