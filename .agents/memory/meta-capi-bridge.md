@@ -29,3 +29,6 @@ description: Server-side Purchase events to Meta from the Scalev webhook — why
 
 ## Dev server does not hot-reload
 `Start application` runs `tsx server/index.ts` (source, not dist) and does NOT auto-reload on edits — restart the workflow to pick up server route changes before curl-verifying.
+
+## Prod verification must hit the ACTUAL custom domain, not the .replit.app URL
+**Rule:** The custom domain (`gustafta.my.id`) can point to a DIFFERENT, older Replit deployment than the `*.replit.app` URL you just published to. Publishing to the daily repl does NOT update the domain if the domain is attached to a separate (e.g. long-term/yearly) repl. **Why:** the Scalev webhook targets the domain; if that domain serves stale code without the CAPI bridge, Purchase silently never fires even though the webhook 200s. **How to apply:** verify against the real domain — `GET https://<domain>/api/config/meta-pixel` must return `{"pixelId":...}` (JSON), not the SPA HTML. Also secrets & `SCALEV_WEBHOOK_SECRET` enforcement differ per deployment (each repl has its own env), so re-add ALL secrets after any GitHub import into a fresh repl.
