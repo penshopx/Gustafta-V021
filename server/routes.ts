@@ -2672,6 +2672,72 @@ SKK berlaku 5 tahun. Perpanjangan via: Pengembangan Keprofesian Berkelanjutan (P
     }
   });
 
+  // ── Monitor Tim Marketing — ringkasan output harian tim (untuk founder) ──────
+  // Kumpulkan agen tim marketing (via SLUG, bukan ID) + dokumen KB harian yang
+  // mereka hasilkan (materi iklan, retensi, closing, feed riset). Read-only; setiap
+  // agen di-otorisasi terpisah (assertCanAccessAgentChat), skip yang tak boleh diakses.
+  app.get("/api/marketing-team/overview", isAuthenticated, async (req, res) => {
+    try {
+      const {
+        AD_MATERIAL_SLUG, RETENTION_SLUG, CLOSING_SLUG,
+        RESEARCH_LOCAL_SLUG, RESEARCH_GLOBAL_SLUG, RESEARCH_MARKET_SLUG,
+      } = await import("./lib/research-feed");
+
+      const STREAMS = [
+        { key: "materi-iklan", title: "Materi Iklan Harian", subtitle: "Konten iklan siap pakai dari temuan riset", group: "produksi", slug: AD_MATERIAL_SLUG, kbPrefix: "Materi Iklan Harian" },
+        { key: "retensi", title: "Sequence Retensi Pelanggan", subtitle: "Email & WhatsApp untuk memelihara pelanggan", group: "produksi", slug: RETENTION_SLUG, kbPrefix: "Sequence Retensi Harian" },
+        { key: "closing", title: "Amunisi Jualan (Closing)", subtitle: "Jawaban keberatan, skrip WA, follow-up prospek", group: "produksi", slug: CLOSING_SLUG, kbPrefix: "Amunisi Jualan Harian" },
+        { key: "riset-lokal", title: "Riset Produk (Indonesia)", subtitle: "Isu, regulasi & pain point domain", group: "riset", slug: RESEARCH_LOCAL_SLUG, kbPrefix: "Feed Riset" },
+        { key: "riset-global", title: "Riset Tren Global", subtitle: "Teknologi & AI untuk diadaptasi", group: "riset", slug: RESEARCH_GLOBAL_SLUG, kbPrefix: "Feed Riset" },
+        { key: "riset-pasar", title: "Riset Iklan & Pasar", subtitle: "Tren iklan & produk viral", group: "riset", slug: RESEARCH_MARKET_SLUG, kbPrefix: "Feed Riset" },
+      ];
+
+      const orchestrator = await storage.getAgentBySlug("kepala-tim-marketing");
+      let orchestratorInfo: any = null;
+      if (orchestrator) {
+        const authO = await assertCanAccessAgentChat(req, orchestrator);
+        if (authO.ok) {
+          orchestratorInfo = {
+            id: orchestrator.id, name: orchestrator.name,
+            tagline: (orchestrator as any).tagline || null, avatar: (orchestrator as any).avatar || null,
+          };
+        }
+      }
+
+      const streams = await Promise.all(STREAMS.map(async (s) => {
+        const agent = await storage.getAgentBySlug(s.slug);
+        if (!agent) {
+          return { ...s, exists: false, canAccess: false, agentId: null, agentName: null, avatar: null, tagline: null, docs: [] };
+        }
+        const auth = await assertCanAccessAgentChat(req, agent);
+        // Otorisasi GAGAL → jangan bocorkan metadata agen (id/nama/tagline/avatar).
+        // Kembalikan placeholder ter-redaksi saja (cegah enumerasi agen privat).
+        if (!auth.ok) {
+          return { ...s, exists: true, canAccess: false, agentId: null, agentName: null, avatar: null, tagline: null, docs: [] };
+        }
+        const base = {
+          ...s, exists: true, agentId: agent.id, agentName: agent.name,
+          avatar: (agent as any).avatar || null, tagline: (agent as any).tagline || null,
+        };
+        const kbs = await storage.getKnowledgeBases(String(agent.id));
+        const docs = kbs
+          .filter((k: any) => typeof k.name === "string" && k.name.startsWith(s.kbPrefix))
+          .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+          .slice(0, 14)
+          .map((k: any) => ({
+            id: k.id, name: k.name, description: k.description || "",
+            createdAt: k.createdAt, content: k.content || k.extractedText || "",
+          }));
+        return { ...base, canAccess: true, docs };
+      }));
+
+      res.json({ orchestrator: orchestratorInfo, streams });
+    } catch (error) {
+      console.error("[/api/marketing-team/overview]", error);
+      res.status(500).json({ error: "Gagal memuat ringkasan tim marketing" });
+    }
+  });
+
   app.post("/api/knowledge-base", isAuthenticated, async (req, res) => {
     try {
       const parsed = insertKnowledgeBaseSchema.safeParse(req.body);

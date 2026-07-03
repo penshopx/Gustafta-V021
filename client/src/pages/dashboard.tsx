@@ -1105,6 +1105,18 @@ export default function Dashboard() {
                     <ArrowRight className="w-4 h-4 text-violet-500 shrink-0" />
                   </div>
                 </Link>
+                <Link href="/monitor-marketing" className="sm:col-span-2">
+                  <div className="flex items-center gap-3 p-3 rounded-lg border border-pink-500/30 bg-gradient-to-r from-pink-500/10 to-rose-500/10 hover:border-pink-500 hover:from-pink-500/15 hover:to-rose-500/15 transition-colors text-left cursor-pointer" data-testid="card-monitor-marketing">
+                    <div className="w-8 h-8 rounded-md bg-pink-500/15 flex items-center justify-center shrink-0">
+                      <TrendingUp className="w-4 h-4 text-pink-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium">Monitor Tim Marketing</p>
+                      <p className="text-xs text-muted-foreground">Pantau hasil kerja harian tim marketing AI di satu tempat</p>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-pink-500 shrink-0" />
+                  </div>
+                </Link>
                 <button
                   onClick={() => setBigIdeaDialogOpen(true)}
                   className="flex items-center gap-3 p-3 rounded-lg border border-dashed hover:border-primary hover:bg-primary/5 transition-colors text-left"
