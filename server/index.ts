@@ -2118,5 +2118,17 @@ function startScheduler() {
     log(`[Research Feed] sweep selesai: lokal=${result.local?.chunks ?? "-"} chunk, global=${result.global?.chunks ?? "-"} chunk, materi-iklan=${result.adMaterials?.generated ? result.adMaterials.chunks + " chunk" : (result.adMaterials?.reason ?? "-")}, skip=[${result.skipped.join(",")}]`);
   });
 
-  log("[Scheduler] Started — broadcast cek setiap 2 menit | tender scraping 06:00 & 13:00 WIB | alert notifikasi 08:00 WIB | research feed 06:30 WIB");
+  // ── Owner Monthly Usage cleanup — 03:15 WIB (buang baris bulan lama) ────────
+  // Baris kuota per-owner ditulis satu per bulan kalender; tanpa pembersihan
+  // tabelnya tumbuh tanpa batas. Kita simpan bulan berjalan + 2 bulan sebelumnya
+  // (retensi 3 bulan) dan hapus yang lebih lama. Tidak menyentuh enforcement.
+  scheduleAtWIB("Owner Usage Cleanup", 3, 15, async () => {
+    const now = new Date();
+    const cutoff = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 2, 1));
+    const cutoffMonth = cutoff.toISOString().slice(0, 7); // "YYYY-MM"
+    const deleted = await storage.deleteOwnerMonthlyUsageBefore(cutoffMonth);
+    log(`[Owner Usage Cleanup] hapus ${deleted} baris owner_monthly_usage sebelum ${cutoffMonth}`);
+  });
+
+  log("[Scheduler] Started — broadcast cek setiap 2 menit | tender scraping 06:00 & 13:00 WIB | alert notifikasi 08:00 WIB | research feed 06:30 WIB | owner usage cleanup 03:15 WIB");
 }

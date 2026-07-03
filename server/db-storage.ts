@@ -1,4 +1,4 @@
-import { eq, desc, and, sql, isNull, inArray } from "drizzle-orm";
+import { eq, desc, and, sql, isNull, inArray, lt } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import { randomUUID } from "crypto";
@@ -2460,6 +2460,15 @@ export class DatabaseStorage implements IStorage {
       })
       .returning({ count: ownerMonthlyUsageTable.count });
     return result[0]?.count ?? 0;
+  }
+
+  async deleteOwnerMonthlyUsageBefore(month: string): Promise<number> {
+    // Prune stale usage rows for calendar months strictly before `month`
+    // (format "YYYY-MM"). String comparison is safe for zero-padded months.
+    const result = await db.delete(ownerMonthlyUsageTable)
+      .where(lt(ownerMonthlyUsageTable.month, month))
+      .returning({ id: ownerMonthlyUsageTable.id });
+    return result.length;
   }
 
   async getUserDialogCompleted(userId: string): Promise<boolean> {
