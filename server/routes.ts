@@ -17191,6 +17191,95 @@ Return HANYA JSON berikut (tanpa penjelasan lain):
     res.json({ pixelId: cleaned || null });
   });
 
+  // ── Meta CAPI — relay funnel server-side (PUBLIC, fire-and-forget) ──────────
+  // Browser memanggil ini bersamaan dengan pixel (event_id sama) untuk event
+  // funnel penting. Meta menggabungkan (dedup) event browser + server, sehingga
+  // konversi tetap terhitung walau pixel diblokir ad-blocker / iOS.
+  // Endpoint publik → dilindungi: whitelist eventName + cek origin + rate-limit/IP.
+  const metaTrackRate = new Map<string, { count: number; resetAt: number }>();
+  const META_TRACK_WINDOW_MS = 60_000;
+  const META_TRACK_MAX = 40;
+  function metaTrackRateAllowed(ip: string): boolean {
+    const now = Date.now();
+    if (metaTrackRate.size > 5000) {
+      for (const [k, v] of metaTrackRate) if (now > v.resetAt) metaTrackRate.delete(k);
+    }
+    const e = metaTrackRate.get(ip);
+    if (!e || now > e.resetAt) {
+      metaTrackRate.set(ip, { count: 1, resetAt: now + META_TRACK_WINDOW_MS });
+      return true;
+    }
+    if (e.count >= META_TRACK_MAX) return false;
+    e.count++;
+    return true;
+  }
+  function metaTrackOriginAllowed(req: any): boolean {
+    const src = (req.headers.origin as string) || (req.headers.referer as string) || "";
+    if (!src) return true; // sebagian browser/mode privasi menghapus Origin/Referer — jangan drop
+    try {
+      const h = new URL(src).hostname.toLowerCase();
+      const host = String(req.headers.host || "").split(":")[0].toLowerCase();
+      if (h === host || h === "localhost" || h === "127.0.0.1") return true;
+      if (h === "gustafta.my.id" || h.endsWith(".gustafta.my.id")) return true;
+      if (h.endsWith(".replit.app") || h.endsWith(".replit.dev") || h.endsWith(".repl.co")) return true;
+      return false;
+    } catch {
+      return true;
+    }
+  }
+  app.post("/api/track/meta-event", async (req: any, res: any) => {
+    try {
+      const xffEarly = ((req.headers["x-forwarded-for"] as string) || "").split(",")[0].trim();
+      const ipEarly = xffEarly || req.socket?.remoteAddress || "unknown";
+      if (!metaTrackOriginAllowed(req)) {
+        return res.status(403).json({ received: false, skippedReason: "origin" });
+      }
+      if (!metaTrackRateAllowed(ipEarly)) {
+        return res.status(429).json({ received: false, skippedReason: "rate" });
+      }
+      const b = req.body || {};
+      const ALLOWED = new Set([
+        "Lead",
+        "InitiateCheckout",
+        "CompleteRegistration",
+        "ViewContent",
+        "Contact",
+      ]);
+      const eventName = typeof b.eventName === "string" ? b.eventName : "";
+      const eventId = typeof b.eventId === "string" ? b.eventId.slice(0, 120) : "";
+      if (!ALLOWED.has(eventName) || !eventId) {
+        return res.status(200).json({ received: false, skippedReason: "invalid event" });
+      }
+      const clientIp = ipEarly !== "unknown" ? ipEarly : undefined;
+      const clientUserAgent =
+        typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined;
+
+      const { sendMetaEvent } = await import("./lib/meta-capi");
+      // Fire-and-forget: jangan tahan respon ke browser.
+      sendMetaEvent({
+        eventName,
+        eventId,
+        value: typeof b.value === "number" ? b.value : undefined,
+        currency: typeof b.currency === "string" ? b.currency.slice(0, 8) : "IDR",
+        contentName: typeof b.contentName === "string" ? b.contentName.slice(0, 200) : undefined,
+        contentCategory:
+          typeof b.contentCategory === "string" ? b.contentCategory.slice(0, 120) : undefined,
+        email: typeof b.email === "string" ? b.email.slice(0, 200) : undefined,
+        phone: typeof b.phone === "string" ? b.phone.slice(0, 40) : undefined,
+        fbp: typeof b.fbp === "string" ? b.fbp.slice(0, 200) : undefined,
+        fbc: typeof b.fbc === "string" ? b.fbc.slice(0, 300) : undefined,
+        eventSourceUrl:
+          typeof b.eventSourceUrl === "string" ? b.eventSourceUrl.slice(0, 500) : undefined,
+        clientIpAddress: clientIp,
+        clientUserAgent,
+      }).catch((e: any) => console.error("[Meta CAPI relay] error:", e?.message));
+
+      res.status(202).json({ received: true });
+    } catch (err: any) {
+      res.status(200).json({ received: false, error: err?.message });
+    }
+  });
+
   // ── Meta Conversions API — status & tes (Admin) ────────────────────────────
   app.get("/api/admin/meta-capi/status", isAuthenticated, requireAdmin, async (_req: any, res: any) => {
     const { isMetaCapiConfigured } = await import("./lib/meta-capi");
@@ -17228,19 +17317,36 @@ Return HANYA JSON berikut (tanpa penjelasan lain):
   // Set this URL in app.scalev.id → Settings → Developers → Webhook URL
   app.post("/api/webhooks/scalev", async (req: any, res: any) => {
     try {
-      // Verifikasi shared-secret HANYA bila SCALEV_WEBHOOK_SECRET diset (opsional,
-      // non-breaking). Mencegah pihak luar mengirim order palsu (mis. memicu clone
-      // Premium Privat). Kalau secret belum diset, perilaku lama dipertahankan.
-      const scalevSecret = process.env.SCALEV_WEBHOOK_SECRET;
-      if (scalevSecret) {
-        const provided = (req.headers["x-scalev-secret"] as string)
-          || (req.headers["x-webhook-secret"] as string)
-          || (req.query?.secret as string)
-          || "";
-        if (provided !== scalevSecret) {
-          console.warn("[Scalev Webhook] Invalid/missing secret — rejected");
-          return res.status(401).json({ error: "Invalid secret" });
-        }
+      // Verifikasi keaslian webhook (berlapis, aman-secara-default):
+      //   1. Tanda tangan HMAC-SHA256 (SCALEV_SIGNING_SECRET) atas body mentah.
+      //   2. Secret bersama (SCALEV_WEBHOOK_SECRET) via header / query `?secret=`.
+      //   3. Tanpa secret sama sekali → terima (perilaku lama, non-breaking).
+      // Mencegah pihak luar mengirim order palsu (mis. memicu clone Premium Privat
+      // atau Purchase palsu ke Meta). Detail: server/lib/meta-capi.ts.
+      const { verifyScalevWebhookAuth } = await import("./lib/meta-capi");
+      const auth = verifyScalevWebhookAuth(req.rawBody, req.headers, req.query);
+      if (!auth.authorized) {
+        // Log NAMA header (bukan nilai) supaya format signature asli Scalev bisa
+        // dikenali dari order pertama, tanpa membocorkan secret.
+        const sigHeaderNames = Object.keys(req.headers || {})
+          .filter((h) => /sign|secret|scalev|hmac|hub/i.test(h))
+          .join(", ") || "(tidak ada header signature/secret)";
+        console.warn(
+          `[Scalev Webhook] Ditolak — tidak terautentikasi. signature: present=${auth.sigPresent} valid=${auth.sigValid} hdr=${auth.sigHeader || "none"}. Header masuk yang relevan: ${sigHeaderNames}`,
+        );
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      if (auth.method === "observe") {
+        const relevantHeaders = Object.keys(req.headers || {})
+          .filter((h) => /sign|secret|scalev|hmac|hub/i.test(h))
+          .join(", ") || "(tidak ada header signature)";
+        console.warn(
+          `[Scalev Webhook] DITERIMA (mode observasi) — SCALEV_SIGNING_SECRET diset tapi signature belum cocok (present=${auth.sigPresent} hdr=${auth.sigHeader || "none"}). Header relevan: ${relevantHeaders}. Untuk gerbang WAJIB: set SCALEV_WEBHOOK_SECRET lalu tambahkan ?secret= di URL webhook; atau set SCALEV_SIGNATURE_STRICT=true setelah format signature dikonfirmasi.`,
+        );
+      } else if (process.env.SCALEV_SIGNING_SECRET) {
+        console.log(
+          `[Scalev Webhook] Auth OK via ${auth.method} (signature present=${auth.sigPresent} valid=${auth.sigValid} hdr=${auth.sigHeader || "none"})`,
+        );
       }
       const payload = req.body;
       console.log("[Scalev Webhook]", JSON.stringify(payload).slice(0, 500));
