@@ -245,6 +245,36 @@ test("POST /api/organization/handover cek assertCanManageCollaborators per-agen 
   assert.match(block, /for\s*\(/, "handover harus mengiterasi agentIds dan mengecek tiap agen.");
 });
 
+// ── 3b. Monitor Tim Marketing — otorisasi per-agen + TANPA bocor metadata ──────
+// GET /api/marketing-team/overview mengumpulkan beberapa agen tim marketing.
+// Wajib: (1) cek assertCanAccessAgentChat per agen, dan (2) saat auth GAGAL,
+// TIDAK membocorkan metadata agen (agentId/agentName/tagline/avatar) — cegah
+// enumerasi agen privat oleh user login yang bukan pemilik.
+test("GET /api/marketing-team/overview otorisasi per-agen & redaksi metadata saat auth gagal", () => {
+  const block = routeBlock('app.get("/api/marketing-team/overview"');
+  assert.match(
+    block,
+    /assertCanAccessAgentChat\s*\(\s*req\s*,/,
+    "overview WAJIB memanggil assertCanAccessAgentChat(req, agent) untuk tiap agen.",
+  );
+  // Cabang auth-gagal harus me-redaksi: agentId null (bukan agent.id).
+  const failIdx = block.indexOf("!auth.ok");
+  assert.ok(failIdx !== -1, "overview harus punya cabang penanganan !auth.ok.");
+  // Batasi HANYA pada cabang if(!auth.ok){...} — berhenti sebelum `const base`
+  // (yang memang sengaja mengekspos metadata untuk agen yang BOLEH diakses).
+  const baseIdx = block.indexOf("const base", failIdx);
+  const failBranch = block.slice(failIdx, baseIdx === -1 ? failIdx + 200 : baseIdx);
+  assert.match(
+    failBranch,
+    /agentId:\s*null/,
+    "Saat auth gagal, agentId WAJIB null (jangan bocorkan ID agen privat).",
+  );
+  assert.ok(
+    !/agentId:\s*agent\.id/.test(failBranch) && !/agentName:\s*agent\.name/.test(failBranch),
+    "Cabang auth-gagal TIDAK boleh mengekspos agent.id / agent.name (metadata leak).",
+  );
+});
+
 // ── 4. Sanity: aktivasi agen (Tahap 14) tetap dijaga sebelum mutasi singleton global ──
 test("POST /api/agents/:id/activate mengecek kepemilikan/admin sebelum setActiveAgent (Tahap 14)", () => {
   const block = routeBlock('app.post("/api/agents/:id/activate"');

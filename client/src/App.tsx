@@ -15,6 +15,7 @@ import BootstrapAdmin from "@/pages/bootstrap-admin";
 import AdminAudit from "@/pages/admin-audit";
 import LoginPage from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
+import MonitorMarketing from "@/pages/monitor-marketing";
 import Documentation from "@/pages/documentation";
 import Pricing from "@/pages/pricing";
 import SyaratKetentuan from "@/pages/syarat-ketentuan";
@@ -414,6 +415,7 @@ function Router() {
       <Route path="/register" component={() => { window.location.replace("/login?mode=register"); return null; }} />
       <Route path="/daftar" component={() => { window.location.replace("/login?mode=register"); return null; }} />
       <Route path="/dashboard" component={Dashboard} />
+      <Route path="/monitor-marketing" component={MonitorMarketing} />
       <Route path="/documentation" component={Documentation} />
       <Route path="/pricing" component={Pricing} />
       <Route path="/syarat-ketentuan" component={SyaratKetentuan} />

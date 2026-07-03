@@ -36,4 +36,5 @@
 - [code_execution sandbox quirks](code-execution-sandbox-quirks.md) — no process.env in sandbox; use executeSql callback; it returns command tag not RETURNING rows (SELECT back to get ids).
 - [Research Team news feed](research-team-feed.md) — free Google News RSS → per-agent KB (RAG); feed agents by slug; prune only "Feed Riset%"; sweep endpoint must authz EVERY agent it mutates.
 - [Autoscale promote failure = often transient](autoscale-single-port.md) — "Creating Autoscale service" fail with no runtime logs + all local health checks pass → RETRY publish first (fixed it; succeeded even with 4 ports in .replit). Multi-port did NOT block it.
+- [Multi-agent aggregation authz](multi-agent-aggregation-authz.md) — fan-out overview endpoints must redact per-agent metadata (id/name/tagline/avatar) when auth fails, not just docs; build the redacted branch BEFORE the metadata object.
 - [Plan gating: tier not badge](plan-badge-vs-tier.md) — gate by `plan.tier < PLAN_CONFIGS[min].tier`, never `meetsMinPlan(badge.toLowerCase())` (badge=PRO/GRATIS ≠ tier key → runtime throw). requirePlan middleware misses req.user.id — gate inline.
