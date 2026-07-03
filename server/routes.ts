@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { parseSubAgentsValue } from "./db-storage";
 import { db } from "./db";
-import { customDomains, trialRequests, subscriptionsTable, vouchers, series as seriesTable, bigIdeas as bigIdeasTable, toolboxes as toolboxesTable, agents as agentsTable, cores as coresTable, systemConfig, clientSubscriptions } from "@shared/schema";
+import { customDomains, partners, trialRequests, subscriptionsTable, vouchers, series as seriesTable, bigIdeas as bigIdeasTable, toolboxes as toolboxesTable, agents as agentsTable, cores as coresTable, systemConfig, clientSubscriptions } from "@shared/schema";
 import { users } from "@shared/models/auth";
 import { eq, and, desc, sql as sqlExpr, inArray, isNull, or } from "drizzle-orm";
 import {
@@ -603,6 +603,13 @@ export async function registerRoutes(
       // Skip known Replit/Gustafta hosts
       const knownHosts = ["localhost", "0.0.0.0", "127.0.0.1"];
       if (knownHosts.includes(host) || host.endsWith(".replit.dev") || host.endsWith(".repl.co") || host.endsWith(".replit.app")) return next();
+
+      // Lookup whitelabel partner (asosiasi/reseller) host first
+      const [partnerRow] = await db.select().from(partners)
+        .where(and(eq(partners.host, host), eq(partners.active, true)));
+      if (partnerRow?.defaultAgentId && req.path === "/") {
+        return res.redirect(302, `/chat/${partnerRow.defaultAgentId}`);
+      }
 
       // Lookup in custom domains
       const [row] = await db.select().from(customDomains)
@@ -3996,14 +4003,30 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
       const _chatAuthStream = await assertCanAccessAgentChat(req, agent);
       if (!_chatAuthStream.ok) return res.status(_chatAuthStream.status).json({ error: _chatAuthStream.error });
 
+      // ── Whitelabel partner resolution (HOST-scoped, bukan agentId saja) ──
+      // Mitra reseller di-resolve dari HOST permintaan agar kuota/model mitra
+      // TIDAK bisa dikuras lewat domain lain yang menebak agentId. Hanya berlaku
+      // bila host mitra memang memakai agen ini sebagai chatbot default-nya.
+      const _reqHost = String(req.headers.host || "").split(":")[0].toLowerCase().trim();
+      let _partnerForChat: typeof partners.$inferSelect | undefined;
+      if (_reqHost) {
+        try {
+          const [pr] = await db.select().from(partners)
+            .where(and(eq(partners.host, _reqHost), eq(partners.active, true)));
+          if (pr && pr.defaultAgentId === String(agent.id)) _partnerForChat = pr;
+        } catch {}
+      }
+
       // ── Platform-owner monthly quota check ──────────────────────────────
+      // Dilewati untuk agen mitra: akuntansi kuota memakai POOL mitra (durable),
+      // bukan kuota langganan pemilik agen (biasanya akun admin Gustafta).
       // Authenticated dashboard users (platform owners) are subject to their
       // Gustafta Apps subscription plan's maxMessagesPerMonth limit.
       let _trialSubscriptionId: string | undefined;
       {
         // ── Trial quota check — keyed to agent OWNER (not requester) ─────
         const _ownerIdForQuota = agent.userId;
-        if (_ownerIdForQuota) {
+        if (!_partnerForChat && _ownerIdForQuota) {
           const _ownerSub = await storage.getActiveSubscription(_ownerIdForQuota);
           if (_ownerSub?.plan === "free_trial" && _ownerSub?.status === "active") {
             const TRIAL_QUOTA = 75;
@@ -4023,7 +4046,7 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
         // ─────────────────────────────────────────────────────────────────
       }
 
-      if ((req as any).isAuthenticated?.()) {
+      if (!_partnerForChat && (req as any).isAuthenticated?.()) {
         const ownerId = (req as any).user?.claims?.sub;
         if (ownerId) {
           const { resolvePlan } = await import("@shared/feature-plans");
@@ -4054,6 +4077,10 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
         }
       }
       // ────────────────────────────────────────────────────────────────────
+
+      // (Kuota mitra pooled di-consume tepat sebelum stream dimulai — lihat
+      //  blok "partner pooled quota commit" di bawah, agar request yang ditolak
+      //  gerbang monetisasi/guest tidak ikut mengurangi kuota mitra.)
 
       // Server-side access control for monetized chatbots
       const clientAccessToken = req.headers["x-client-token"] as string || req.body.clientToken;
@@ -4305,6 +4332,34 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
         chatMessages.push({ role: "user", content: userContent });
       }
       
+      // ── Whitelabel partner pooled quota commit ──────────────────────────
+      // Konsumsi kuota mitra (durable, di-pool per MITRA) TEPAT sebelum stream
+      // dimulai — setelah semua gerbang akses/monetisasi/guest lolos — agar
+      // request yang ditolak tidak ikut memotong kuota. Increment atomik dengan
+      // reset bulan; refund bila melewati batas lalu tolak 429 sebelum SSE.
+      if (_partnerForChat && _partnerForChat.monthlyQuota > 0) {
+        const _quotaMonth = new Date().toISOString().slice(0, 7); // "2026-07"
+        const [_qRow] = await db.update(partners)
+          .set({
+            quotaMonth: _quotaMonth,
+            quotaUsed: sqlExpr`CASE WHEN ${partners.quotaMonth} = ${_quotaMonth} THEN ${partners.quotaUsed} + 1 ELSE 1 END`,
+            updatedAt: new Date(),
+          })
+          .where(eq(partners.id, _partnerForChat.id))
+          .returning();
+        const _usedAfter = _qRow?.quotaUsed ?? 1;
+        if (_usedAfter > _partnerForChat.monthlyQuota) {
+          await db.update(partners)
+            .set({ quotaUsed: sqlExpr`GREATEST(${partners.quotaUsed} - 1, 0)` })
+            .where(eq(partners.id, _partnerForChat.id));
+          return res.status(429).json({
+            error: `Kuota pesan bulanan ${_partnerForChat.name} (${_partnerForChat.monthlyQuota.toLocaleString("id-ID")} pesan) sudah habis. Hubungi pengurus asosiasi untuk menambah kuota.`,
+            reason: "partner_quota_exceeded",
+            limit: _partnerForChat.monthlyQuota,
+          });
+        }
+      }
+
       // Set up SSE headers
       res.setHeader("Content-Type", "text/event-stream");
       res.setHeader("Cache-Control", "no-cache");
@@ -4622,6 +4677,10 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
       // ─────────────────────────────────────────────────────────────────────────
 
       let agentModel = agent.aiModel || defaultModel();
+      // Whitelabel partner: paksa model hemat sebagai default (kontrol token asosiasi).
+      if (_partnerForChat?.cheapModel) {
+        agentModel = _partnerForChat.cheapModel;
+      }
       if (hasVisionContent && !agentModel.startsWith("gpt-4o")) {
         agentModel = "gpt-4o";
       }
@@ -16273,6 +16332,157 @@ Buat dokumen KB berkualitas tinggi untuk topik ini.`;
       res.json({ verified: false, status: "pending", message: "CNAME belum mengarah ke server Gustafta. Coba lagi setelah TTL DNS habis (biasanya 5–30 menit)." });
     } catch (error) {
       res.status(500).json({ error: "Gagal memverifikasi domain" });
+    }
+  });
+
+  // ==================== Whitelabel Partner (Asosiasi/Reseller) ====================
+  // Helper: admin gate (paritas dengan pola getDbRole + ADMIN_USER_IDS di rute lain)
+  async function isRequestAdmin(req: any): Promise<boolean> {
+    const userId = (req.user as any)?.claims?.sub || "";
+    const role = await getDbRole(req);
+    const adminIds = (process.env.ADMIN_USER_IDS || "").split(",").map((s: string) => s.trim()).filter(Boolean);
+    return role === "admin" || role === "superadmin" || adminIds.includes(userId);
+  }
+
+  // PUBLIC: branding whitelabel per host. Tanpa auth — hanya field brand publik.
+  app.get("/api/partner/by-host", async (req: any, res) => {
+    try {
+      const host = ((req.query.host as string) || req.headers["host"] || "").split(":")[0].toLowerCase().trim();
+      if (!host) return res.json(null);
+      const [row] = await db.select().from(partners)
+        .where(and(eq(partners.host, host), eq(partners.active, true)));
+      if (!row) return res.json(null);
+      res.json({
+        slug: row.slug,
+        name: row.name,
+        brandName: row.brandName,
+        logoUrl: row.logoUrl,
+        primaryColor: row.primaryColor,
+        tagline: row.tagline,
+        hidePlatformBranding: row.hidePlatformBranding,
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Gagal memuat branding mitra" });
+    }
+  });
+
+  // ADMIN: list partners
+  app.get("/api/admin/partners", isAuthenticated, async (req: any, res) => {
+    try {
+      if (!(await isRequestAdmin(req))) return res.status(403).json({ error: "Akses ditolak" });
+      const rows = await db.select().from(partners).orderBy(desc(partners.createdAt));
+      res.json(rows);
+    } catch (error) {
+      res.status(500).json({ error: "Gagal memuat daftar mitra" });
+    }
+  });
+
+  // ADMIN: create partner
+  app.post("/api/admin/partners", isAuthenticated, async (req: any, res) => {
+    try {
+      if (!(await isRequestAdmin(req))) return res.status(403).json({ error: "Akses ditolak" });
+      const parsed = insertPartnerSchema.safeParse({
+        ...req.body,
+        host: String(req.body.host || "").split(":")[0].toLowerCase().trim(),
+        slug: String(req.body.slug || "").toLowerCase().trim(),
+      });
+      if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+      const [inserted] = await db.insert(partners).values(parsed.data as any).returning();
+      res.status(201).json(inserted);
+    } catch (error: any) {
+      if (String(error?.message || "").includes("duplicate") || error?.code === "23505") {
+        return res.status(409).json({ error: "Slug atau host mitra sudah terdaftar" });
+      }
+      res.status(500).json({ error: "Gagal membuat mitra" });
+    }
+  });
+
+  // ADMIN: update partner
+  app.patch("/api/admin/partners/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      if (!(await isRequestAdmin(req))) return res.status(403).json({ error: "Akses ditolak" });
+      const patch: any = { ...req.body, updatedAt: new Date() };
+      delete patch.id; delete patch.createdAt; delete patch.quotaUsed; delete patch.quotaMonth;
+      if (patch.host) patch.host = String(patch.host).split(":")[0].toLowerCase().trim();
+      if (patch.slug) patch.slug = String(patch.slug).toLowerCase().trim();
+      const [updated] = await db.update(partners).set(patch)
+        .where(eq(partners.id, Number(req.params.id))).returning();
+      if (!updated) return res.status(404).json({ error: "Mitra tidak ditemukan" });
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Gagal memperbarui mitra" });
+    }
+  });
+
+  // ADMIN: delete partner
+  app.delete("/api/admin/partners/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      if (!(await isRequestAdmin(req))) return res.status(403).json({ error: "Akses ditolak" });
+      const deleted = await db.delete(partners).where(eq(partners.id, Number(req.params.id))).returning();
+      if (deleted.length === 0) return res.status(404).json({ error: "Mitra tidak ditemukan" });
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Gagal menghapus mitra" });
+    }
+  });
+
+  // ADMIN: list seats (fasilitator) untuk agen default mitra = kolaborator aktif + undangan pending
+  app.get("/api/admin/partners/:id/seats", isAuthenticated, async (req: any, res) => {
+    try {
+      if (!(await isRequestAdmin(req))) return res.status(403).json({ error: "Akses ditolak" });
+      const [partner] = await db.select().from(partners).where(eq(partners.id, Number(req.params.id)));
+      if (!partner) return res.status(404).json({ error: "Mitra tidak ditemukan" });
+      if (!partner.defaultAgentId) return res.json({ active: [], pending: [], seatsPerUnit: partner.seatsPerUnit });
+      const active = await storage.listCollaboratorsForAgent(partner.defaultAgentId);
+      const pending = await storage.listPendingInvitesForAgent(partner.defaultAgentId);
+      res.json({ active, pending, seatsPerUnit: partner.seatsPerUnit });
+    } catch (error) {
+      res.status(500).json({ error: "Gagal memuat daftar kursi fasilitator" });
+    }
+  });
+
+  // ADMIN: add seat = undang fasilitator (email) ke agen default mitra (reuse infra kolaborator/invite)
+  app.post("/api/admin/partners/:id/seats", isAuthenticated, async (req: any, res) => {
+    try {
+      if (!(await isRequestAdmin(req))) return res.status(403).json({ error: "Akses ditolak" });
+      const email = String(req.body.email || "").toLowerCase().trim();
+      if (!email || !email.includes("@")) return res.status(400).json({ error: "Email tidak valid" });
+      const [partner] = await db.select().from(partners).where(eq(partners.id, Number(req.params.id)));
+      if (!partner) return res.status(404).json({ error: "Mitra tidak ditemukan" });
+      if (!partner.defaultAgentId) return res.status(400).json({ error: "Mitra belum punya chatbot default" });
+      const invitedBy = (req.user as any)?.claims?.sub || "admin";
+      const role = (req.body.role === "editor" ? "editor" : "viewer") as import("@shared/schema").CollaboratorRole;
+      // Jika user sudah terdaftar → langsung jadikan kolaborator; jika belum → simpan undangan pending.
+      const existingUser = (await db.select().from(users).where(eq(users.email, email)).limit(1))[0];
+      if (existingUser) {
+        await storage.addOrUpdateCollaborator({ agentId: partner.defaultAgentId, userId: existingUser.id, role, invitedBy });
+        return res.status(201).json({ status: "granted" });
+      }
+      await storage.addOrUpdatePendingInvite({ agentId: partner.defaultAgentId, email, role, invitedBy });
+      res.status(201).json({ status: "pending" });
+    } catch (error) {
+      res.status(500).json({ error: "Gagal menambah kursi fasilitator" });
+    }
+  });
+
+  // ADMIN: remove seat (kolaborator by userId, atau undangan pending by email)
+  app.delete("/api/admin/partners/:id/seats", isAuthenticated, async (req: any, res) => {
+    try {
+      if (!(await isRequestAdmin(req))) return res.status(403).json({ error: "Akses ditolak" });
+      const [partner] = await db.select().from(partners).where(eq(partners.id, Number(req.params.id)));
+      if (!partner || !partner.defaultAgentId) return res.status(404).json({ error: "Mitra tidak ditemukan" });
+      const userId = req.query.userId as string | undefined;
+      const email = req.query.email ? String(req.query.email).toLowerCase().trim() : undefined;
+      if (userId) {
+        await storage.removeCollaborator(partner.defaultAgentId, userId);
+      } else if (email) {
+        await storage.removePendingInvite(partner.defaultAgentId, email);
+      } else {
+        return res.status(400).json({ error: "userId atau email diperlukan" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Gagal menghapus kursi fasilitator" });
     }
   });
 

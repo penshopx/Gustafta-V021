@@ -1908,6 +1908,34 @@ export const insertCustomDomainSchema = createInsertSchema(customDomains).omit({
 export type InsertCustomDomain = z.infer<typeof insertCustomDomainSchema>;
 export type CustomDomain = typeof customDomains.$inferSelect;
 
+// ==================== Whitelabel Partner (Asosiasi/Reseller) Table ====================
+// Config layer per mitra reseller (mis. ASPEKINDO) di atas harga Gustafta yang TIDAK berubah.
+// Satu host = satu mitra. Kuota bulanan di-pool per mitra (durable di DB, bukan in-memory).
+export const partners = pgTable("partners", {
+  id: serial("id").primaryKey(),
+  slug: varchar("slug", { length: 100 }).notNull().unique(),        // "aspekindo"
+  name: text("name").notNull(),                                     // "ASPEKINDO"
+  host: text("host").notNull().unique(),                            // "chat.aspekindo-pub.com"
+  brandName: text("brand_name").notNull(),                          // teks brand yang tampil
+  logoUrl: text("logo_url"),                                        // logo whitelabel
+  primaryColor: varchar("primary_color", { length: 32 }),           // aksen hex, mis. "#0f766e"
+  tagline: text("tagline"),
+  defaultAgentId: text("default_agent_id"),                         // chatbot konstruksi default
+  cheapModel: varchar("cheap_model", { length: 64 }).default("gpt-4o-mini").notNull(), // model hemat default
+  seatsPerUnit: integer("seats_per_unit").default(3).notNull(),     // ASPEKINDO=3/unit, lainnya=2
+  monthlyQuota: integer("monthly_quota").default(0).notNull(),      // pool pesan/bulan; 0 = tak terbatas
+  quotaMonth: varchar("quota_month", { length: 7 }),               // "2026-07"
+  quotaUsed: integer("quota_used").default(0).notNull(),
+  hidePlatformBranding: boolean("hide_platform_branding").default(true).notNull(),
+  active: boolean("active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertPartnerSchema = createInsertSchema(partners).omit({ id: true, createdAt: true, updatedAt: true, quotaMonth: true, quotaUsed: true });
+export type InsertPartner = z.infer<typeof insertPartnerSchema>;
+export type Partner = typeof partners.$inferSelect;
+
 // ==================== Trial Requests Table ====================
 export const trialRequests = pgTable("trial_requests", {
   id: serial("id").primaryKey(),
