@@ -573,10 +573,11 @@ export default function Landing() {
 
           <p className="text-sm md:text-base text-blue-200 mb-8 leading-relaxed max-w-2xl mx-auto">
             Ubah pengetahuan, pengalaman, kompetensi, SOP, regulasi, maupun ide Anda menjadi{" "}
-            <strong className="text-white">Teman Berpikir Digital</strong> yang mampu membantu pekerjaan, bisnis, organisasi, dan pelanggan — tanpa harus bisa coding.
+            <strong className="text-white">Teman Berpikir Digital</strong> — bahkan{" "}
+            <strong className="text-white">satu tim AI yang saling bekerja sama</strong> untuk pekerjaan, bisnis, organisasi, dan pelanggan Anda. Tanpa harus bisa coding.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-3 justify-center mb-8">
+          <div className="flex flex-col sm:flex-row gap-3 justify-center mb-4">
             <Link href="/persona">
               <Button size="lg" className="w-full sm:w-auto bg-white text-blue-700 hover:bg-blue-50 font-bold gap-2 px-6 h-12" data-testid="button-hero-starterkit">
                 <BookOpen className="w-4 h-4" />
@@ -596,6 +597,16 @@ export default function Landing() {
               <Bot className="w-4 h-4" />
               Tanya Gustafta Dulu
             </Button>
+          </div>
+
+          <div className="mb-8">
+            <Link href="/organization-builder">
+              <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-yellow-300 hover:text-yellow-200 cursor-pointer" data-testid="link-hero-rakit-tim">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-yellow-300/20 text-[10px] font-bold uppercase tracking-wider">Baru</span>
+                Rakit satu tim AI — bukan cuma satu chatbot
+                <ArrowRight className="w-3.5 h-3.5" />
+              </span>
+            </Link>
           </div>
 
           <div className="flex flex-wrap gap-4 text-xs text-blue-200 justify-center mb-10">
@@ -1016,22 +1027,15 @@ export default function Landing() {
           <div className="text-center mb-10">
             <p className="text-xs font-bold text-violet-600 dark:text-violet-400 uppercase tracking-widest mb-2">✨ Baru di Gustafta</p>
             <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-3">
-              Kini AI Bukan Lagi Kerja Sendirian
+              Kini Anda Merakit Tim AI, Bukan Sekadar Satu Chatbot
             </h2>
             <p className="text-sm text-gray-500 dark:text-gray-400 max-w-xl mx-auto">
-              Rakit tim AI, kerja bareng rekan, dan bangun kepercayaan lewat chatbot bersertifikat — semuanya dalam satu platform.
+              Susun satu tim agen AI yang saling bekerja sama, rancang lewat dialog, kerja bareng rekan, dan bangun kepercayaan lewat chatbot bersertifikat — semuanya dalam satu platform.
             </p>
           </div>
 
           <div className="grid sm:grid-cols-2 gap-4">
             {[
-              {
-                emoji: "🤝",
-                accent: "border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/20",
-                title: "Kolaborasi Tim",
-                desc: "Bagikan chatbot ke rekan lewat email dan atur perannya. Undangan otomatis aktif saat mereka mendaftar, lengkap dengan notifikasi di dalam aplikasi.",
-                cta: "Kelola di Dashboard", href: builderUrl,
-              },
               {
                 emoji: "🧩",
                 accent: "border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/20",
@@ -1045,6 +1049,13 @@ export default function Landing() {
                 title: "Blueprint Builder",
                 desc: "Rancang chatbot Anda lewat dialog terpandu. Jawab beberapa pertanyaan, dan konfigurasi siap pakai langsung terbentuk — tanpa teknis.",
                 cta: "Mulai Blueprint", href: "/blueprint-builder",
+              },
+              {
+                emoji: "🤝",
+                accent: "border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/20",
+                title: "Kolaborasi Tim",
+                desc: "Bagikan chatbot ke rekan lewat email dan atur perannya. Undangan otomatis aktif saat mereka mendaftar, lengkap dengan notifikasi di dalam aplikasi.",
+                cta: "Kelola di Dashboard", href: builderUrl,
               },
               {
                 emoji: "✅",
