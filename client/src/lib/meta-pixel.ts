@@ -89,6 +89,55 @@ function sanitizePixelId(raw?: string | null): string | null {
   return digits || null;
 }
 
+/** ID unik untuk dedup event browser ↔ server (Meta menggabungkan yang ber-ID sama). */
+function genEventId(): string {
+  try {
+    if (typeof window !== "undefined" && window.crypto?.randomUUID) {
+      return window.crypto.randomUUID();
+    }
+  } catch {
+    /* ignore */
+  }
+  return `evt_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/**
+ * Kirim event yang sama ke Conversions API server-side (fire-and-forget) memakai
+ * `eventId` yang identik dengan pixel browser, plus fbp/fbc untuk matching. Tahan
+ * terhadap ad-blocker/iOS yang memblokir pixel browser.
+ */
+function relayServerEvent(
+  eventName: string,
+  eventId: string,
+  data?: { content_name?: string; content_category?: string; value?: number; currency?: string },
+): void {
+  if (typeof window === "undefined") return;
+  try {
+    const body = JSON.stringify({
+      eventName,
+      eventId,
+      value: typeof data?.value === "number" ? data.value : undefined,
+      currency: data?.currency || "IDR",
+      contentName: data?.content_name,
+      contentCategory: data?.content_category,
+      fbp: getFbp(),
+      fbc: getFbc(),
+      eventSourceUrl: window.location.href,
+    });
+    void fetch("/api/track/meta-event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+      keepalive: true,
+      credentials: "omit",
+    }).catch(() => {
+      /* tracking beacon — abaikan error */
+    });
+  } catch {
+    /* ignore */
+  }
+}
+
 async function resolvePixelId(): Promise<string | null> {
   const envId = sanitizePixelId(ENV_PIXEL_ID);
   if (envId) return envId;
@@ -151,18 +200,27 @@ export function trackPageView(): void {
 }
 
 export function trackLead(data?: { content_name?: string; value?: number; currency?: string }): void {
-  if (typeof window === "undefined" || typeof window.fbq !== "function") return;
-  window.fbq("track", "Lead", data);
+  const eventId = genEventId();
+  if (typeof window !== "undefined" && typeof window.fbq === "function") {
+    window.fbq("track", "Lead", data, { eventID: eventId });
+  }
+  relayServerEvent("Lead", eventId, data);
 }
 
 export function trackCompleteRegistration(data?: { content_name?: string; value?: number; currency?: string }): void {
-  if (typeof window === "undefined" || typeof window.fbq !== "function") return;
-  window.fbq("track", "CompleteRegistration", data);
+  const eventId = genEventId();
+  if (typeof window !== "undefined" && typeof window.fbq === "function") {
+    window.fbq("track", "CompleteRegistration", data, { eventID: eventId });
+  }
+  relayServerEvent("CompleteRegistration", eventId, data);
 }
 
 export function trackInitiateCheckout(data?: { content_name?: string; value?: number; currency?: string; num_items?: number }): void {
-  if (typeof window === "undefined" || typeof window.fbq !== "function") return;
-  window.fbq("track", "InitiateCheckout", data);
+  const eventId = genEventId();
+  if (typeof window !== "undefined" && typeof window.fbq === "function") {
+    window.fbq("track", "InitiateCheckout", data, { eventID: eventId });
+  }
+  relayServerEvent("InitiateCheckout", eventId, data);
 }
 
 /**
