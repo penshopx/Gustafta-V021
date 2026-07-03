@@ -13,6 +13,7 @@ import { MessageContent as SharedMessageContent } from "@/lib/format-message";
 import { parseBrainUpdates, BrainChip } from "@/lib/brain-utils";
 import { parseActionSuggestions, ActionChips } from "@/lib/action-utils";
 import { getChatStyle } from "@/lib/chat-styles";
+import { usePartnerBranding } from "@/hooks/use-partner-branding";
 
 interface UploadedFile {
   fileName: string;
@@ -345,6 +346,7 @@ function InstallBanner({ color, agentName }: { color: string; agentName: string 
 
 export default function AgentChat() {
   const params = useParams<{ agentId: string }>();
+  const { partner: partnerBranding } = usePartnerBranding();
   const [config, setConfig] = useState<AgentConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -3347,10 +3349,12 @@ export default function AgentChat() {
                 Percakapan tersimpan otomatis
               </span>
             )}
-            {hasMessages && <span className="text-muted-foreground/30 text-[10px]">·</span>}
-            <p className="text-[10px] text-muted-foreground">
-              Powered by <a href="/" className="font-medium hover:underline">Gustafta</a>
-            </p>
+            {hasMessages && !partnerBranding?.hidePlatformBranding && <span className="text-muted-foreground/30 text-[10px]">·</span>}
+            {!partnerBranding?.hidePlatformBranding && (
+              <p className="text-[10px] text-muted-foreground">
+                Powered by <a href="/" className="font-medium hover:underline">Gustafta</a>
+              </p>
+            )}
           </div>
         </div>
       </div>

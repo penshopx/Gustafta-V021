@@ -38,6 +38,7 @@ import PacksPage from "@/pages/packs";
 import WorkshopPage from "@/pages/workshop";
 import TenderWizard from "@/pages/tender-wizard";
 import DomainsPage from "@/pages/domains";
+import AdminPartnersPage from "@/pages/admin-partners";
 import AdminPage from "@/pages/admin";
 import AccountPage from "@/pages/account";
 import MiniAppPublic from "@/pages/mini-app-public";
@@ -440,6 +441,7 @@ function Router() {
       <Route path="/packs" component={PacksPage} />
       <Route path="/packs/:packId" component={TenderWizard} />
       <Route path="/domains" component={DomainsPage} />
+      <Route path="/admin/partners" component={AdminPartnersPage} />
       <Route path="/admin" component={AdminPage} />
       <Route path="/admin/kb-hub" component={KbHub} />
       <Route path="/account" component={AccountPage} />

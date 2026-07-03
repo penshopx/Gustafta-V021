@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@/hooks/use-auth";
 import { useFeatureAccess } from "@/hooks/use-feature-access";
+import { usePartnerBranding } from "@/hooks/use-partner-branding";
 import { Bot, BookOpen, BarChart3, LogIn, LogOut, Menu, CreditCard, LayoutDashboard, ShoppingBag, Smartphone, Package, Shield, Crown, User, Store, Rocket, TrendingUp, MessageCircle, GraduationCap, Sparkles, Brain, Zap, FileDown } from "lucide-react";
 
 const WA_NUMBERS = [
@@ -190,6 +191,7 @@ export function SharedHeader({ transparent }: SharedHeaderProps) {
   const { user, isLoading, isAuthenticated } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [location] = useLocation();
+  const { partner } = usePartnerBranding();
 
   const { data: adminData } = useQuery<{ isAdmin: boolean; isSuperAdmin: boolean; role: string }>({
     queryKey: ["/api/admin/me"],
@@ -226,8 +228,25 @@ export function SharedHeader({ transparent }: SharedHeaderProps) {
         <div className="container mx-auto px-4 h-28 flex items-center justify-between gap-2">
           <Link href="/">
             <div className="flex items-center gap-3 cursor-pointer shrink-0">
-              <img src="/logo-gustafta.png" alt="Gustafta" className="h-[67px] w-[67px] object-contain" />
-              <span className="text-[40px] font-black tracking-tight leading-none bg-gradient-to-r from-cyan-400 via-blue-500 to-blue-900 bg-clip-text text-transparent">GUSTAFTA</span>
+              {partner ? (
+                <>
+                  {partner.logoUrl && (
+                    <img src={partner.logoUrl} alt={partner.brandName} className="h-[67px] w-[67px] object-contain" />
+                  )}
+                  <span
+                    className="text-[40px] font-black tracking-tight leading-none"
+                    style={{ color: partner.primaryColor || undefined }}
+                    data-testid="text-partner-brand"
+                  >
+                    {partner.brandName}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <img src="/logo-gustafta.png" alt="Gustafta" className="h-[67px] w-[67px] object-contain" />
+                  <span className="text-[40px] font-black tracking-tight leading-none bg-gradient-to-r from-cyan-400 via-blue-500 to-blue-900 bg-clip-text text-transparent">GUSTAFTA</span>
+                </>
+              )}
             </div>
           </Link>
 
@@ -293,8 +312,21 @@ export function SharedHeader({ transparent }: SharedHeaderProps) {
               </SheetTrigger>
               <SheetContent side="right" className="w-72">
                 <div className="flex items-center gap-2 mb-6">
-                  <Bot className="h-6 w-6 text-primary" />
-                  <span className="font-bold">Gustafta</span>
+                  {partner ? (
+                    <>
+                      {partner.logoUrl ? (
+                        <img src={partner.logoUrl} alt={partner.brandName} className="h-6 w-6 object-contain" />
+                      ) : (
+                        <Bot className="h-6 w-6" style={{ color: partner.primaryColor || undefined }} />
+                      )}
+                      <span className="font-bold">{partner.brandName}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Bot className="h-6 w-6 text-primary" />
+                      <span className="font-bold">Gustafta</span>
+                    </>
+                  )}
                 </div>
                 <div className="flex flex-col gap-2">
                   {navItems.map((item) => (

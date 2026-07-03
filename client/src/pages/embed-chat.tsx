@@ -8,6 +8,7 @@ import { useParams, useSearch } from "wouter";
 import { cn } from "@/lib/utils";
 import { MessageContent } from "@/lib/format-message";
 import { parseBrainUpdates, BrainChip } from "@/lib/brain-utils";
+import { usePartnerBranding } from "@/hooks/use-partner-branding";
 
 interface Message {
   id: string;
@@ -20,12 +21,13 @@ export default function EmbedChat() {
   const params = useParams<{ agentId: string }>();
   const search = useSearch();
   const searchParams = new URLSearchParams(search);
+  const { partner: partnerBranding } = usePartnerBranding();
   
   const color = searchParams.get("color") || "#6366f1";
   const name = searchParams.get("name") || "AI Assistant";
   const avatar = searchParams.get("avatar") || "";
   const welcome = searchParams.get("welcome") || "Halo! Ada yang bisa saya bantu?";
-  const branding = searchParams.get("branding") !== "false";
+  const branding = searchParams.get("branding") !== "false" && !partnerBranding?.hidePlatformBranding;
   
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");

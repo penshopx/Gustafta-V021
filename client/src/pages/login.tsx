@@ -9,12 +9,14 @@ import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
 import { Eye, EyeOff, Mail, Lock, User, ArrowLeft, CheckCircle2, LogOut, AlertTriangle, KeyRound } from "lucide-react";
 import { trackCompleteRegistration, trackLead } from "@/lib/meta-pixel";
+import { usePartnerBranding } from "@/hooks/use-partner-branding";
 
 type Mode = "choose" | "login" | "register" | "verify" | "forgot" | "reset";
 
 export default function LoginPage() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const { partner } = usePartnerBranding();
   const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : new URLSearchParams();
   const returnUrl = searchParams.get("return") || searchParams.get("redirect") || "/dashboard";
   const initialMode: Mode = searchParams.get("mode") === "register" ? "register" : "login";
@@ -215,9 +217,9 @@ export default function LoginPage() {
       {/* Logo */}
       <a href="/" className="flex items-center gap-2 mb-8">
         <div className="h-9 w-9 rounded-xl bg-white flex items-center justify-center overflow-hidden shadow-sm border border-border">
-          <img src="/logo-gustafta.png" alt="Gustafta" className="h-8 w-8 object-contain" />
+          <img src={partner?.logoUrl || "/logo-gustafta.png"} alt={partner?.brandName || "Gustafta"} className="h-8 w-8 object-contain" />
         </div>
-        <span className="text-xl font-bold">Gustafta</span>
+        <span className="text-xl font-bold" style={{ color: partner?.primaryColor || undefined }}>{partner?.brandName || "Gustafta"}</span>
       </a>
 
       <div className="w-full max-w-sm">
@@ -245,7 +247,7 @@ export default function LoginPage() {
           {mode === "choose" && (
             <>
               <div className="text-center space-y-1">
-                <h1 className="text-xl font-bold">Masuk ke Gustafta</h1>
+                <h1 className="text-xl font-bold">Masuk ke {partner?.brandName || "Gustafta"}</h1>
                 <p className="text-sm text-muted-foreground">Gunakan email & password Anda</p>
               </div>
 
