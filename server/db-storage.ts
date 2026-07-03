@@ -13,6 +13,7 @@ import {
   agentMessages,
   analyticsTable,
   subscriptionsTable,
+  ownerMonthlyUsageTable,
   userProfiles,
   projectBrainTemplates,
   projectBrainInstances,
@@ -2431,6 +2432,34 @@ export class DatabaseStorage implements IStorage {
       .where(eq(subscriptionsTable.id, parseInt(subscriptionId)))
       .returning();
     return result[0]?.trialMessagesUsed || 0;
+  }
+
+  async getOwnerMonthlyUsage(ownerUserId: string, month: string): Promise<number> {
+    const result = await db.select({ count: ownerMonthlyUsageTable.count })
+      .from(ownerMonthlyUsageTable)
+      .where(and(
+        eq(ownerMonthlyUsageTable.ownerUserId, ownerUserId),
+        eq(ownerMonthlyUsageTable.month, month),
+      ))
+      .limit(1);
+    return result[0]?.count ?? 0;
+  }
+
+  async incrementOwnerMonthlyUsage(ownerUserId: string, month: string): Promise<number> {
+    // Atomic durable increment: insert the (owner, month) row or bump the
+    // existing count. Safe across concurrent requests/instances thanks to the
+    // unique index on (owner_user_id, month).
+    const result = await db.insert(ownerMonthlyUsageTable)
+      .values({ ownerUserId, month, count: 1 })
+      .onConflictDoUpdate({
+        target: [ownerMonthlyUsageTable.ownerUserId, ownerMonthlyUsageTable.month],
+        set: {
+          count: sql`${ownerMonthlyUsageTable.count} + 1`,
+          updatedAt: new Date(),
+        },
+      })
+      .returning({ count: ownerMonthlyUsageTable.count });
+    return result[0]?.count ?? 0;
   }
 
   async getUserDialogCompleted(userId: string): Promise<boolean> {
