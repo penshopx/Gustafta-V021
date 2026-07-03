@@ -1926,6 +1926,7 @@ export const partners = pgTable("partners", {
   monthlyQuota: integer("monthly_quota").default(0).notNull(),      // pool pesan/bulan; 0 = tak terbatas
   quotaMonth: varchar("quota_month", { length: 7 }),               // "2026-07"
   quotaUsed: integer("quota_used").default(0).notNull(),
+  adminEmails: text("admin_emails").array(),                        // email pengurus asosiasi (partner-admin) yang boleh kelola kuota/kursi mandiri
   hidePlatformBranding: boolean("hide_platform_branding").default(true).notNull(),
   active: boolean("active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -1935,6 +1936,25 @@ export const partners = pgTable("partners", {
 export const insertPartnerSchema = createInsertSchema(partners).omit({ id: true, createdAt: true, updatedAt: true, quotaMonth: true, quotaUsed: true });
 export type InsertPartner = z.infer<typeof insertPartnerSchema>;
 export type Partner = typeof partners.$inferSelect;
+
+// ==================== Partner Top-Up Requests Table ====================
+// Permintaan self-service dari partner-admin (pengurus asosiasi) untuk menambah kursi/kuota.
+// Awalnya hanya menotifikasi admin Gustafta; admin yang mengeksekusi penambahan.
+export const partnerTopupRequests = pgTable("partner_topup_requests", {
+  id: serial("id").primaryKey(),
+  partnerId: integer("partner_id").notNull(),
+  requestedByEmail: text("requested_by_email").notNull(),          // email partner-admin yang meminta
+  kind: varchar("kind", { length: 16 }).notNull(),                 // "seats" | "quota"
+  amount: integer("amount").notNull(),                             // jumlah tambahan yang diminta
+  note: text("note"),                                             // catatan opsional dari peminta
+  status: varchar("status", { length: 16 }).default("pending").notNull(), // pending | resolved | rejected
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  resolvedAt: timestamp("resolved_at"),
+});
+
+export const insertPartnerTopupRequestSchema = createInsertSchema(partnerTopupRequests).omit({ id: true, createdAt: true, resolvedAt: true, status: true });
+export type InsertPartnerTopupRequest = z.infer<typeof insertPartnerTopupRequestSchema>;
+export type PartnerTopupRequest = typeof partnerTopupRequests.$inferSelect;
 
 // ==================== Trial Requests Table ====================
 export const trialRequests = pgTable("trial_requests", {

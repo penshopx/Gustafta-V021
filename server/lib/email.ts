@@ -332,6 +332,87 @@ Anda menerima email ini karena mengaktifkan Tender Alert di akun Gustafta.
   });
 }
 
+interface PartnerTopupRequestOptions {
+  to: string;
+  partnerName: string;
+  requestedByEmail: string;
+  kind: "seats" | "quota";
+  amount: number;
+  currentValue?: number | null;
+  note?: string | null;
+  appUrl?: string;
+}
+
+// Notifies the Gustafta admin that a partner-admin (association manager) requested
+// more seats or pooled quota. Never throws — returns the SendEmailResult.
+export async function sendPartnerTopupRequestNotification(opts: PartnerTopupRequestOptions): Promise<SendEmailResult> {
+  const kindLabel = opts.kind === "seats" ? "Kursi Fasilitator" : "Kuota Pesan Bulanan";
+  const adminUrl =
+    opts.appUrl ||
+    (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}/admin/partners` : "");
+  const amountLabel = opts.amount.toLocaleString("id-ID");
+  const currentLabel = opts.currentValue != null ? opts.currentValue.toLocaleString("id-ID") : "—";
+
+  const ctaButton = adminUrl
+    ? `<div style="text-align:center;margin:0 0 24px"><a href="${adminUrl}" style="display:inline-block;background:#0f766e;color:#fff;text-decoration:none;font-size:15px;font-weight:600;padding:12px 28px;border-radius:8px">Buka Kelola Mitra</a></div>`
+    : "";
+
+  const html = `<!DOCTYPE html>
+<html lang="id">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f3f4f6">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:32px 0">
+    <tr><td align="center">
+      <table width="480" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;padding:40px;font-family:Arial,sans-serif;color:#111">
+        <tr><td>
+          <p style="margin:0 0 4px;font-size:22px;font-weight:700;color:#0f766e">Gustafta</p>
+          <hr style="border:none;border-top:1px solid #e5e7eb;margin:16px 0">
+          <p style="font-size:16px;margin:0 0 8px">Permintaan Top-Up dari Mitra</p>
+          <p style="font-size:15px;color:#374151;margin:0 0 16px"><b>${opts.partnerName}</b> meminta penambahan <b>${kindLabel}</b>.</p>
+          <div style="padding:20px;background:#f9fafb;border-radius:8px;border:1px solid #e5e7eb;margin:0 0 24px">
+            <p style="font-size:13px;color:#6b7280;margin:0 0 4px">Jenis</p>
+            <p style="font-size:16px;font-weight:700;color:#111;margin:0 0 16px">${kindLabel}</p>
+            <p style="font-size:13px;color:#6b7280;margin:0 0 4px">Jumlah diminta</p>
+            <p style="font-size:16px;font-weight:700;color:#111;margin:0 0 16px">+${amountLabel}</p>
+            <p style="font-size:13px;color:#6b7280;margin:0 0 4px">Nilai saat ini</p>
+            <p style="font-size:15px;font-weight:600;color:#111;margin:0 0 16px">${currentLabel}</p>
+            <p style="font-size:13px;color:#6b7280;margin:0 0 4px">Diminta oleh</p>
+            <p style="font-size:15px;font-weight:600;color:#111;margin:0${opts.note ? " 0 16px" : ""}">${opts.requestedByEmail}</p>
+            ${opts.note ? `<p style="font-size:13px;color:#6b7280;margin:0 0 4px">Catatan</p><p style="font-size:14px;color:#111;margin:0">${opts.note}</p>` : ""}
+          </div>
+          ${ctaButton}
+          <hr style="border:none;border-top:1px solid #e5e7eb;margin:0 0 16px">
+          <p style="font-size:12px;color:#9ca3af;margin:0">Anda menerima email ini karena seorang pengurus mitra mengajukan permintaan top-up di Gustafta.</p>
+          <p style="font-size:12px;color:#9ca3af;margin:8px 0 0">© 2026 Gustafta. Seluruh hak dilindungi.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  const textContent = `PERMINTAAN TOP-UP DARI MITRA
+
+${opts.partnerName} meminta penambahan ${kindLabel}.
+
+Jenis: ${kindLabel}
+Jumlah diminta: +${amountLabel}
+Nilai saat ini: ${currentLabel}
+Diminta oleh: ${opts.requestedByEmail}
+${opts.note ? `Catatan: ${opts.note}\n` : ""}${adminUrl ? `\nKelola mitra: ${adminUrl}\n` : ""}
+Anda menerima email ini karena seorang pengurus mitra mengajukan permintaan top-up di Gustafta.
+
+— Tim Gustafta`;
+
+  return sendEmail({
+    to: opts.to,
+    subject: `Top-up ${kindLabel} diminta: ${opts.partnerName} (+${amountLabel})`,
+    htmlContent: html,
+    textContent,
+    tags: ["partner-topup", "transactional"],
+  });
+}
+
 interface CertificationNotificationOptions {
   to: string;
   recipientName?: string | null;

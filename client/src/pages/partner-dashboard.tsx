@@ -1,0 +1,281 @@
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { Building2, Users, Gauge, CalendarDays, Plus, Clock, CheckCircle2, XCircle } from "lucide-react";
+
+interface PartnerMe {
+  id: number;
+  name: string;
+  brandName: string;
+  logoUrl: string | null;
+  primaryColor: string | null;
+  host: string;
+  seatsPerUnit: number;
+  activeSeats: number;
+  pendingSeats: number;
+  monthlyQuota: number;
+  quotaUsed: number;
+  billingMonth: string;
+  hasDefaultAgent: boolean;
+}
+
+interface TopupRequest {
+  id: number;
+  kind: "seats" | "quota";
+  amount: number;
+  note: string | null;
+  status: "pending" | "resolved" | "rejected";
+  createdAt: string;
+}
+
+const KIND_LABEL: Record<string, string> = { seats: "Kursi Fasilitator", quota: "Kuota Pesan" };
+const STATUS_META: Record<string, { label: string; variant: "secondary" | "default" | "destructive"; icon: typeof Clock }> = {
+  pending: { label: "Menunggu", variant: "secondary", icon: Clock },
+  resolved: { label: "Selesai", variant: "default", icon: CheckCircle2 },
+  rejected: { label: "Ditolak", variant: "destructive", icon: XCircle },
+};
+
+function formatMonth(ym: string): string {
+  const [y, m] = ym.split("-").map(Number);
+  if (!y || !m) return ym;
+  return new Date(y, m - 1, 1).toLocaleDateString("id-ID", { month: "long", year: "numeric" });
+}
+
+export default function PartnerDashboardPage() {
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { toast } = useToast();
+
+  const [topupOpen, setTopupOpen] = useState(false);
+  const [kind, setKind] = useState<"seats" | "quota">("quota");
+  const [amount, setAmount] = useState<number>(0);
+  const [note, setNote] = useState("");
+
+  const { data: partner, isLoading, isError, error } = useQuery<PartnerMe>({
+    queryKey: ["/api/partner/me"],
+    enabled: isAuthenticated,
+    retry: false,
+  });
+
+  const { data: requests = [] } = useQuery<TopupRequest[]>({
+    queryKey: ["/api/partner/me/topup-requests"],
+    enabled: isAuthenticated && !!partner,
+  });
+
+  const topupMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("POST", "/api/partner/me/topup-requests", { kind, amount, note: note || undefined });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/partner/me/topup-requests"] });
+      setTopupOpen(false);
+      setAmount(0);
+      setNote("");
+      toast({ title: "Permintaan terkirim", description: "Tim Gustafta akan meninjau & memproses permintaan Anda." });
+    },
+    onError: (e: any) => {
+      toast({ title: "Gagal", description: e?.message || "Tidak dapat mengirim permintaan", variant: "destructive" });
+    },
+  });
+
+  if (authLoading || (isAuthenticated && isLoading)) {
+    return <div className="flex items-center justify-center h-screen text-muted-foreground">Memuat...</div>;
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="flex items-center justify-center h-screen flex-col gap-4">
+        <p>Silakan login untuk mengakses dasbor mitra.</p>
+        <a href="/login"><Button>Masuk</Button></a>
+      </div>
+    );
+  }
+
+  if (isError || !partner) {
+    const msg = (error as any)?.message || "";
+    return (
+      <div className="flex items-center justify-center h-screen flex-col gap-3 px-6 text-center">
+        <Building2 className="w-12 h-12 text-muted-foreground/40" />
+        <p className="text-lg font-medium">Bukan pengurus mitra</p>
+        <p className="text-sm text-muted-foreground max-w-md" data-testid="text-not-partner">
+          {msg.includes("403") || msg.toLowerCase().includes("pengurus")
+            ? "Akun Anda belum terdaftar sebagai pengurus mitra whitelabel. Hubungi tim Gustafta untuk didaftarkan."
+            : "Tidak dapat memuat data mitra saat ini."}
+        </p>
+      </div>
+    );
+  }
+
+  const unlimited = partner.monthlyQuota === 0;
+  const quotaPct = unlimited ? 0 : Math.min(100, Math.round((partner.quotaUsed / partner.monthlyQuota) * 100));
+  const accent = partner.primaryColor || undefined;
+
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="border-b px-6 py-4 flex items-center gap-3">
+        {partner.logoUrl ? (
+          <img src={partner.logoUrl} alt={partner.brandName} className="h-8 w-8 rounded object-contain" data-testid="img-partner-logo" />
+        ) : (
+          <Building2 className="w-6 h-6" style={{ color: accent }} />
+        )}
+        <div>
+          <h1 className="text-xl font-semibold" style={{ color: accent }} data-testid="text-partner-name">{partner.brandName}</h1>
+          <p className="text-xs text-muted-foreground font-mono">{partner.host}</p>
+        </div>
+      </div>
+
+      <div className="container max-w-4xl mx-auto px-6 py-8 space-y-6">
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card data-testid="card-seats">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <Users className="w-4 h-4" /> Kursi Fasilitator
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold" data-testid="text-active-seats">{partner.activeSeats}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                fasilitator aktif
+                {partner.pendingSeats > 0 && <> · {partner.pendingSeats} undangan tertunda</>}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">Jatah per unit: <strong>{partner.seatsPerUnit}</strong></p>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="card-quota">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <Gauge className="w-4 h-4" /> Kuota Pesan Bulanan
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {unlimited ? (
+                <>
+                  <p className="text-3xl font-bold" data-testid="text-quota-used">{partner.quotaUsed.toLocaleString("id-ID")}</p>
+                  <p className="text-xs text-muted-foreground mt-1">terpakai · kuota <strong>tak terbatas</strong></p>
+                </>
+              ) : (
+                <>
+                  <p className="text-3xl font-bold" data-testid="text-quota-used">
+                    {partner.quotaUsed.toLocaleString("id-ID")}
+                    <span className="text-base font-normal text-muted-foreground"> / {partner.monthlyQuota.toLocaleString("id-ID")}</span>
+                  </p>
+                  <Progress value={quotaPct} className="mt-2 h-2" data-testid="progress-quota" />
+                  <p className="text-xs text-muted-foreground mt-1">{quotaPct}% pool bulanan terpakai</p>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card data-testid="card-billing-month">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <CalendarDays className="w-4 h-4" /> Bulan Berjalan
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold" data-testid="text-billing-month">{formatMonth(partner.billingMonth)}</p>
+              <p className="text-xs text-muted-foreground mt-1">Kuota di-reset otomatis tiap awal bulan.</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-4">
+            <div>
+              <CardTitle className="text-base">Permintaan Top-Up</CardTitle>
+              <CardDescription>Minta tambahan kursi atau kuota. Tim Gustafta akan memproses permintaan Anda.</CardDescription>
+            </div>
+            <Dialog open={topupOpen} onOpenChange={setTopupOpen}>
+              <DialogTrigger asChild>
+                <Button data-testid="button-open-topup">
+                  <Plus className="w-4 h-4 mr-2" /> Ajukan Top-Up
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Ajukan Top-Up</DialogTitle>
+                  <DialogDescription>Permintaan dikirim ke tim Gustafta untuk ditinjau dan diaktifkan.</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-2">
+                  <div className="space-y-2">
+                    <Label>Jenis</Label>
+                    <Select value={kind} onValueChange={(v) => setKind(v as "seats" | "quota")}>
+                      <SelectTrigger data-testid="select-topup-kind">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="quota">Kuota Pesan Bulanan</SelectItem>
+                        <SelectItem value="seats">Kursi Fasilitator (per unit)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="topup-amount">Jumlah tambahan</Label>
+                    <Input id="topup-amount" type="number" min={1} value={amount || ""} onChange={(e) => setAmount(Number(e.target.value))} placeholder={kind === "quota" ? "mis. 5000 pesan" : "mis. 3 kursi"} data-testid="input-topup-amount" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="topup-note">Catatan (opsional)</Label>
+                    <Textarea id="topup-note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Alasan atau detail tambahan..." maxLength={500} data-testid="input-topup-note" />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setTopupOpen(false)}>Batal</Button>
+                  <Button
+                    onClick={() => topupMutation.mutate()}
+                    disabled={!amount || amount <= 0 || topupMutation.isPending}
+                    data-testid="button-submit-topup"
+                  >
+                    {topupMutation.isPending ? "Mengirim..." : "Kirim Permintaan"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </CardHeader>
+          <CardContent>
+            {requests.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center" data-testid="text-no-requests">Belum ada permintaan top-up.</p>
+            ) : (
+              <div className="space-y-2">
+                {requests.map((r) => {
+                  const meta = STATUS_META[r.status] || STATUS_META.pending;
+                  const StatusIcon = meta.icon;
+                  return (
+                    <div key={r.id} className="flex items-center justify-between gap-3 border rounded px-3 py-2.5" data-testid={`row-request-${r.id}`}>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium">
+                          +{r.amount.toLocaleString("id-ID")} {KIND_LABEL[r.kind] || r.kind}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(r.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
+                          {r.note && <> · {r.note}</>}
+                        </p>
+                      </div>
+                      <Badge variant={meta.variant} className="shrink-0 gap-1" data-testid={`status-request-${r.id}`}>
+                        <StatusIcon className="w-3 h-3" /> {meta.label}
+                      </Badge>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}

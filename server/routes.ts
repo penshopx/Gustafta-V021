@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { parseSubAgentsValue } from "./db-storage";
 import { db } from "./db";
-import { customDomains, partners, insertPartnerSchema, trialRequests, subscriptionsTable, vouchers, series as seriesTable, bigIdeas as bigIdeasTable, toolboxes as toolboxesTable, agents as agentsTable, cores as coresTable, systemConfig, clientSubscriptions } from "@shared/schema";
+import { customDomains, partners, insertPartnerSchema, partnerTopupRequests, trialRequests, subscriptionsTable, vouchers, series as seriesTable, bigIdeas as bigIdeasTable, toolboxes as toolboxesTable, agents as agentsTable, cores as coresTable, systemConfig, clientSubscriptions } from "@shared/schema";
 import { users } from "@shared/models/auth";
 import { eq, and, desc, sql as sqlExpr, inArray, isNull, or } from "drizzle-orm";
 import {
@@ -16483,6 +16483,122 @@ Buat dokumen KB berkualitas tinggi untuk topik ini.`;
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Gagal menghapus kursi fasilitator" });
+    }
+  });
+
+  // ==================== Partner Self-Service (Partner-Admin) ====================
+  // Partner-admin = pengurus asosiasi yang emailnya terdaftar di partners.adminEmails.
+  // Mereka melihat pemakaian pooled milik mitra & mengajukan top-up kursi/kuota mandiri.
+  const currentQuotaMonth = () => new Date().toISOString().slice(0, 7); // "YYYY-MM"
+
+  // Resolve mitra yang dikelola oleh user login saat ini (via email di adminEmails).
+  // Prioritas mitra yang cocok dengan host request; jika tak ada, ambil mitra pertama.
+  async function resolvePartnerForAdmin(req: any): Promise<{ partner: typeof partners.$inferSelect; email: string } | null> {
+    const userId = getSessionUserId(req);
+    if (!userId) return null;
+    const [dbUser] = await db.select({ email: users.email }).from(users).where(eq(users.id, userId));
+    const email = (dbUser?.email || "").toLowerCase().trim();
+    if (!email) return null;
+    const candidates = await db.select().from(partners).where(eq(partners.active, true));
+    const managed = candidates.filter((p) => (p.adminEmails || []).some((e) => (e || "").toLowerCase().trim() === email));
+    if (managed.length === 0) return null;
+    const host = ((req.headers["host"] as string) || "").split(":")[0].toLowerCase().trim();
+    const hostMatch = managed.find((p) => p.host.toLowerCase() === host);
+    return { partner: hostMatch || managed[0], email };
+  }
+
+  // PARTNER-ADMIN: ringkasan pemakaian pooled mitra yang dikelola user login.
+  app.get("/api/partner/me", optionalAuthWithEmail, async (req: any, res) => {
+    try {
+      const resolved = await resolvePartnerForAdmin(req);
+      if (!resolved) return res.status(403).json({ error: "Anda bukan pengurus mitra terdaftar." });
+      const { partner } = resolved;
+      let activeSeats = 0;
+      let pendingSeats = 0;
+      if (partner.defaultAgentId) {
+        activeSeats = (await storage.listCollaboratorsForAgent(partner.defaultAgentId)).length;
+        pendingSeats = (await storage.listPendingInvitesForAgent(partner.defaultAgentId)).length;
+      }
+      const month = currentQuotaMonth();
+      // quotaUsed hanya berlaku untuk bulan berjalan; jika quotaMonth mitra bukan bulan ini, pemakaian efektif = 0 (belum reset).
+      const quotaUsed = partner.quotaMonth === month ? partner.quotaUsed : 0;
+      res.json({
+        id: partner.id,
+        name: partner.name,
+        brandName: partner.brandName,
+        logoUrl: partner.logoUrl,
+        primaryColor: partner.primaryColor,
+        host: partner.host,
+        seatsPerUnit: partner.seatsPerUnit,
+        activeSeats,
+        pendingSeats,
+        monthlyQuota: partner.monthlyQuota, // 0 = tak terbatas
+        quotaUsed,
+        billingMonth: month,
+        hasDefaultAgent: !!partner.defaultAgentId,
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Gagal memuat data mitra" });
+    }
+  });
+
+  // PARTNER-ADMIN: daftar permintaan top-up untuk mitra yang dikelola.
+  app.get("/api/partner/me/topup-requests", optionalAuthWithEmail, async (req: any, res) => {
+    try {
+      const resolved = await resolvePartnerForAdmin(req);
+      if (!resolved) return res.status(403).json({ error: "Anda bukan pengurus mitra terdaftar." });
+      const rows = await db.select().from(partnerTopupRequests)
+        .where(eq(partnerTopupRequests.partnerId, resolved.partner.id))
+        .orderBy(desc(partnerTopupRequests.createdAt));
+      res.json(rows);
+    } catch (error) {
+      res.status(500).json({ error: "Gagal memuat permintaan top-up" });
+    }
+  });
+
+  // PARTNER-ADMIN: ajukan permintaan top-up kursi/kuota. Menotifikasi admin Gustafta (fire-and-forget).
+  app.post("/api/partner/me/topup-requests", optionalAuthWithEmail, async (req: any, res) => {
+    try {
+      const resolved = await resolvePartnerForAdmin(req);
+      if (!resolved) return res.status(403).json({ error: "Anda bukan pengurus mitra terdaftar." });
+      const { partner, email } = resolved;
+      const kind = req.body.kind === "quota" ? "quota" : req.body.kind === "seats" ? "seats" : null;
+      const amount = Math.floor(Number(req.body.amount));
+      const note = req.body.note ? String(req.body.note).slice(0, 500).trim() : null;
+      if (!kind) return res.status(400).json({ error: "Jenis top-up tidak valid (seats/quota)." });
+      if (!Number.isFinite(amount) || amount <= 0) return res.status(400).json({ error: "Jumlah harus lebih dari 0." });
+      const [inserted] = await db.insert(partnerTopupRequests).values({
+        partnerId: partner.id,
+        requestedByEmail: email,
+        kind,
+        amount,
+        note,
+      }).returning();
+
+      // Notifikasi admin Gustafta — fire-and-forget, tidak boleh menggagalkan permintaan.
+      (async () => {
+        try {
+          const { sendPartnerTopupRequestNotification } = await import("./lib/email");
+          const adminTo = (process.env.ADMIN_EMAILS || "").split(",").map((s) => s.trim()).filter(Boolean)[0]
+            || process.env.BREVO_SENDER_EMAIL
+            || "support@gustafta.com";
+          await sendPartnerTopupRequestNotification({
+            to: adminTo,
+            partnerName: partner.name,
+            requestedByEmail: email,
+            kind,
+            amount,
+            currentValue: kind === "seats" ? partner.seatsPerUnit : partner.monthlyQuota,
+            note,
+          });
+        } catch (e) {
+          console.error("[partner-topup] notify failed:", (e as any)?.message || e);
+        }
+      })();
+
+      res.status(201).json(inserted);
+    } catch (error) {
+      res.status(500).json({ error: "Gagal mengirim permintaan top-up" });
     }
   });
 
