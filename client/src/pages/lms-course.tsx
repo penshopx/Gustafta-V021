@@ -100,6 +100,37 @@ const CAPSTONE_BY_CATEGORY: Record<string, { domain: string; label: string; desc
   },
 };
 
+// Subcategory lebih spesifik daripada category — mis. 3 kursus konstruksi (SBU/SKK/K3)
+// berbagi category "konstruksi" tapi harus menuju Workroom domain yang berbeda.
+const CAPSTONE_BY_SUBCATEGORY: Record<string, { domain: string; label: string; desc: string }> = {
+  SBU: {
+    domain: "perizinan",
+    label: "Praktik Nyata: Workroom Perizinan (SBU via OSS)",
+    desc: "Terapkan yang Anda pelajari — buat ruang kerja perizinan, jalankan analisis kesiapan berkas & kualifikasi badan usaha untuk pengajuan SBU lewat OSS, lalu simpan hasilnya sebagai bukti portofolio.",
+  },
+  SKK: {
+    domain: "skk",
+    label: "Praktik Nyata: Workroom Sertifikasi SKK",
+    desc: "Terapkan yang Anda pelajari — buat ruang kerja SKK, jalankan analisis kesiapan uji kompetensi, lalu simpan hasilnya sebagai bukti portofolio.",
+  },
+  K3: {
+    domain: "k3",
+    label: "Praktik Nyata: Workroom K3 / SMK3",
+    desc: "Terapkan yang Anda pelajari — buat ruang kerja K3, jalankan analisis kematangan sistem K3 proyek, lalu simpan hasilnya sebagai bukti portofolio.",
+  },
+};
+
+function capstoneForCourse(
+  course?: { category?: string; subcategory?: string } | null,
+): { domain: string; label: string; desc: string } | null {
+  if (!course) return null;
+  const subKey = course.subcategory ? course.subcategory.trim().toUpperCase() : "";
+  const bySub = subKey ? CAPSTONE_BY_SUBCATEGORY[subKey] : undefined;
+  if (bySub) return bySub;
+  const catKey = course.category ? course.category.trim().toLowerCase() : "";
+  return (catKey ? CAPSTONE_BY_CATEGORY[catKey] : undefined) || null;
+}
+
 export default function LmsCourse() {
   const { id } = useParams<{ id: string }>();
   const [, navigate] = useLocation();
@@ -136,7 +167,7 @@ export default function LmsCourse() {
     mutationFn: (): Promise<any> =>
       apiRequest("POST", "/api/workrooms", {
         title: course ? `Capstone — ${course.title}` : "Capstone",
-        domain: course ? (CAPSTONE_BY_CATEGORY[course.category]?.domain || "tender") : "tender",
+        domain: capstoneForCourse(course)?.domain || "tender",
         context: { source: "capstone", courseId: course?.id, courseTitle: course?.title },
       }),
     onSuccess: (room: any) => {
@@ -181,6 +212,7 @@ export default function LmsCourse() {
   }
 
   const isEnrolled = progress?.enrolled ?? (course.price === 0);
+  const capstone = capstoneForCourse(course);
   const completedCount = progress?.completedLessons?.length ?? 0;
   const totalLessons = course.lessons.length;
   const progressPct = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
@@ -288,7 +320,7 @@ export default function LmsCourse() {
         <div className="grid md:grid-cols-3 gap-8">
           {/* Lessons list */}
           <div className="md:col-span-2 space-y-3">
-            {CAPSTONE_BY_CATEGORY[course.category] && (
+            {capstone && (
               <div className="rounded-xl border-2 border-amber-300 bg-gradient-to-br from-amber-50 to-white p-5 shadow-sm mb-6" data-testid="card-capstone">
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
@@ -296,10 +328,10 @@ export default function LmsCourse() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <h3 className="font-bold text-slate-800">{CAPSTONE_BY_CATEGORY[course.category].label}</h3>
+                      <h3 className="font-bold text-slate-800">{capstone.label}</h3>
                       <Badge className="bg-amber-100 text-amber-700 border-amber-200">Capstone</Badge>
                     </div>
-                    <p className="text-sm text-slate-600 leading-relaxed mb-3">{CAPSTONE_BY_CATEGORY[course.category].desc}</p>
+                    <p className="text-sm text-slate-600 leading-relaxed mb-3">{capstone.desc}</p>
                     <Button
                       onClick={() => capstoneMutation.mutate()}
                       disabled={capstoneMutation.isPending}
