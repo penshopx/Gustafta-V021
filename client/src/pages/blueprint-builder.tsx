@@ -17,7 +17,7 @@ import {
 import {
   Sparkles, ArrowRight, ArrowLeft, Loader2, Lock, Check, AlertTriangle,
   Brain, Target, ClipboardList, Rocket, RotateCcw, Info, Gauge, Download, Copy,
-  FileJson, Share2,
+  FileJson, Share2, FileSignature,
 } from "lucide-react";
 
 /* ── Types (mirror server/blueprint-engine-routes.ts responses) ───────────── */
@@ -396,6 +396,20 @@ export default function BlueprintBuilderPage() {
       toast({ title: "Brief tersalin", description: "Tempel ke tool lain (Marketing, Ebook, Ecourse, Generator Dokumen)." });
     } catch {
       toast({ title: "Gagal menyalin", description: "Browser menolak akses papan klip.", variant: "destructive" });
+    }
+  };
+
+  /* Kirim brief ke Generator Proposal Jasa — prefill kolom "Kebutuhan klien" lalu pindah halaman. */
+  const sendToProposal = () => {
+    if (!blueprint) return;
+    try {
+      localStorage.setItem(
+        "gustafta_proposal_prefill_v1",
+        JSON.stringify({ kebutuhan: buildBlueprintBrief(), source: "blueprint" }),
+      );
+      setLocation("/proposal-jasa");
+    } catch {
+      toast({ title: "Gagal membuka Generator Proposal", description: "Coba lagi sebentar.", variant: "destructive" });
     }
   };
 
@@ -832,9 +846,18 @@ export default function BlueprintBuilderPage() {
                 >
                   <Copy className="h-3.5 w-3.5" /> Salin Brief
                 </Button>
+                <Button
+                  onClick={sendToProposal}
+                  size="sm"
+                  variant="outline"
+                  className="gap-2 border-sky-300 dark:border-sky-500/40 text-sky-700 dark:text-sky-300"
+                  data-testid="btn-send-to-proposal"
+                >
+                  <FileSignature className="h-3.5 w-3.5" /> Kirim ke Generator Proposal
+                </Button>
               </div>
               <p className="text-[10px] text-sky-700/70 dark:text-sky-300/70 mt-2">
-                JSON = format terstruktur untuk diimpor. Brief = teks rapi untuk ditempel langsung ke tool lain.
+                JSON = format terstruktur untuk diimpor. Brief = teks rapi untuk ditempel langsung ke tool lain. "Kirim ke Generator Proposal" langsung mengisi kebutuhan klien di sana.
               </p>
             </div>
 
