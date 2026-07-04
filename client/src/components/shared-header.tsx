@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@/hooks/use-auth";
 import { useFeatureAccess } from "@/hooks/use-feature-access";
-import { usePartnerBranding, type PartnerBranding } from "@/hooks/use-partner-branding";
+import { usePartnerBranding, toDirectImageUrl, type PartnerBranding } from "@/hooks/use-partner-branding";
 import { Bot, BookOpen, BarChart3, LogIn, LogOut, Menu, CreditCard, LayoutDashboard, ShoppingBag, Smartphone, Package, Shield, Crown, User, Store, Rocket, TrendingUp, MessageCircle, GraduationCap, Sparkles, Brain, Zap, FileDown } from "lucide-react";
 
 const WA_NUMBERS = [
@@ -271,7 +271,7 @@ export function SharedHeader({ transparent }: SharedHeaderProps) {
               {partner ? (
                 <>
                   {partner.logoUrl && (
-                    <img src={partner.logoUrl} alt={partner.brandName} className="h-[67px] w-[67px] object-contain" />
+                    <img src={toDirectImageUrl(partner.logoUrl)} alt={partner.brandName} className="h-[67px] w-[67px] object-contain" />
                   )}
                   <span
                     className="text-[40px] font-black tracking-tight leading-none"
@@ -355,7 +355,7 @@ export function SharedHeader({ transparent }: SharedHeaderProps) {
                   {partner ? (
                     <>
                       {partner.logoUrl ? (
-                        <img src={partner.logoUrl} alt={partner.brandName} className="h-6 w-6 object-contain" />
+                        <img src={toDirectImageUrl(partner.logoUrl)} alt={partner.brandName} className="h-6 w-6 object-contain" />
                       ) : (
                         <Bot className="h-6 w-6" style={{ color: partner.primaryColor || undefined }} />
                       )}

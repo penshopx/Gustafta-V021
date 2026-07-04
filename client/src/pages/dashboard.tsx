@@ -130,7 +130,7 @@ function TrialQuotaBanner() {
         <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-sm">
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-cyan-500 shrink-0" />
-            <span className="text-muted-foreground">Selesaikan <strong>{partner ? "Dialog Konsultasi" : "Dialog Gustafta"}</strong> untuk aktifkan trial gratis (75 pesan)</span>
+            <span className="text-muted-foreground">Selesaikan <strong>{partner ? "Dialog Blueprint" : "Dialog Gustafta"}</strong> untuk aktifkan trial gratis (75 pesan)</span>
           </div>
           <Link href="/dialog-gustafta">
             <Button size="sm" variant="outline" className="h-7 text-xs gap-1 border-cyan-500/40 text-cyan-600 dark:text-cyan-400">
@@ -1229,7 +1229,7 @@ export default function Dashboard() {
         return (
           <div className="relative">
             {isFreePlan && (
-              <TrialLockOverlay feature="Mini Apps" description={partner ? "Akses Mini Apps dengan paket Starter ke atas, atau aktifkan trial gratis via Dialog Konsultasi." : "Akses Mini Apps dengan paket Starter ke atas, atau aktifkan trial gratis via Dialog Gustafta."} />
+              <TrialLockOverlay feature="Mini Apps" description={partner ? "Akses Mini Apps dengan paket Starter ke atas, atau aktifkan trial gratis via Dialog Blueprint." : "Akses Mini Apps dengan paket Starter ke atas, atau aktifkan trial gratis via Dialog Gustafta."} />
             )}
             <MiniAppsPanel agent={currentAgent!} />
           </div>
@@ -1273,7 +1273,7 @@ export default function Dashboard() {
         return (
           <div className="relative">
             {isFreePlan && (
-              <TrialLockOverlay feature="Analytics" description={partner ? "Lihat statistik chat & konversi dengan paket Starter ke atas, atau aktifkan trial gratis via Dialog Konsultasi." : "Lihat statistik chat & konversi dengan paket Starter ke atas, atau aktifkan trial gratis via Dialog Gustafta."} />
+              <TrialLockOverlay feature="Analytics" description={partner ? "Lihat statistik chat & konversi dengan paket Starter ke atas, atau aktifkan trial gratis via Dialog Blueprint." : "Lihat statistik chat & konversi dengan paket Starter ke atas, atau aktifkan trial gratis via Dialog Gustafta."} />
             )}
             <AnalyticsPanel agent={currentAgent!} />
           </div>

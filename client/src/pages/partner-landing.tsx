@@ -2,7 +2,7 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { SharedHeader } from "@/components/shared-header";
-import { usePartnerBranding } from "@/hooks/use-partner-branding";
+import { usePartnerBranding, toDirectImageUrl } from "@/hooks/use-partner-branding";
 import { useAuth } from "@/hooks/use-auth";
 import { MessageCircle, Bot, ShieldCheck, Zap, Phone, Mail, LogIn } from "lucide-react";
 
@@ -30,7 +30,7 @@ export default function PartnerLanding() {
           <div className="max-w-2xl mx-auto text-center space-y-6">
             {partner.logoUrl && (
               <img
-                src={partner.logoUrl}
+                src={toDirectImageUrl(partner.logoUrl)}
                 alt={partner.brandName}
                 className="h-24 w-24 md:h-32 md:w-32 object-contain mx-auto"
                 data-testid="img-partner-hero-logo"
@@ -63,7 +63,7 @@ export default function PartnerLanding() {
               >
                 <Link href="/dialog-gustafta" data-testid="link-partner-start-dialog">
                   <MessageCircle className="h-5 w-5" />
-                  Mulai Konsultasi
+                  Dialog Blueprint
                 </Link>
               </Button>
               {partner.defaultAgentId && (

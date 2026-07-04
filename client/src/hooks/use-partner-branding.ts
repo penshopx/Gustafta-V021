@@ -15,6 +15,25 @@ export interface PartnerBranding {
 }
 
 /**
+ * Ubah link "share" Google Drive menjadi URL gambar langsung agar bisa
+ * ditampilkan lewat <img>. Link seperti
+ *   https://drive.google.com/file/d/FILE_ID/view?usp=sharing
+ *   https://drive.google.com/open?id=FILE_ID
+ *   https://drive.google.com/uc?export=view&id=FILE_ID
+ * bukan gambar langsung — dikonversi ke format thumbnail yang bisa di-embed.
+ * URL lain dikembalikan apa adanya.
+ */
+export function toDirectImageUrl(url: string | null | undefined): string {
+  if (!url) return "";
+  const u = url.trim();
+  let m = u.match(/drive\.google\.com\/file\/d\/([^/?]+)/);
+  if (m) return `https://drive.google.com/thumbnail?id=${m[1]}&sz=w1000`;
+  m = u.match(/drive\.google\.com\/(?:open|uc)\?(?:[^#]*&)?id=([^&]+)/);
+  if (m) return `https://drive.google.com/thumbnail?id=${m[1]}&sz=w1000`;
+  return u;
+}
+
+/**
  * Whitelabel branding untuk host mitra (asosiasi/reseller).
  * Mengembalikan null bila host bukan mitra (host Gustafta biasa).
  */
