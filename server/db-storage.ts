@@ -45,6 +45,7 @@ import {
   agenticDeliverables,
   blueprints,
   organizationDrafts,
+  sharedCertificates,
   agentCollaborators,
   pendingAgentInvites,
   certificationAuditLog,
@@ -72,6 +73,8 @@ import type {
   InsertBlueprint,
   OrganizationDraftRecord,
   InsertOrganizationDraft,
+  SharedCertificateRecord,
+  InsertSharedCertificate,
 } from "@shared/schema";
 import { applyDefaultPolicies } from "./lib/agent-policies";
 import { isPremiumClass, priceForClass } from "@shared/premium-classes";
@@ -4519,6 +4522,18 @@ export class DatabaseStorage implements IStorage {
     const result = await db.delete(organizationDrafts)
       .where(and(eq(organizationDrafts.id, id), eq(organizationDrafts.userId, userId)));
     return (result.rowCount ?? 0) > 0;
+  }
+
+  // Shared Certificate methods (public share links — immutable snapshot)
+  async createSharedCertificate(data: InsertSharedCertificate): Promise<SharedCertificateRecord> {
+    const [created] = await db.insert(sharedCertificates).values(data).returning();
+    return created;
+  }
+
+  async getSharedCertificateByToken(token: string): Promise<SharedCertificateRecord | undefined> {
+    const result = await db.select().from(sharedCertificates)
+      .where(eq(sharedCertificates.token, token)).limit(1);
+    return result[0];
   }
 }
 

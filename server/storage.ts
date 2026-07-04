@@ -84,6 +84,8 @@ import type {
   InsertBlueprint,
   OrganizationDraftRecord,
   InsertOrganizationDraft,
+  SharedCertificateRecord,
+  InsertSharedCertificate,
   AgentCollaborator,
   CollaboratorRole,
   PendingAgentInvite,
@@ -203,6 +205,10 @@ export interface IStorage {
   createOrganizationDraft(data: InsertOrganizationDraft): Promise<OrganizationDraftRecord>;
   updateOrganizationDraftForUser(id: number, userId: string, data: Partial<InsertOrganizationDraft>): Promise<OrganizationDraftRecord | undefined>;
   deleteOrganizationDraftForUser(id: number, userId: string): Promise<boolean>;
+
+  // Shared Certificate methods (Sertifikat Pembelajaran Reflektif — public share links)
+  createSharedCertificate(data: InsertSharedCertificate): Promise<SharedCertificateRecord>;
+  getSharedCertificateByToken(token: string): Promise<SharedCertificateRecord | undefined>;
 
   // Knowledge Base methods
   getKnowledgeBases(agentId: string): Promise<KnowledgeBase[]>;
@@ -2672,6 +2678,27 @@ export class MemStorage implements IStorage {
     const existing = this.orgDraftsMem.get(id);
     if (!existing || existing.userId !== userId) return false;
     return this.orgDraftsMem.delete(id);
+  }
+
+  // Shared Certificate methods (MemStorage — in-memory)
+  private sharedCertsMem: Map<string, SharedCertificateRecord> = new Map();
+  private sharedCertSeq = 1;
+
+  async createSharedCertificate(data: InsertSharedCertificate): Promise<SharedCertificateRecord> {
+    const rec = {
+      id: this.sharedCertSeq++,
+      token: data.token,
+      userId: data.userId ?? "",
+      topic: data.topic ?? null,
+      profile: data.profile,
+      createdAt: new Date(),
+    } as SharedCertificateRecord;
+    this.sharedCertsMem.set(rec.token, rec);
+    return rec;
+  }
+
+  async getSharedCertificateByToken(token: string): Promise<SharedCertificateRecord | undefined> {
+    return this.sharedCertsMem.get(token);
   }
 
   async cloneAgentForOwner(_masterAgentId: number, _ownerUserId: string): Promise<Agent> {

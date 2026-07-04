@@ -160,6 +160,8 @@ export default function BlueprintBuilderPage() {
   const [created, setCreated] = useState<ConfigureResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [certBusy, setCertBusy] = useState(false);
+  const [shareBusy, setShareBusy] = useState(false);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [, setLocation] = useLocation();
 
   /* ── Sertifikat pembelajaran reflektif (unduh PDF) ── */
@@ -394,6 +396,28 @@ export default function BlueprintBuilderPage() {
       toast({ title: "Brief tersalin", description: "Tempel ke tool lain (Marketing, Ebook, Ecourse, Generator Dokumen)." });
     } catch {
       toast({ title: "Gagal menyalin", description: "Browser menolak akses papan klip.", variant: "destructive" });
+    }
+  };
+
+  /* ── Buat tautan berbagi publik (snapshot beku) ── */
+  const shareCertificateLink = async () => {
+    const mp = analysis?.masteryProfile;
+    if (!mp || !blueprint) return;
+    setShareBusy(true);
+    try {
+      const res = await apiRequest("POST", "/api/blueprint/certificate/share", { blueprint });
+      const url = `${window.location.origin}${res.path}`;
+      setShareUrl(url);
+      try {
+        await navigator.clipboard.writeText(url);
+        toast({ title: "Tautan siap dibagikan", description: "Tautan sudah disalin ke papan klip." });
+      } catch {
+        toast({ title: "Tautan berbagi dibuat", description: "Salin tautan di bawah untuk membagikannya." });
+      }
+    } catch (e: any) {
+      toast({ title: "Gagal membuat tautan", description: e?.message || "Coba lagi sebentar.", variant: "destructive" });
+    } finally {
+      setShareBusy(false);
     }
   };
 
@@ -702,9 +726,47 @@ export default function BlueprintBuilderPage() {
                   >
                     <Copy className="h-3.5 w-3.5" /> Salin ringkasan
                   </Button>
+                  <Button
+                    onClick={shareCertificateLink}
+                    disabled={shareBusy}
+                    size="sm"
+                    variant="outline"
+                    className="gap-2 border-violet-300 dark:border-violet-500/40 text-violet-700 dark:text-violet-300"
+                    data-testid="btn-share-certificate"
+                  >
+                    {shareBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Share2 className="h-3.5 w-3.5" />}
+                    Buat tautan berbagi
+                  </Button>
                 </div>
+                {shareUrl && (
+                  <div className="mt-3 flex flex-col sm:flex-row gap-2 items-stretch sm:items-center" data-testid="share-link-box">
+                    <Input
+                      readOnly
+                      value={shareUrl}
+                      onFocus={(e) => e.currentTarget.select()}
+                      className="text-[11px] bg-white dark:bg-card"
+                      data-testid="input-share-url"
+                    />
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="gap-2 shrink-0"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(shareUrl);
+                          toast({ title: "Tersalin", description: "Tautan siap dibagikan." });
+                        } catch {
+                          toast({ title: "Gagal menyalin", description: "Salin manual tautannya.", variant: "destructive" });
+                        }
+                      }}
+                      data-testid="btn-copy-share-url"
+                    >
+                      <Copy className="h-3.5 w-3.5" /> Salin
+                    </Button>
+                  </div>
+                )}
                 <p className="text-[10px] text-violet-700/70 dark:text-violet-300/70 mt-2">
-                  Simpan atau bagikan peta pemahaman ini sebagai kenangan proses belajar Anda.
+                  Simpan atau bagikan peta pemahaman ini sebagai kenangan proses belajar Anda. Tautan berbagi menampilkan salinan beku — perubahan berikutnya tidak mengubah yang sudah dibagikan.
                 </p>
               </div>
             )}
