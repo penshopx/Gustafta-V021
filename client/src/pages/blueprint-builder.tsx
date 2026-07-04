@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import {
   Sparkles, ArrowRight, ArrowLeft, Loader2, Lock, Check, AlertTriangle,
-  Brain, Target, ClipboardList, Rocket, RotateCcw, Info, Gauge,
+  Brain, Target, ClipboardList, Rocket, RotateCcw, Info, Gauge, Download, Copy,
 } from "lucide-react";
 
 /* ── Types (mirror server/blueprint-engine-routes.ts responses) ───────────── */
@@ -158,7 +158,162 @@ export default function BlueprintBuilderPage() {
   const [preview, setPreview] = useState<ConfigureResult | null>(null);
   const [created, setCreated] = useState<ConfigureResult | null>(null);
   const [busy, setBusy] = useState(false);
+  const [certBusy, setCertBusy] = useState(false);
   const [, setLocation] = useLocation();
+
+  /* ── Sertifikat pembelajaran reflektif (unduh PDF) ── */
+  const downloadCertificate = async () => {
+    const mp = analysis?.masteryProfile;
+    if (!mp) return;
+    setCertBusy(true);
+    try {
+      const { jsPDF } = await import("jspdf");
+      const doc = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+      const W = 210, H = 297, M = 18;
+      const violet: [number, number, number] = [124, 58, 237];
+      const ink: [number, number, number] = [31, 41, 55];
+      const soft: [number, number, number] = [107, 114, 128];
+
+      // Latar & bingkai dekoratif
+      doc.setFillColor(250, 249, 255);
+      doc.rect(0, 0, W, H, "F");
+      doc.setDrawColor(...violet);
+      doc.setLineWidth(1.2);
+      doc.rect(M - 6, M - 6, W - 2 * (M - 6), H - 2 * (M - 6));
+      doc.setLineWidth(0.4);
+      doc.rect(M - 3.5, M - 3.5, W - 2 * (M - 3.5), H - 2 * (M - 3.5));
+
+      let y = M + 6;
+      // Kop
+      doc.setTextColor(...violet);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.text("GUSTAFTA · PETA PEMAHAMAN", W / 2, y, { align: "center" });
+      y += 10;
+      doc.setTextColor(...ink);
+      doc.setFontSize(22);
+      doc.text("Sertifikat Pembelajaran Reflektif", W / 2, y, { align: "center" });
+      y += 8;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9.5);
+      doc.setTextColor(...soft);
+      doc.text(
+        "Peta pemahaman dari refleksi Anda — bukan tes atau penilaian benar-salah.",
+        W / 2, y, { align: "center" },
+      );
+      y += 5;
+      const tanggal = new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+      doc.text(`Disusun pada ${tanggal}`, W / 2, y, { align: "center" });
+      y += 10;
+
+      // Topik
+      doc.setDrawColor(...violet);
+      doc.setLineWidth(0.3);
+      doc.line(M, y, W - M, y);
+      y += 8;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(...soft);
+      doc.text("TOPIK PEMAHAMAN", M, y);
+      y += 6;
+      doc.setFontSize(15);
+      doc.setTextColor(...ink);
+      const topikLines = doc.splitTextToSize(mp.topic || "Topik belum diberi judul", W - 2 * M);
+      doc.text(topikLines, M, y);
+      y += topikLines.length * 7 + 4;
+
+      // Tiga gerbang
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(...soft);
+      doc.text("PROGRES TIGA GERBANG", M, y);
+      y += 5;
+      const boxW = (W - 2 * M - 2 * 6) / 3;
+      const boxH = 22;
+      mp.gates.forEach((g, i) => {
+        const x = M + i * (boxW + 6);
+        doc.setFillColor(255, 255, 255);
+        doc.setDrawColor(221, 214, 254);
+        doc.setLineWidth(0.4);
+        doc.roundedRect(x, y, boxW, boxH, 2, 2, "FD");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(7.5);
+        doc.setTextColor(...soft);
+        const lbl = doc.splitTextToSize(g.label, boxW - 4);
+        doc.text(lbl, x + boxW / 2, y + 5, { align: "center" });
+        doc.setFontSize(15);
+        doc.setTextColor(...violet);
+        doc.text(`${pct(g.completion)}%`, x + boxW / 2, y + 14.5, { align: "center" });
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(7.5);
+        doc.setTextColor(...soft);
+        doc.text(`${g.answered}/${g.total} sudut`, x + boxW / 2, y + 19, { align: "center" });
+      });
+      y += boxH + 10;
+
+      const section = (title: string, body: string) => {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        doc.setTextColor(...soft);
+        doc.text(title, M, y);
+        y += 5.5;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.setTextColor(...ink);
+        const lines = doc.splitTextToSize(body, W - 2 * M);
+        doc.text(lines, M, y);
+        y += lines.length * 5 + 7;
+      };
+
+      section("NARASI", mp.narrative);
+      if (mp.strengths.length > 0) section("SUDAH DIURAIKAN JELAS", mp.strengths.join(" · "));
+      if (mp.growthAreas.length > 0) section("MASIH BISA DITUMBUHKAN", mp.growthAreas.join(" · "));
+
+      // Footer
+      doc.setDrawColor(...violet);
+      doc.setLineWidth(0.3);
+      doc.line(M, H - M - 4, W - M, H - M - 4);
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(8);
+      doc.setTextColor(...soft);
+      doc.text(
+        "Dibuat dengan Gustafta Blueprint Builder — mengubah pengetahuan manusia menjadi organisasi AI.",
+        W / 2, H - M + 1, { align: "center" },
+      );
+
+      const slug = (mp.topic || "sertifikat").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "sertifikat";
+      doc.save(`sertifikat-reflektif-${slug}.pdf`);
+    } catch (e: any) {
+      toast({ title: "Gagal mengunduh sertifikat", description: e?.message || "Coba lagi.", variant: "destructive" });
+    } finally {
+      setCertBusy(false);
+    }
+  };
+
+  /* ── Salin ringkasan sertifikat sebagai teks ── */
+  const copyCertificateText = async () => {
+    const mp = analysis?.masteryProfile;
+    if (!mp) return;
+    const lines: string[] = [];
+    lines.push("SERTIFIKAT PEMBELAJARAN REFLEKTIF");
+    lines.push("Peta pemahaman dari refleksi Anda — bukan tes atau penilaian benar-salah.");
+    lines.push("");
+    if (mp.topic) lines.push(`Topik: ${mp.topic}`);
+    lines.push(`Progres: ${mp.answeredFields}/${mp.totalFields} sudut refleksi (${pct(mp.completion)}%)`);
+    lines.push(mp.gates.map((g) => `${g.label}: ${pct(g.completion)}% (${g.answered}/${g.total})`).join(" | "));
+    lines.push("");
+    lines.push(mp.narrative);
+    if (mp.strengths.length > 0) { lines.push(""); lines.push(`Sudah diuraikan jelas: ${mp.strengths.join(", ")}`); }
+    if (mp.growthAreas.length > 0) { lines.push(""); lines.push(`Masih bisa ditumbuhkan: ${mp.growthAreas.join(", ")}`); }
+    lines.push("");
+    lines.push("Dibuat dengan Gustafta Blueprint Builder.");
+    try {
+      await navigator.clipboard.writeText(lines.join("\n"));
+      toast({ title: "Tersalin", description: "Ringkasan sertifikat siap dibagikan." });
+    } catch {
+      toast({ title: "Gagal menyalin", description: "Browser menolak akses papan klip.", variant: "destructive" });
+    }
+  };
 
   /* Buka agen yang baru dibuat langsung di Builder (Dashboard): aktifkan lalu navigasi. */
   const openInBuilder = async () => {
@@ -445,6 +600,30 @@ export default function BlueprintBuilderPage() {
                     <span className="text-[11px] text-gray-700 dark:text-gray-300">{analysis.masteryProfile.growthAreas.slice(0, 6).join(", ")}</span>
                   </div>
                 )}
+                <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t border-violet-200/70 dark:border-violet-500/20">
+                  <Button
+                    onClick={downloadCertificate}
+                    disabled={certBusy}
+                    size="sm"
+                    className="bg-violet-600 hover:bg-violet-500 text-white gap-2"
+                    data-testid="btn-download-certificate"
+                  >
+                    {certBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                    Unduh Sertifikat (PDF)
+                  </Button>
+                  <Button
+                    onClick={copyCertificateText}
+                    size="sm"
+                    variant="outline"
+                    className="gap-2 border-violet-300 dark:border-violet-500/40 text-violet-700 dark:text-violet-300"
+                    data-testid="btn-copy-certificate"
+                  >
+                    <Copy className="h-3.5 w-3.5" /> Salin ringkasan
+                  </Button>
+                </div>
+                <p className="text-[10px] text-violet-700/70 dark:text-violet-300/70 mt-2">
+                  Simpan atau bagikan peta pemahaman ini sebagai kenangan proses belajar Anda.
+                </p>
               </div>
             )}
 
