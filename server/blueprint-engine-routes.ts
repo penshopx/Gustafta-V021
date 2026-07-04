@@ -17,6 +17,7 @@
  */
 
 import type { Express, Request, Response } from "express";
+import { randomBytes } from "crypto";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { isAuthenticated } from "./replit_integrations/auth";
@@ -271,6 +272,68 @@ export function registerBlueprintEngineRoutes(app: Express): void {
       });
 
       res.json(result);
+    }),
+  );
+
+  /**
+   * POST /api/blueprint/certificate/share
+   * Body: { blueprint }
+   * → Bangun MasteryProfile → simpan SNAPSHOT beku + token → kembalikan token & path.
+   *
+   * Snapshot bersifat immutable: edit blueprint kemudian TIDAK mengubah apa yang
+   * sudah dibagikan. Hanya user login yang boleh membuat tautan.
+   */
+  app.post(
+    "/api/blueprint/certificate/share",
+    isAuthenticated,
+    handler(async (req, res) => {
+      const blueprint = parseBlueprint(req.body?.blueprint);
+      const profile = buildMasteryProfile(blueprint);
+      if (!profile || profile.answeredFields <= 0) {
+        throw new HttpError(
+          400,
+          "Peta pemahaman masih kosong. Isi refleksi Anda dulu sebelum membuat tautan berbagi.",
+        );
+      }
+
+      const userId = sessionUserId(req);
+      if (!userId) throw new HttpError(401, "Sesi tidak valid.");
+
+      // Token URL-friendly (base64url), acak & sulit ditebak.
+      const token = randomBytes(12).toString("base64url");
+
+      const record = await storage.createSharedCertificate({
+        token,
+        userId,
+        topic: profile.topic ?? null,
+        profile: profile as unknown as Record<string, unknown>,
+      });
+
+      res.json({ token: record.token, path: `/sertifikat/${record.token}` });
+    }),
+  );
+
+  /**
+   * GET /api/blueprint/certificate/:token
+   * PUBLIK (tanpa login) — kembalikan snapshot MasteryProfile read-only.
+   * Hanya membaca; tidak pernah menulis. Tidak membocorkan pemilik/identitas.
+   */
+  app.get(
+    "/api/blueprint/certificate/:token",
+    handler(async (req, res) => {
+      const token = String(req.params.token || "");
+      if (!token || token.length > 32) {
+        throw new HttpError(400, "Token tautan tidak valid.");
+      }
+      const record = await storage.getSharedCertificateByToken(token);
+      if (!record) {
+        throw new HttpError(404, "Sertifikat tidak ditemukan atau tautan sudah tidak berlaku.");
+      }
+      res.json({
+        topic: record.topic ?? null,
+        profile: record.profile,
+        createdAt: record.createdAt,
+      });
     }),
   );
 }

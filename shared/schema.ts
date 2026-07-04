@@ -438,6 +438,24 @@ export const insertOrganizationDraftSchema = createInsertSchema(organizationDraf
 export type InsertOrganizationDraft = z.infer<typeof insertOrganizationDraftSchema>;
 export type OrganizationDraftRecord = typeof organizationDrafts.$inferSelect;
 
+// Shared Certificates (Sertifikat Pembelajaran Reflektif — tautan berbagi publik).
+// Menyimpan SNAPSHOT beku dari Profil Penguasaan (MasteryProfile) saat user memilih
+// membuat tautan berbagi. `profile` = MasteryProfile utuh; view publik (read-only,
+// tanpa login) merender snapshot ini sehingga edit blueprint kemudian TIDAK mengubah
+// apa yang sudah dibagikan. Ini peta pemahaman, BUKAN skor psikometri.
+export const sharedCertificates = pgTable("shared_certificates", {
+  id: serial("id").primaryKey(),
+  token: varchar("token", { length: 32 }).notNull().unique(),
+  userId: varchar("user_id", { length: 255 }).notNull().default(""),
+  topic: text("topic"),
+  profile: jsonb("profile").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertSharedCertificateSchema = createInsertSchema(sharedCertificates).omit({ id: true, createdAt: true });
+export type InsertSharedCertificate = z.infer<typeof insertSharedCertificateSchema>;
+export type SharedCertificateRecord = typeof sharedCertificates.$inferSelect;
+
 // Agent Collaboration — owner shares an agent with other users as editor/viewer.
 // editor = boleh mengubah konfigurasi agen (kecuali hapus/aktivasi/kelola-share);
 // viewer = hanya baca (lihat konfigurasi tersanitasi, tidak boleh mutasi).

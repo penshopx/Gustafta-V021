@@ -51,6 +51,7 @@ import MitraPage from "@/pages/mitra";
 import LegacyPage from "@/pages/legacy";
 import BlueprintPage from "@/pages/blueprint";
 import BlueprintBuilderPage from "@/pages/blueprint-builder";
+import SharedCertificatePage from "@/pages/shared-certificate";
 import OrganizationBuilderPage from "@/pages/organization-builder";
 import BlueprintSayaPage from "@/pages/blueprint-saya";
 import MulticlawPage from "@/pages/multiclaw";
@@ -463,6 +464,7 @@ function Router() {
       <Route path="/legacy" component={LegacyPage} />
       <Route path="/blueprint" component={BlueprintPage} />
       <Route path="/blueprint-builder" component={BlueprintBuilderPage} />
+      <Route path="/sertifikat/:token" component={SharedCertificatePage} />
       <Route path="/organization-builder" component={OrganizationBuilderPage} />
       <Route path="/blueprint-saya" component={BlueprintSayaPage} />
       <Route path="/starter-kit" component={StarterKitPage} />
