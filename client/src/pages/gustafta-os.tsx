@@ -202,6 +202,7 @@ export default function GustaftaOs() {
                     <span className="text-xs font-mono text-muted-foreground">PILAR {pillar.number}</span>
                     <h2 className="text-xl sm:text-2xl font-bold" data-testid={`text-pilar-name-${pillar.id}`}>{pillar.name}</h2>
                     <Badge variant="outline" className={pillar.badge}>{pillar.tagline}</Badge>
+                    <span className="text-xs text-muted-foreground" data-testid={`text-pilar-count-${pillar.id}`}>· {pillar.destinations.length} tujuan</span>
                   </div>
                   <p className="text-sm text-muted-foreground max-w-3xl">{pillar.intro}</p>
                 </div>
@@ -229,6 +230,21 @@ export default function GustaftaOs() {
           </section>
         ))}
       </div>
+
+      {/* Footer */}
+      <footer className="border-t border-border/60">
+        <div className="max-w-6xl mx-auto px-4 py-10 text-center space-y-4">
+          <p className="text-sm text-muted-foreground max-w-xl mx-auto" data-testid="text-os-footer">
+            Satu peta, lima pilar — dari asisten pribadi sampai menghasilkan pendapatan.
+          </p>
+          <Button asChild variant="outline" size="sm" className="gap-2">
+            <Link href="/dashboard" data-testid="link-footer-dashboard">
+              <ArrowLeft className="h-4 w-4" />
+              Kembali ke Dashboard
+            </Link>
+          </Button>
+        </div>
+      </footer>
     </div>
   );
 }
