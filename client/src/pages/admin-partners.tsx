@@ -32,6 +32,9 @@ type PartnerForm = {
   logoUrl: string;
   primaryColor: string;
   tagline: string;
+  description: string;
+  contactPhone: string;
+  contactEmail: string;
   defaultAgentId: string;
   cheapModel: string;
   seatsPerUnit: number;
@@ -49,6 +52,9 @@ const emptyForm: PartnerForm = {
   logoUrl: "",
   primaryColor: "",
   tagline: "",
+  description: "",
+  contactPhone: "",
+  contactEmail: "",
   defaultAgentId: "none",
   cheapModel: "gpt-4o-mini",
   seatsPerUnit: 3,
@@ -95,6 +101,9 @@ export default function AdminPartnersPage() {
         logoUrl: form.logoUrl || null,
         primaryColor: form.primaryColor || null,
         tagline: form.tagline || null,
+        description: form.description || null,
+        contactPhone: form.contactPhone || null,
+        contactEmail: form.contactEmail || null,
         adminEmails: form.adminEmails
           .split(",")
           .map((e) => e.trim().toLowerCase())
@@ -199,6 +208,9 @@ export default function AdminPartnersPage() {
       logoUrl: p.logoUrl || "",
       primaryColor: p.primaryColor || "",
       tagline: p.tagline || "",
+      description: p.description || "",
+      contactPhone: p.contactPhone || "",
+      contactEmail: p.contactEmail || "",
       defaultAgentId: p.defaultAgentId || "none",
       cheapModel: p.cheapModel || "gpt-4o-mini",
       seatsPerUnit: p.seatsPerUnit,
@@ -414,6 +426,21 @@ export default function AdminPartnersPage() {
               <Label htmlFor="p-tagline">Tagline</Label>
               <Input id="p-tagline" value={form.tagline} onChange={(e) => setForm({ ...form, tagline: e.target.value })} placeholder="Asisten AI Konstruksi" data-testid="input-partner-tagline" />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="p-description">Deskripsi Singkat (untuk landing mitra)</Label>
+              <Input id="p-description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Layanan konsultasi AI untuk anggota asosiasi..." data-testid="input-partner-description" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="p-phone">Kontak WA/Telepon Mitra</Label>
+                <Input id="p-phone" value={form.contactPhone} onChange={(e) => setForm({ ...form, contactPhone: e.target.value })} placeholder="0812xxxxxxx" data-testid="input-partner-phone" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="p-email">Email Kontak Mitra</Label>
+                <Input id="p-email" value={form.contactEmail} onChange={(e) => setForm({ ...form, contactEmail: e.target.value })} placeholder="info@aspekindo.or.id" data-testid="input-partner-email" />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground -mt-2">Kontak mitra menggantikan kontak Gustafta di bar atas & footer halaman mitra. Kosongkan bila tidak ingin ditampilkan.</p>
             <div className="space-y-2">
               <Label>Chatbot Default</Label>
               <Select value={form.defaultAgentId} onValueChange={(v) => setForm({ ...form, defaultAgentId: v })}>

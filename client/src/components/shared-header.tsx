@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@/hooks/use-auth";
 import { useFeatureAccess } from "@/hooks/use-feature-access";
-import { usePartnerBranding } from "@/hooks/use-partner-branding";
+import { usePartnerBranding, type PartnerBranding } from "@/hooks/use-partner-branding";
 import { Bot, BookOpen, BarChart3, LogIn, LogOut, Menu, CreditCard, LayoutDashboard, ShoppingBag, Smartphone, Package, Shield, Crown, User, Store, Rocket, TrendingUp, MessageCircle, GraduationCap, Sparkles, Brain, Zap, FileDown } from "lucide-react";
 
 const WA_NUMBERS = [
@@ -158,7 +158,39 @@ function PWAInstallButton() {
   );
 }
 
-function ContactTopBar() {
+function ContactTopBar({ partner }: { partner: PartnerBranding | null }) {
+  // Host mitra whitelabel: tampilkan kontak MITRA (bukan kontak Gustafta/Scalev).
+  if (partner) {
+    if (!partner.contactPhone && !partner.contactEmail) return null;
+    return (
+      <div className="hidden md:flex bg-muted/60 border-b text-xs text-muted-foreground px-4 py-1.5 items-center gap-4">
+        <span className="flex items-center gap-1 font-medium text-foreground/70">
+          <Smartphone className="h-3 w-3" /> Hubungi Kami:
+        </span>
+        {partner.contactPhone && (
+          <a
+            href={`https://wa.me/${partner.contactPhone.replace(/[^0-9]/g, "")}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 hover:text-green-600 dark:hover:text-green-400 transition-colors font-medium"
+            data-testid="link-topbar-partner-wa"
+          >
+            <MessageCircle className="h-3 w-3 text-green-500" />
+            {partner.contactPhone}
+          </a>
+        )}
+        {partner.contactEmail && (
+          <a
+            href={`mailto:${partner.contactEmail}`}
+            className="flex items-center gap-1 hover:text-foreground transition-colors font-medium"
+            data-testid="link-topbar-partner-email"
+          >
+            {partner.contactEmail}
+          </a>
+        )}
+      </div>
+    );
+  }
   return (
     <div className="hidden md:flex bg-muted/60 border-b text-xs text-muted-foreground px-4 py-1.5 items-center justify-between">
       <div className="flex items-center gap-4">
@@ -199,13 +231,21 @@ export function SharedHeader({ transparent }: SharedHeaderProps) {
     staleTime: 5 * 60 * 1000,
   });
 
-  const navItems = [
-    { href: "/#trilogi", label: "Belajar", icon: GraduationCap, badge: "Mulai di Sini" },
-    { href: "/produk", label: "Merakit AI", icon: Rocket },
-    { href: "/store", label: "Menggunakan AI", icon: Zap },
-    { href: "/affiliate", label: "Menghasilkan Nilai", icon: TrendingUp },
-    { href: "/packs", label: "Berkembang", icon: Sparkles },
-  ];
+  // Host mitra whitelabel: menu Gustafta disembunyikan, diganti menu netral mitra.
+  const navItems = partner
+    ? [
+        { href: "/", label: "Beranda", icon: Bot },
+        ...(partner.defaultAgentId
+          ? [{ href: `/chat/${partner.defaultAgentId}`, label: "Asisten AI", icon: MessageCircle }]
+          : []),
+      ]
+    : [
+        { href: "/#trilogi", label: "Belajar", icon: GraduationCap, badge: "Mulai di Sini" },
+        { href: "/produk", label: "Merakit AI", icon: Rocket },
+        { href: "/store", label: "Menggunakan AI", icon: Zap },
+        { href: "/affiliate", label: "Menghasilkan Nilai", icon: TrendingUp },
+        { href: "/packs", label: "Berkembang", icon: Sparkles },
+      ];
 
   const premiumNavItems = [
     { href: "/edu-counsel", label: "EduCounsel AI", icon: Brain },
@@ -221,7 +261,7 @@ export function SharedHeader({ transparent }: SharedHeaderProps) {
 
   return (
     <div className="sticky top-0 z-50">
-      <ContactTopBar />
+      <ContactTopBar partner={partner} />
       <header className={`border-b ${transparent ? "bg-background/80" : "bg-background/95"} backdrop-blur`}>
 
         {/* ── Baris 1: Logo + Aksi Kanan ── */}
@@ -270,14 +310,14 @@ export function SharedHeader({ transparent }: SharedHeaderProps) {
                     </Button>
                   </Link>
                 )}
-                <PlanBadge />
+                {!partner && <PlanBadge />}
                 <Link href="/dashboard">
                   <Button size="sm" className="gap-1.5 text-xs h-8">
                     <LayoutDashboard className="h-3.5 w-3.5" />
                     Dashboard
                   </Button>
                 </Link>
-                <BlueprintHeaderDot />
+                {!partner && <BlueprintHeaderDot />}
                 <Link href="/account" title="Akun Saya">
                   <Avatar className="h-7 w-7 cursor-pointer ring-2 ring-transparent hover:ring-primary/40 transition-all" data-testid="avatar-account-link">
                     <AvatarImage src={user?.profileImageUrl || ""} alt={user?.firstName || "User"} />
@@ -340,7 +380,7 @@ export function SharedHeader({ transparent }: SharedHeaderProps) {
                       </Button>
                     </Link>
                   ))}
-                  {isAuthenticated && (
+                  {isAuthenticated && !partner && (
                     <Link href="/my-subscription" onClick={() => setMobileMenuOpen(false)}>
                       <Button
                         variant={isActive("/my-subscription") || isActive("/subscription") ? "secondary" : "ghost"}
@@ -351,23 +391,27 @@ export function SharedHeader({ transparent }: SharedHeaderProps) {
                       </Button>
                     </Link>
                   )}
-                  <Link href="/blueprint-saya" onClick={() => setMobileMenuOpen(false)}>
-                    <Button
-                      variant={isActive("/blueprint-saya") ? "secondary" : "ghost"}
-                      className="w-full justify-start"
-                    >
-                      <FileDown className="h-4 w-4 mr-2 text-amber-500" />
-                      Blueprint Saya
-                    </Button>
-                  </Link>
-                  <div className="border-t pt-3 mt-1">
-                    <Link href="/documentation" onClick={() => setMobileMenuOpen(false)}>
-                      <Button variant="ghost" className="w-full justify-start text-muted-foreground" size="sm">
-                        <BookOpen className="h-4 w-4 mr-2" />
-                        Dokumentasi
-                      </Button>
-                    </Link>
-                  </div>
+                  {!partner && (
+                    <>
+                      <Link href="/blueprint-saya" onClick={() => setMobileMenuOpen(false)}>
+                        <Button
+                          variant={isActive("/blueprint-saya") ? "secondary" : "ghost"}
+                          className="w-full justify-start"
+                        >
+                          <FileDown className="h-4 w-4 mr-2 text-amber-500" />
+                          Blueprint Saya
+                        </Button>
+                      </Link>
+                      <div className="border-t pt-3 mt-1">
+                        <Link href="/documentation" onClick={() => setMobileMenuOpen(false)}>
+                          <Button variant="ghost" className="w-full justify-start text-muted-foreground" size="sm">
+                            <BookOpen className="h-4 w-4 mr-2" />
+                            Dokumentasi
+                          </Button>
+                        </Link>
+                      </div>
+                    </>
+                  )}
                   <div className="border-t pt-4 mt-2">
                     {isAuthenticated ? (
                       <div className="space-y-2">
@@ -389,15 +433,17 @@ export function SharedHeader({ transparent }: SharedHeaderProps) {
                             Dashboard
                           </Button>
                         </Link>
-                        <Link href="/my-subscription" onClick={() => setMobileMenuOpen(false)}>
-                          <div className="w-full flex items-center justify-between px-4 py-2.5 rounded-md border bg-card hover:bg-muted/50 transition-colors cursor-pointer">
-                            <div className="flex items-center gap-2 text-sm font-medium">
-                              <Crown className="h-4 w-4 text-amber-500" />
-                              Status Membership
+                        {!partner && (
+                          <Link href="/my-subscription" onClick={() => setMobileMenuOpen(false)}>
+                            <div className="w-full flex items-center justify-between px-4 py-2.5 rounded-md border bg-card hover:bg-muted/50 transition-colors cursor-pointer">
+                              <div className="flex items-center gap-2 text-sm font-medium">
+                                <Crown className="h-4 w-4 text-amber-500" />
+                                Status Membership
+                              </div>
+                              <PlanBadge />
                             </div>
-                            <PlanBadge />
-                          </div>
-                        </Link>
+                          </Link>
+                        )}
                         <Link href="/account" onClick={() => setMobileMenuOpen(false)}>
                           <Button variant="outline" className="w-full gap-2" data-testid="button-account-mobile">
                             <User className="h-4 w-4" />
@@ -448,7 +494,7 @@ export function SharedHeader({ transparent }: SharedHeaderProps) {
               </Button>
             </Link>
           ))}
-          {isAuthenticated && (
+          {isAuthenticated && !partner && (
             <Link href="/my-subscription">
               <Button
                 variant={isActive("/my-subscription") || isActive("/subscription") ? "secondary" : "ghost"}

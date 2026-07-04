@@ -10,6 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { PremiumPageGuard } from "@/components/premium-page-guard";
 import { Brain, Cpu, GraduationCap, Sparkles, Database, HardHat, Bot, Scale, Shield, Award, Leaf, BarChart3, Users, TrendingUp, ShieldAlert, Search, Building2, Wrench, Zap, BookOpen, Landmark, Settings2, Map as MapIcon } from "lucide-react";
 import Landing from "@/pages/landing";
+import PartnerLanding from "@/pages/partner-landing";
+import { usePartnerBranding } from "@/hooks/use-partner-branding";
 import Profil from "@/pages/profil";
 import BootstrapAdmin from "@/pages/bootstrap-admin";
 import AdminAudit from "@/pages/admin-audit";
@@ -405,10 +407,17 @@ function MarketplaceRedirect() {
   return null;
 }
 
+/** Root route: host mitra melihat landing netral mitra, bukan landing Gustafta. */
+function HomeRoute() {
+  const { partner, isLoading } = usePartnerBranding();
+  if (isLoading) return null;
+  return partner ? <PartnerLanding /> : <Landing />;
+}
+
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Landing} />
+      <Route path="/" component={HomeRoute} />
       <Route path="/profil" component={Profil} />
       <Route path="/bootstrap-admin" component={BootstrapAdmin} />
       <Route path="/admin/audit" component={AdminAudit} />
@@ -1548,9 +1557,28 @@ function Router() {
 
 function AppContent() {
   const [location] = useLocation();
-  const showWidget = !WIDGET_EXCLUDED_PATHS.some(p => location.startsWith(p));
+  const { partner } = usePartnerBranding();
+  // Widget Chaesa (Gustafta) disembunyikan di host mitra whitelabel
+  const showWidget = !partner && !WIDGET_EXCLUDED_PATHS.some(p => location.startsWith(p));
 
   useMetaPixel();
+
+  // Whitelabel: judul tab & favicon mengikuti brand mitra
+  useEffect(() => {
+    if (!partner) return;
+    document.title = partner.tagline
+      ? `${partner.brandName} — ${partner.tagline}`
+      : partner.brandName;
+    if (partner.logoUrl) {
+      let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+      if (!link) {
+        link = document.createElement("link");
+        link.rel = "icon";
+        document.head.appendChild(link);
+      }
+      link.href = partner.logoUrl;
+    }
+  }, [partner]);
 
   return (
     <>
