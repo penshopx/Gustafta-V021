@@ -13,7 +13,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import {
   ArrowLeft, Loader2, CheckCircle2, Circle, CircleDot, Sparkles,
-  ShieldQuestion, Check, X, Plus, FileText,
+  ShieldQuestion, Check, X, Plus, FileText, GraduationCap,
 } from "lucide-react";
 
 interface Stage { key: string; label: string; status: string; }
@@ -43,7 +43,15 @@ export default function WorkroomDetailPage() {
   const [logContent, setLogContent] = useState("");
   const [gateQuestion, setGateQuestion] = useState("");
 
-  const { data: room, isLoading, isError } = useQuery<WorkroomDetail>({ queryKey: key });
+  const { data: room, isLoading, isError } = useQuery<WorkroomDetail | null>({
+    queryKey: key,
+    queryFn: async () => {
+      const res = await fetch(`/api/workrooms/${id}`, { credentials: "include" });
+      if (res.status === 404) return null;
+      if (!res.ok) throw new Error(`Gagal memuat workroom (${res.status})`);
+      return res.json();
+    },
+  });
 
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: key });
@@ -128,6 +136,16 @@ export default function WorkroomDetailPage() {
             {room.context?.instansi && room.context?.nilai && <span> · </span>}
             {room.context?.nilai && <span>{room.context.nilai}</span>}
           </p>
+        )}
+        {room.context?.source === "capstone" && room.context?.courseId && (
+          <Link
+            href={`/lms/course/${room.context.courseId}`}
+            className="inline-flex items-center gap-2 mb-6 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-300 hover:bg-amber-500/20 transition-colors"
+            data-testid="link-capstone-course"
+          >
+            <GraduationCap className="h-4 w-4" />
+            Capstone dari kursus: {room.context.courseTitle || "Academy"} — kembali ke kursus
+          </Link>
         )}
 
         <div className="grid lg:grid-cols-3 gap-6">
