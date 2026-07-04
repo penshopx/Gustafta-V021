@@ -5,7 +5,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
   ChevronLeft, Clock, BookOpen, Play, Lock, Check, ChevronRight,
-  Star, Users, GraduationCap, Zap
+  Star, Users, GraduationCap, Zap, Rocket
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -57,6 +57,14 @@ const LEVEL_LABELS: Record<string, string> = {
   advanced: "Lanjutan",
 };
 
+const CAPSTONE_BY_CATEGORY: Record<string, { domain: string; label: string; desc: string }> = {
+  konstruksi: {
+    domain: "tender",
+    label: "Praktik Nyata: Workroom Tender",
+    desc: "Terapkan yang Anda pelajari — buat ruang kerja tender, jalankan analisis kelayakan & peluang menang, lalu simpan hasilnya sebagai bukti portofolio.",
+  },
+};
+
 export default function LmsCourse() {
   const { id } = useParams<{ id: string }>();
   const [, navigate] = useLocation();
@@ -86,6 +94,23 @@ export default function LmsCourse() {
     },
     onError: () => {
       toast({ title: "Login diperlukan", description: "Silakan login untuk mendaftar kursus.", variant: "destructive" });
+    },
+  });
+
+  const capstoneMutation = useMutation({
+    mutationFn: (): Promise<any> =>
+      apiRequest("POST", "/api/workrooms", {
+        title: course ? `Capstone — ${course.title}` : "Capstone",
+        domain: course ? (CAPSTONE_BY_CATEGORY[course.category]?.domain || "tender") : "tender",
+        context: { source: "capstone", courseId: course?.id, courseTitle: course?.title },
+      }),
+    onSuccess: (room: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/workrooms"] });
+      toast({ title: "Workroom capstone dibuat", description: "Praktikkan skill Anda di ruang kerja nyata." });
+      navigate(`/workroom/${room.id}`);
+    },
+    onError: () => {
+      toast({ title: "Login diperlukan", description: "Silakan login untuk memulai capstone.", variant: "destructive" });
     },
   });
 
@@ -228,6 +253,30 @@ export default function LmsCourse() {
         <div className="grid md:grid-cols-3 gap-8">
           {/* Lessons list */}
           <div className="md:col-span-2 space-y-3">
+            {CAPSTONE_BY_CATEGORY[course.category] && (
+              <div className="rounded-xl border-2 border-amber-300 bg-gradient-to-br from-amber-50 to-white p-5 shadow-sm mb-6" data-testid="card-capstone">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+                    <Rocket className="w-5 h-5 text-amber-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <h3 className="font-bold text-slate-800">{CAPSTONE_BY_CATEGORY[course.category].label}</h3>
+                      <Badge className="bg-amber-100 text-amber-700 border-amber-200">Capstone</Badge>
+                    </div>
+                    <p className="text-sm text-slate-600 leading-relaxed mb-3">{CAPSTONE_BY_CATEGORY[course.category].desc}</p>
+                    <Button
+                      onClick={() => capstoneMutation.mutate()}
+                      disabled={capstoneMutation.isPending}
+                      className="bg-amber-600 hover:bg-amber-700 text-white"
+                      data-testid="button-start-capstone"
+                    >
+                      {capstoneMutation.isPending ? "Menyiapkan…" : "Mulai Capstone di Workroom"}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
             <h2 className="font-bold text-slate-800 text-lg mb-4">Daftar Lesson</h2>
             {course.lessons.map((lesson, i) => {
               const isCompleted = progress?.completedLessons?.includes(lesson.id) ?? false;
