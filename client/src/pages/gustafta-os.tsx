@@ -5,7 +5,7 @@ import {
   ArrowLeft, ChevronRight, Sparkles, MessageSquare, Users, Briefcase,
   GraduationCap, Award, Bot, Layers, Building2, Brain, ClipboardList,
   BookOpen, ShieldCheck, Store, TrendingUp, Handshake, FileCheck,
-  Wrench, Compass, Rocket, Trophy,
+  Wrench, Compass, Rocket, Trophy, Wallet,
 } from "lucide-react";
 
 interface Destination {
@@ -127,6 +127,7 @@ const PILLARS: Pillar[] = [
     status: "aktif",
     destinations: [
       { href: "/portofolio", label: "Portofolio Kompetensi", desc: "Kumpulan bukti: kursus, hasil kerja Workroom, sertifikat & lencana.", icon: <Trophy className="h-5 w-5" /> },
+      { href: "/penghasilan", label: "Penghasilan Kreator", desc: "Lacak bagi hasil 80/20 dari lisensi produk Anda di marketplace.", icon: <Wallet className="h-5 w-5" /> },
       { href: "/sertifikat-digital", label: "E-Sertifikat Digital", desc: "Terbitkan sertifikat terverifikasi dengan QR publik.", icon: <FileCheck className="h-5 w-5" /> },
       { href: "/jalur-sertifikasi", label: "Jalur Sertifikasi", desc: "Peta jalan menuju sertifikasi kompetensi resmi.", icon: <Award className="h-5 w-5" /> },
       { href: "/store", label: "Gustafta Store", desc: "Marketplace chatbot & template siap pakai.", icon: <Store className="h-5 w-5" /> },
