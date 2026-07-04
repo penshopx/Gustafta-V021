@@ -15,6 +15,7 @@ import {
   ArrowLeft, Loader2, CheckCircle2, Circle, CircleDot, Sparkles,
   ShieldQuestion, Check, X, Plus, FileText, GraduationCap,
 } from "lucide-react";
+import { workroomDomainMeta } from "@/lib/workroom-domains";
 
 interface Stage { key: string; label: string; status: string; }
 interface Gate { id: number; question: string; status: string; note: string; stageKey: string; }
@@ -114,6 +115,11 @@ export default function WorkroomDetailPage() {
   const stages = room.stages || [];
   const gates = room.gates || [];
   const logs = room.logs || [];
+  const meta = workroomDomainMeta(room.domain);
+  const ctxSummary = meta.fields
+    .filter((f) => !f.textarea)
+    .map((f) => room.context?.[f.key])
+    .filter((v): v is string => typeof v === "string" && v.trim().length > 0);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -124,17 +130,15 @@ export default function WorkroomDetailPage() {
               <ArrowLeft className="h-4 w-4 mr-2" /> Daftar Workroom
             </Link>
           </Button>
-          <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30">Tender</Badge>
+          <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30" data-testid="badge-domain">{meta.short}</Badge>
         </div>
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-8">
         <h1 className="text-2xl font-bold mb-1" data-testid="text-workroom-title">{room.title}</h1>
-        {(room.context?.instansi || room.context?.nilai) && (
-          <p className="text-slate-400 text-sm mb-6">
-            {room.context?.instansi && <span>{room.context.instansi}</span>}
-            {room.context?.instansi && room.context?.nilai && <span> · </span>}
-            {room.context?.nilai && <span>{room.context.nilai}</span>}
+        {ctxSummary.length > 0 && (
+          <p className="text-slate-400 text-sm mb-6" data-testid="text-context-summary">
+            {ctxSummary.join(" · ")}
           </p>
         )}
         {room.context?.source === "capstone" && room.context?.courseId && (
@@ -179,13 +183,12 @@ export default function WorkroomDetailPage() {
             <Card className="bg-slate-900 border-slate-800">
               <CardHeader>
                 <CardTitle className="text-base flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-emerald-400" /> Analisis AI — Kelayakan & Win Probability
+                  <Sparkles className="h-4 w-4 text-emerald-400" /> {meta.analyzeHeading}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-slate-400 mb-3">
-                  Agen menilai kelayakan ikut tender + estimasi peluang menang berdasarkan data workroom.
-                  Keputusan akhir tetap di tangan Anda (◆ gerbang manusia).
+                  {meta.analyzeDesc} Keputusan akhir tetap di tangan Anda (◆ gerbang manusia).
                 </p>
                 <Button
                   onClick={() => analyzeMutation.mutate()}
@@ -328,7 +331,7 @@ export default function WorkroomDetailPage() {
                                 </p>
                               )}
                               {analysis.win_probability && (
-                                <p><span className="text-slate-500">Win probability: </span>{analysis.win_probability.skor}% — {analysis.win_probability.dasar}</p>
+                                <p><span className="text-slate-500">{meta.scoreLabel}: </span>{analysis.win_probability.skor}% — {analysis.win_probability.dasar}</p>
                               )}
                               {Array.isArray(analysis.rekomendasi) && analysis.rekomendasi.length > 0 && (
                                 <div>
