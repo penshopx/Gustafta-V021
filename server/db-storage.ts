@@ -43,6 +43,9 @@ import {
   storeOrders,
   scalevMappings,
   agenticDeliverables,
+  workrooms,
+  workroomGates,
+  workroomLogs,
   blueprints,
   organizationDrafts,
   sharedCertificates,
@@ -69,6 +72,12 @@ import type {
   InsertScalevMapping,
   AgenticDeliverable,
   InsertAgenticDeliverable,
+  Workroom,
+  InsertWorkroom,
+  WorkroomGate,
+  InsertWorkroomGate,
+  WorkroomLog,
+  InsertWorkroomLog,
   BlueprintRecord,
   InsertBlueprint,
   OrganizationDraftRecord,
@@ -4439,6 +4448,75 @@ export class DatabaseStorage implements IStorage {
     const result = await db.delete(agenticDeliverables)
       .where(eq(agenticDeliverables.id, parseInt(id)));
     return (result.rowCount ?? 0) > 0;
+  }
+
+  // Workroom methods (Fase 1 — ruang kerja manusia + agen)
+  async getWorkrooms(userId: string): Promise<Workroom[]> {
+    return db.select().from(workrooms)
+      .where(eq(workrooms.userId, userId))
+      .orderBy(desc(workrooms.updatedAt));
+  }
+
+  async getWorkroom(id: number): Promise<Workroom | undefined> {
+    const result = await db.select().from(workrooms).where(eq(workrooms.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createWorkroom(data: InsertWorkroom): Promise<Workroom> {
+    const now = new Date();
+    const [created] = await db.insert(workrooms)
+      .values({ ...data, createdAt: now, updatedAt: now })
+      .returning();
+    return created;
+  }
+
+  async updateWorkroom(id: number, data: Partial<InsertWorkroom>): Promise<Workroom | undefined> {
+    const [updated] = await db.update(workrooms)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(workrooms.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteWorkroom(id: number): Promise<boolean> {
+    await db.delete(workroomLogs).where(eq(workroomLogs.workroomId, id));
+    await db.delete(workroomGates).where(eq(workroomGates.workroomId, id));
+    const result = await db.delete(workrooms).where(eq(workrooms.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async getWorkroomGates(workroomId: number): Promise<WorkroomGate[]> {
+    return db.select().from(workroomGates)
+      .where(eq(workroomGates.workroomId, workroomId))
+      .orderBy(desc(workroomGates.createdAt));
+  }
+
+  async createWorkroomGate(data: InsertWorkroomGate): Promise<WorkroomGate> {
+    const [created] = await db.insert(workroomGates)
+      .values({ ...data, createdAt: new Date() })
+      .returning();
+    return created;
+  }
+
+  async decideWorkroomGate(id: number, status: string, note: string): Promise<WorkroomGate | undefined> {
+    const [updated] = await db.update(workroomGates)
+      .set({ status, note, decidedAt: new Date() })
+      .where(eq(workroomGates.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getWorkroomLogs(workroomId: number): Promise<WorkroomLog[]> {
+    return db.select().from(workroomLogs)
+      .where(eq(workroomLogs.workroomId, workroomId))
+      .orderBy(desc(workroomLogs.createdAt));
+  }
+
+  async createWorkroomLog(data: InsertWorkroomLog): Promise<WorkroomLog> {
+    const [created] = await db.insert(workroomLogs)
+      .values({ ...data, createdAt: new Date() })
+      .returning();
+    return created;
   }
 
   // Blueprint methods (AI Organization Builder — additive, not yet route-wired)

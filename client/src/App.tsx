@@ -226,6 +226,8 @@ import GeneratorOutlineEbook from "@/pages/generator-outline-ebook";
 import PkbBuilder from "@/pages/pkb-builder";
 import AiToolsHub from "@/pages/ai-tools-hub";
 import GustaftaOs from "@/pages/gustafta-os";
+import WorkroomListPage from "@/pages/workroom";
+import WorkroomDetailPage from "@/pages/workroom-detail";
 import KbHub from "@/pages/kb-hub";
 import CertTracker from "@/pages/cert-tracker";
 import DocuGen from "@/pages/docu-gen";
@@ -1401,6 +1403,8 @@ function Router() {
         <Route path="/pkb-builder" component={PkbBuilder} />
         <Route path="/ai-tools" component={AiToolsHub} />
         <Route path="/os" component={GustaftaOs} />
+        <Route path="/workroom" component={WorkroomListPage} />
+        <Route path="/workroom/:id" component={WorkroomDetailPage} />
         <Route path="/cert-tracker" component={CertTracker} />
         <Route path="/docu-gen" component={DocuGen} />
         <Route path="/tender-mate" component={TenderMate} />

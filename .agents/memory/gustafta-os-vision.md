@@ -27,8 +27,9 @@ Sumber: sintesis 3 dokumen (diagnosis kode + roadmap ChatGPT + kurikulum Notion)
 - COMPETENCY & MONETIZATION → `affiliates`/`mlm_commissions`, `vouchers`/`voucher_redemptions`, `certificates`, `analytics`, `store_products`/`store_orders`, `subscriptions_new`, `wa_broadcasts`. **GAP kecil**: badge + portofolio.
 
 ## Roadmap bertahap (disepakati)
-- **Fase 0 — OS Shell / Kurasi** (AMAN, tanpa ubah backend): tata 373 halaman ke 5 pintu masuk pilar. Kebutuhan #1 menurut ketiga sumber. ← MULAI DI SINI.
-- **Fase 1 — Workroom MVP**: satu-satunya konsep betul-betul baru. Dibangun DI ATAS Otak Proyek + deliverables. **Domain percontohan pertama = TENDER Konstruksi & PBJP** (aset terkuat: TenderaClaw, KonstraTender, tabel `tenders`/`tender_sessions`/`bj_tenders`). Alur: Tahapan → Human Gate ◆ → Log → Deliverable Pack.
+- **Fase 0 — OS Shell / Kurasi** ✅ SELESAI: navigator 5 pilar di route `/os` (`client/src/pages/gustafta-os.tsx`), additive/frontend-only, entry card di dashboard "Aksi Cepat".
+- **Fase 1 — Workroom MVP** ✅ SELESAI: tabel BARU `workrooms`/`workroom_gates`/`workroom_logs` (bukan reuse — benih Otak Proyek/deliverables tak cocok untuk stage-machine). Domain pertama = TENDER. Stage machine (6 tahap) + Human Gate ◆ + jurnal log (decision/assumption/risk/change/deliverable) + analisis AI GPT-4o (kelayakan+win-probability, JSON, honest [ASUMSI]). Routes `/api/workrooms*` (semua isAuthenticated + `getOwnedWorkroom` ownership guard = anti-IDOR). UI: `/workroom` (list+create) & `/workroom/:id` (detail). Deliverable disimpan sbg log type "deliverable" (meta.result), BUKAN tabel agentic_deliverables (keyed by agentId, tak cocok).
+  - **Why tabel baru, bukan reuse**: agentic_deliverables & project_brain_* terikat agentId, sedangkan workroom milik user & butuh stage/gate/log terpisah. Sesuai aturan "tabel baru HANYA untuk yang belum ada".
 - **Fase 2 — Aktifkan Academy** pakai `lms_*` eksisting; capstone menghasilkan deliverable Workroom sbg bukti portofolio.
 - **Fase 3 — Competency polish**: badge + portofolio.
 

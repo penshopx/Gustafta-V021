@@ -27,6 +27,12 @@ import type {
   InsertProjectBrainInstance,
   AgenticDeliverable,
   InsertAgenticDeliverable,
+  Workroom,
+  InsertWorkroom,
+  WorkroomGate,
+  InsertWorkroomGate,
+  WorkroomLog,
+  InsertWorkroomLog,
   MiniApp,
   InsertMiniApp,
   MiniAppResult,
@@ -315,6 +321,18 @@ export interface IStorage {
   upsertAgenticDeliverable(data: InsertAgenticDeliverable): Promise<AgenticDeliverable>;
   updateAgenticDeliverableStatus(id: string, status: string): Promise<AgenticDeliverable | undefined>;
   deleteAgenticDeliverable(id: string): Promise<boolean>;
+
+  // Workroom methods (Fase 1)
+  getWorkrooms(userId: string): Promise<Workroom[]>;
+  getWorkroom(id: number): Promise<Workroom | undefined>;
+  createWorkroom(data: InsertWorkroom): Promise<Workroom>;
+  updateWorkroom(id: number, data: Partial<InsertWorkroom>): Promise<Workroom | undefined>;
+  deleteWorkroom(id: number): Promise<boolean>;
+  getWorkroomGates(workroomId: number): Promise<WorkroomGate[]>;
+  createWorkroomGate(data: InsertWorkroomGate): Promise<WorkroomGate>;
+  decideWorkroomGate(id: number, status: string, note: string): Promise<WorkroomGate | undefined>;
+  getWorkroomLogs(workroomId: number): Promise<WorkroomLog[]>;
+  createWorkroomLog(data: InsertWorkroomLog): Promise<WorkroomLog>;
 
   // Mini App methods
   getMiniApps(agentId: string): Promise<MiniApp[]>;
@@ -2584,6 +2602,24 @@ export class MemStorage implements IStorage {
   }
   async updateAgenticDeliverableStatus(_id: string, _status: string): Promise<AgenticDeliverable | undefined> { return undefined; }
   async deleteAgenticDeliverable(_id: string): Promise<boolean> { return false; }
+
+  // Workroom methods (MemStorage — stub; real impl in DatabaseStorage)
+  async getWorkrooms(_userId: string): Promise<Workroom[]> { return []; }
+  async getWorkroom(_id: number): Promise<Workroom | undefined> { return undefined; }
+  async createWorkroom(data: InsertWorkroom): Promise<Workroom> {
+    return { id: 1, ...data, createdAt: new Date(), updatedAt: new Date() } as Workroom;
+  }
+  async updateWorkroom(_id: number, _data: Partial<InsertWorkroom>): Promise<Workroom | undefined> { return undefined; }
+  async deleteWorkroom(_id: number): Promise<boolean> { return false; }
+  async getWorkroomGates(_workroomId: number): Promise<WorkroomGate[]> { return []; }
+  async createWorkroomGate(data: InsertWorkroomGate): Promise<WorkroomGate> {
+    return { id: 1, ...data, createdAt: new Date(), decidedAt: null } as WorkroomGate;
+  }
+  async decideWorkroomGate(_id: number, _status: string, _note: string): Promise<WorkroomGate | undefined> { return undefined; }
+  async getWorkroomLogs(_workroomId: number): Promise<WorkroomLog[]> { return []; }
+  async createWorkroomLog(data: InsertWorkroomLog): Promise<WorkroomLog> {
+    return { id: 1, ...data, createdAt: new Date() } as WorkroomLog;
+  }
 
   // Blueprint methods (MemStorage — in-memory)
   private blueprintsMem: Map<number, BlueprintRecord> = new Map();

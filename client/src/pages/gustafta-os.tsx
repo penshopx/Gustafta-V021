@@ -86,6 +86,7 @@ const PILLARS: Pillar[] = [
     icon: <Briefcase className="h-6 w-6" />,
     status: "aktif",
     destinations: [
+      { href: "/workroom", label: "Workroom Tender", desc: "Garap tender bertahap: kelayakan → strategi → gerbang ◆ → submit.", icon: <Briefcase className="h-5 w-5" /> },
       { href: "/organization-builder", label: "Rakit Tim Agen", desc: "Susun tim agen berperan dengan gerbang manusia ◆.", icon: <Users className="h-5 w-5" /> },
       { href: "/blueprint-builder", label: "Rancang Agen (Blueprint)", desc: "Wizard merancang agen/tim dari kebutuhan Anda.", icon: <Brain className="h-5 w-5" /> },
       { href: "/brain-project", label: "Otak Proyek", desc: "Pusat konteks & memori untuk proyek yang berjalan.", icon: <ClipboardList className="h-5 w-5" /> },
