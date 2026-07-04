@@ -6,7 +6,7 @@ import {
   ShoppingBag, Users, Handshake, TrendingUp, Users2, Ticket, Pencil, Trash2, Radio, FileText, FolderOpen, Target, Globe, Megaphone, Loader2, PackageCheck, Wand2, Scale,
   Download, Upload, Folder, FolderPlus, Power, PowerOff, Cpu, Archive, ArchiveRestore, Eye, EyeOff, Crown, AlertCircle, Rocket, CheckCircle2, GraduationCap, DatabaseZap, UserPlus, Share2,
   Award, Shield, ShieldCheck, ShieldAlert, Leaf, Search, HardHat, Building2, Construction, Map as MapIcon, Landmark, Calculator, Package,
-  FileSignature, GitBranch, Lock, FileDown, ArrowRight
+  FileSignature, GitBranch, Lock, FileDown, ArrowRight, Wallet, Trophy
 } from "lucide-react";
 import { useFeatureAccess } from "@/hooks/use-feature-access";
 import { usePartnerBranding } from "@/hooks/use-partner-branding";
@@ -1131,6 +1131,30 @@ export default function Dashboard() {
                     <ArrowRight className="w-4 h-4 text-violet-500 shrink-0" />
                   </div>
                 </Link>
+                <Link href="/portofolio">
+                  <div className="flex items-center gap-3 p-3 rounded-lg border border-amber-500/30 bg-gradient-to-r from-amber-500/10 to-yellow-500/10 hover:border-amber-500 hover:from-amber-500/15 hover:to-yellow-500/15 transition-colors text-left cursor-pointer h-full" data-testid="card-portofolio">
+                    <div className="w-8 h-8 rounded-md bg-amber-500/15 flex items-center justify-center shrink-0">
+                      <Trophy className="w-4 h-4 text-amber-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium">Portofolio Kompetensi</p>
+                      <p className="text-xs text-muted-foreground">Bukti belajar, hasil kerja & sertifikat Anda</p>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-amber-500 shrink-0" />
+                  </div>
+                </Link>
+                {!partner && (<Link href="/penghasilan">
+                  <div className="flex items-center gap-3 p-3 rounded-lg border border-rose-500/30 bg-gradient-to-r from-rose-500/10 to-pink-500/10 hover:border-rose-500 hover:from-rose-500/15 hover:to-pink-500/15 transition-colors text-left cursor-pointer h-full" data-testid="card-penghasilan">
+                    <div className="w-8 h-8 rounded-md bg-rose-500/15 flex items-center justify-center shrink-0">
+                      <Wallet className="w-4 h-4 text-rose-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium">Penghasilan Kreator</p>
+                      <p className="text-xs text-muted-foreground">Lacak bagi hasil penjualan produk Anda</p>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-rose-500 shrink-0" />
+                  </div>
+                </Link>)}
                 {!partner && (<Link href="/monitor-marketing" className="sm:col-span-2">
                   <div className="flex items-center gap-3 p-3 rounded-lg border border-pink-500/30 bg-gradient-to-r from-pink-500/10 to-rose-500/10 hover:border-pink-500 hover:from-pink-500/15 hover:to-rose-500/15 transition-colors text-left cursor-pointer" data-testid="card-monitor-marketing">
                     <div className="w-8 h-8 rounded-md bg-pink-500/15 flex items-center justify-center shrink-0">
