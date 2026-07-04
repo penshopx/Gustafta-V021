@@ -16538,6 +16538,10 @@ Buat dokumen KB berkualitas tinggi untuk topik ini.`;
         brandName: partner.brandName,
         logoUrl: partner.logoUrl,
         primaryColor: partner.primaryColor,
+        tagline: partner.tagline,
+        description: partner.description,
+        contactPhone: partner.contactPhone,
+        contactEmail: partner.contactEmail,
         host: partner.host,
         seatsPerUnit: partner.seatsPerUnit,
         activeSeats,
@@ -16549,6 +16553,53 @@ Buat dokumen KB berkualitas tinggi untuk topik ini.`;
       });
     } catch (error) {
       res.status(500).json({ error: "Gagal memuat data mitra" });
+    }
+  });
+
+  // PARTNER-ADMIN: mitra mengubah branding-nya sendiri (self-service).
+  // HANYA field tampilan/kontak — host, slug, kuota, kursi, model, defaultAgentId, adminEmails tetap dikelola admin Gustafta.
+  const partnerSelfUpdateSchema = z.object({
+    brandName: z.string().trim().min(1, "Nama brand wajib diisi").max(120),
+    logoUrl: z.string().trim().max(500).nullable(),
+    primaryColor: z.string().trim().max(32).regex(/^#[0-9a-fA-F]{3,8}$/, "Warna harus format hex, mis. #166534").nullable(),
+    tagline: z.string().trim().max(200).nullable(),
+    description: z.string().trim().max(1000).nullable(),
+    contactPhone: z.string().trim().max(32).nullable(),
+    contactEmail: z.string().trim().email("Email tidak valid").max(200).nullable(),
+  }).partial();
+
+  app.patch("/api/partner/me", optionalAuthWithEmail, async (req: any, res) => {
+    try {
+      const resolved = await resolvePartnerForAdmin(req);
+      if (!resolved) return res.status(403).json({ error: "Anda bukan pengurus mitra terdaftar." });
+      // Normalisasi: string kosong dianggap null (hapus nilai).
+      const body: Record<string, unknown> = {};
+      for (const key of ["brandName", "logoUrl", "primaryColor", "tagline", "description", "contactPhone", "contactEmail"]) {
+        if (key in (req.body || {})) {
+          const v = req.body[key];
+          body[key] = typeof v === "string" && v.trim() === "" ? null : v;
+        }
+      }
+      const parsed = partnerSelfUpdateSchema.safeParse(body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0]?.message || "Data tidak valid" });
+      }
+      if (Object.keys(parsed.data).length === 0) return res.status(400).json({ error: "Tidak ada perubahan." });
+      const [updated] = await db.update(partners)
+        .set({ ...parsed.data, updatedAt: new Date() } as any)
+        .where(eq(partners.id, resolved.partner.id))
+        .returning();
+      res.json({
+        brandName: updated.brandName,
+        logoUrl: updated.logoUrl,
+        primaryColor: updated.primaryColor,
+        tagline: updated.tagline,
+        description: updated.description,
+        contactPhone: updated.contactPhone,
+        contactEmail: updated.contactEmail,
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Gagal menyimpan pengaturan mitra" });
     }
   });
 

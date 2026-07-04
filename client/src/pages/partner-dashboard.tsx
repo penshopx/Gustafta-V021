@@ -16,7 +16,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Building2, Users, Gauge, CalendarDays, Plus, Clock, CheckCircle2, XCircle } from "lucide-react";
+import { Building2, Users, Gauge, CalendarDays, Plus, Clock, CheckCircle2, XCircle, Palette } from "lucide-react";
 
 interface PartnerMe {
   id: number;
@@ -24,6 +24,10 @@ interface PartnerMe {
   brandName: string;
   logoUrl: string | null;
   primaryColor: string | null;
+  tagline: string | null;
+  description: string | null;
+  contactPhone: string | null;
+  contactEmail: string | null;
   host: string;
   seatsPerUnit: number;
   activeSeats: number;
@@ -49,6 +53,123 @@ const STATUS_META: Record<string, { label: string; variant: "secondary" | "defau
   resolved: { label: "Selesai", variant: "default", icon: CheckCircle2 },
   rejected: { label: "Ditolak", variant: "destructive", icon: XCircle },
 };
+
+interface BrandForm {
+  brandName: string;
+  logoUrl: string;
+  primaryColor: string;
+  tagline: string;
+  description: string;
+  contactPhone: string;
+  contactEmail: string;
+}
+
+function BrandSettingsCard({ partner }: { partner: PartnerMe }) {
+  const { toast } = useToast();
+  const [form, setForm] = useState<BrandForm>({
+    brandName: partner.brandName || "",
+    logoUrl: partner.logoUrl || "",
+    primaryColor: partner.primaryColor || "",
+    tagline: partner.tagline || "",
+    description: partner.description || "",
+    contactPhone: partner.contactPhone || "",
+    contactEmail: partner.contactEmail || "",
+  });
+
+  const set = (key: keyof BrandForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setForm((f) => ({ ...f, [key]: e.target.value }));
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("PATCH", "/api/partner/me", form);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/partner/me"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/partner/by-host"] });
+      toast({ title: "Tersimpan", description: "Pengaturan brand berhasil diperbarui. Perubahan tampil di halaman mitra Anda." });
+    },
+    onError: (e: any) => {
+      const raw = e?.message || "";
+      const msg = raw.replace(/^\d{3}:\s*/, "");
+      let detail = msg;
+      try { detail = JSON.parse(msg)?.error || msg; } catch { /* plain text */ }
+      toast({ title: "Gagal menyimpan", description: detail, variant: "destructive" });
+    },
+  });
+
+  const colorValid = !form.primaryColor || /^#[0-9a-fA-F]{3,8}$/.test(form.primaryColor.trim());
+
+  return (
+    <Card data-testid="card-brand-settings">
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <Palette className="w-4 h-4" /> Pengaturan Brand
+        </CardTitle>
+        <CardDescription>
+          Atur tampilan whitelabel Anda sendiri — nama, logo, warna, dan kontak. Perubahan langsung berlaku di{" "}
+          <span className="font-mono">{partner.host}</span>.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="brand-name">Nama Brand</Label>
+            <Input id="brand-name" value={form.brandName} onChange={set("brandName")} maxLength={120} placeholder="mis. PUB ASPEKINDO" data-testid="input-brand-name" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="brand-logo">URL Logo</Label>
+            <div className="flex items-center gap-2">
+              <Input id="brand-logo" value={form.logoUrl} onChange={set("logoUrl")} maxLength={500} placeholder="https://.../logo.png" data-testid="input-brand-logo" />
+              {form.logoUrl.trim() && (
+                <img src={form.logoUrl.trim()} alt="Pratinjau logo" className="h-9 w-9 rounded object-contain border shrink-0" data-testid="img-logo-preview" />
+              )}
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="brand-color">Warna Utama (hex)</Label>
+            <div className="flex items-center gap-2">
+              <Input id="brand-color" value={form.primaryColor} onChange={set("primaryColor")} maxLength={32} placeholder="#166534" data-testid="input-brand-color" />
+              <input
+                type="color"
+                value={colorValid && form.primaryColor.trim().length >= 4 ? form.primaryColor.trim() : "#166534"}
+                onChange={(e) => setForm((f) => ({ ...f, primaryColor: e.target.value }))}
+                className="h-9 w-12 rounded border cursor-pointer bg-transparent shrink-0"
+                aria-label="Pilih warna utama"
+                data-testid="input-brand-color-picker"
+              />
+            </div>
+            {!colorValid && <p className="text-xs text-destructive">Format hex tidak valid, mis. #166534</p>}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="brand-tagline">Tagline</Label>
+            <Input id="brand-tagline" value={form.tagline} onChange={set("tagline")} maxLength={200} placeholder="mis. AI Platform Dokumen Tender & Proyek Konstruksi" data-testid="input-brand-tagline" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="brand-phone">No. WhatsApp/Telepon</Label>
+            <Input id="brand-phone" value={form.contactPhone} onChange={set("contactPhone")} maxLength={32} placeholder="mis. 6281234567890" data-testid="input-brand-phone" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="brand-email">Email Kontak</Label>
+            <Input id="brand-email" type="email" value={form.contactEmail} onChange={set("contactEmail")} maxLength={200} placeholder="mis. info@asosiasi.or.id" data-testid="input-brand-email" />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="brand-description">Deskripsi Singkat</Label>
+          <Textarea id="brand-description" value={form.description} onChange={set("description")} maxLength={1000} rows={3} placeholder="Deskripsi organisasi/layanan Anda yang tampil di halaman depan..." data-testid="input-brand-description" />
+        </div>
+        <div className="flex justify-end">
+          <Button
+            onClick={() => saveMutation.mutate()}
+            disabled={saveMutation.isPending || !form.brandName.trim() || !colorValid}
+            data-testid="button-save-brand"
+          >
+            {saveMutation.isPending ? "Menyimpan..." : "Simpan Pengaturan"}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 function formatMonth(ym: string): string {
   const [y, m] = ym.split("-").map(Number);
@@ -193,6 +314,8 @@ export default function PartnerDashboardPage() {
             </CardContent>
           </Card>
         </div>
+
+        <BrandSettingsCard partner={partner} key={`brand-${partner.id}`} />
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-4">
