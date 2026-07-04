@@ -17,6 +17,7 @@ import {
 import {
   Sparkles, ArrowRight, ArrowLeft, Loader2, Lock, Check, AlertTriangle,
   Brain, Target, ClipboardList, Rocket, RotateCcw, Info, Gauge, Download, Copy,
+  FileJson, Share2,
 } from "lucide-react";
 
 /* ── Types (mirror server/blueprint-engine-routes.ts responses) ───────────── */
@@ -310,6 +311,87 @@ export default function BlueprintBuilderPage() {
     try {
       await navigator.clipboard.writeText(lines.join("\n"));
       toast({ title: "Tersalin", description: "Ringkasan sertifikat siap dibagikan." });
+    } catch {
+      toast({ title: "Gagal menyalin", description: "Browser menolak akses papan klip.", variant: "destructive" });
+    }
+  };
+
+  /* ── Ekspor Blueprint (spesifikasi chatbot) agar bisa dipakai di tool lain ── */
+  const bpVal = (module: string, field: string): any =>
+    blueprint?.modules?.[module]?.data?.[field];
+
+  const bpText = (v: any): string => {
+    if (v === undefined || v === null || v === "") return "";
+    if (Array.isArray(v)) return v.filter(Boolean).join(", ");
+    if (typeof v === "boolean") return v ? "Ya" : "Tidak";
+    return String(v);
+  };
+
+  const blueprintFileName = () => {
+    const name = bpText(bpVal("identity", "name")) || "chatbot";
+    return `gustafta-blueprint-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "chatbot"}`;
+  };
+
+  /* Unduh JSON mentah blueprint — format terstruktur untuk ditransfer/impor ke tool lain. */
+  const downloadBlueprintJSON = () => {
+    if (!blueprint) return;
+    try {
+      const envelope = {
+        type: "gustafta-blueprint",
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        blueprint,
+      };
+      const blob = new Blob([JSON.stringify(envelope, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${blueprintFileName()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast({ title: "Blueprint diunduh", description: "File JSON siap diimpor ke tool lain." });
+    } catch {
+      toast({ title: "Gagal mengunduh", description: "Coba lagi sebentar.", variant: "destructive" });
+    }
+  };
+
+  /* Susun brief teks rapi dari blueprint — untuk ditempel ke tool Marketing / Ebook / Ecourse / Generator Dokumen. */
+  const buildBlueprintBrief = (): string => {
+    const lines: string[] = [];
+    const name = bpText(bpVal("identity", "name")) || "Chatbot";
+    lines.push(`BRIEF BLUEPRINT — ${name}`);
+    lines.push("Spesifikasi chatbot hasil Dialog Gustafta. Bisa dipakai ulang di tool Gustafta lain (Marketing, Ebook, Ecourse, Mini Apps, Generator Dokumen).");
+    lines.push("");
+    const rows: [string, any][] = [
+      ["Tujuan / niat awal", blueprint?.meta?.intent],
+      ["Nama", bpVal("identity", "name")],
+      ["Deskripsi", bpVal("identity", "description")],
+      ["Keahlian utama", bpVal("identity", "expertise")],
+      ["Nada bicara", bpVal("identity", "toneOfVoice")],
+      ["Bahasa", bpVal("identity", "language")],
+      ["Pesan sambutan", bpVal("identity", "greetingMessage")],
+      ["Hindari topik", bpVal("identity", "avoidTopics")],
+      ["Tujuan utama", bpVal("goals", "primaryOutcome")],
+      ["Sasaran pengguna", bpVal("monetization", "productTargetUser")],
+      ["Piagam domain / batasan", bpVal("policy", "domainCharter")],
+      ["Kepatuhan / risiko", bpVal("policy", "riskCompliance")],
+    ];
+    for (const [label, raw] of rows) {
+      const val = bpText(raw);
+      if (val) lines.push(`${label}: ${val}`);
+    }
+    lines.push("");
+    lines.push("Dibuat dengan Gustafta Blueprint Builder.");
+    return lines.join("\n");
+  };
+
+  const copyBlueprintBrief = async () => {
+    if (!blueprint) return;
+    try {
+      await navigator.clipboard.writeText(buildBlueprintBrief());
+      toast({ title: "Brief tersalin", description: "Tempel ke tool lain (Marketing, Ebook, Ecourse, Generator Dokumen)." });
     } catch {
       toast({ title: "Gagal menyalin", description: "Browser menolak akses papan klip.", variant: "destructive" });
     }
@@ -659,6 +741,39 @@ export default function BlueprintBuilderPage() {
                   {f.recommendation && <p className="text-[11px] text-gray-400 mt-1 pl-1">→ {f.recommendation}</p>}
                 </div>
               ))}
+            </div>
+
+            {/* Ekspor Blueprint — untuk ditransfer ke tool Gustafta lain */}
+            <div className="rounded-2xl border border-sky-200 dark:border-sky-500/30 bg-sky-50 dark:bg-sky-950/20 p-5" data-testid="card-export-blueprint">
+              <div className="flex items-center gap-2 mb-1">
+                <Share2 className="h-5 w-5 text-sky-600 dark:text-sky-400" />
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white">Ekspor Blueprint (spesifikasi chatbot)</h3>
+              </div>
+              <p className="text-[11px] text-sky-700/80 dark:text-sky-300/80 mb-3">
+                Simpan atau pindahkan blueprint ini untuk dipakai ulang di tool Gustafta lain — Marketing, Ebook, Ecourse, Mini Apps, dan Generator Dokumen.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  onClick={downloadBlueprintJSON}
+                  size="sm"
+                  className="bg-sky-600 hover:bg-sky-500 text-white gap-2"
+                  data-testid="btn-download-blueprint-json"
+                >
+                  <FileJson className="h-3.5 w-3.5" /> Unduh Blueprint (JSON)
+                </Button>
+                <Button
+                  onClick={copyBlueprintBrief}
+                  size="sm"
+                  variant="outline"
+                  className="gap-2 border-sky-300 dark:border-sky-500/40 text-sky-700 dark:text-sky-300"
+                  data-testid="btn-copy-blueprint-brief"
+                >
+                  <Copy className="h-3.5 w-3.5" /> Salin Brief
+                </Button>
+              </div>
+              <p className="text-[10px] text-sky-700/70 dark:text-sky-300/70 mt-2">
+                JSON = format terstruktur untuk diimpor. Brief = teks rapi untuk ditempel langsung ke tool lain.
+              </p>
             </div>
 
             {/* Configure preview / create */}
