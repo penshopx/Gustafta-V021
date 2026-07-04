@@ -629,6 +629,7 @@ export const subscriptionsTable = pgTable("subscriptions_new", {
   currency: text("currency").default("IDR"),
   chatbotLimit: integer("chatbot_limit").default(1),
   trialMessagesUsed: integer("trial_messages_used").default(0),
+  partnerId: integer("partner_id"),                                // jika di-set: langganan seat yang disediakan mitra asosiasi (Model B)
   startDate: timestamp("start_date"),
   endDate: timestamp("end_date"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -1286,6 +1287,7 @@ export type InsertSubscription = z.infer<typeof insertSubscriptionSchema>;
 export type Subscription = InsertSubscription & {
   id: string;
   trialMessagesUsed: number;
+  partnerId?: number | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -1942,6 +1944,7 @@ export const partners = pgTable("partners", {
   defaultAgentId: text("default_agent_id"),                         // chatbot konstruksi default
   cheapModel: varchar("cheap_model", { length: 64 }).default("gpt-4o-mini").notNull(), // model hemat default
   seatsPerUnit: integer("seats_per_unit").default(3).notNull(),     // ASPEKINDO=3/unit, lainnya=2
+  seatCapacity: integer("seat_capacity").default(0).notNull(),      // total seat Starter berbayar (kelipatan 25). >0 = mode Lisensi Seat (Model B); 0 = mode pooled lama (Model A)
   monthlyQuota: integer("monthly_quota").default(0).notNull(),      // pool pesan/bulan; 0 = tak terbatas
   quotaMonth: varchar("quota_month", { length: 7 }),               // "2026-07"
   quotaUsed: integer("quota_used").default(0).notNull(),

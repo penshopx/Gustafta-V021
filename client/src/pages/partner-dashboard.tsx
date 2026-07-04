@@ -30,11 +30,31 @@ interface PartnerMe {
   contactEmail: string | null;
   host: string;
   seatsPerUnit: number;
+  seatCapacity: number;
   activeSeats: number;
   pendingSeats: number;
+  seatsUsed: number;
   monthlyQuota: number;
   quotaUsed: number;
   billingMonth: string;
+  hasDefaultAgent: boolean;
+}
+
+interface SeatMember {
+  userId: string;
+  role: string;
+  email?: string | null;
+}
+interface SeatPending {
+  email: string;
+  role: string;
+}
+interface SeatsResponse {
+  active: SeatMember[];
+  pending: SeatPending[];
+  seatCapacity: number;
+  seatsUsed: number;
+  seatMode: boolean;
   hasDefaultAgent: boolean;
 }
 
@@ -171,6 +191,174 @@ function BrandSettingsCard({ partner }: { partner: PartnerMe }) {
   );
 }
 
+function SeatManagementCard({ partner }: { partner: PartnerMe }) {
+  const { toast } = useToast();
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState<"viewer" | "editor">("viewer");
+
+  const { data: seats, isLoading } = useQuery<SeatsResponse>({
+    queryKey: ["/api/partner/me/seats"],
+  });
+
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ["/api/partner/me/seats"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/partner/me"] });
+  };
+
+  const addMutation = useMutation({
+    mutationFn: async () => apiRequest("POST", "/api/partner/me/seats", { email: email.trim().toLowerCase(), role }),
+    onSuccess: async (res: any) => {
+      let status = "";
+      try { status = (await res.json())?.status; } catch { /* ignore */ }
+      invalidate();
+      setEmail("");
+      toast({
+        title: "Seat ditambahkan",
+        description: status === "pending"
+          ? "Undangan terkirim. Anggota akan dapat akses Starter setelah login."
+          : "Anggota langsung diberi akses Starter.",
+      });
+    },
+    onError: (e: any) => {
+      const raw = (e?.message || "").replace(/^\d{3}:\s*/, "");
+      let detail = raw;
+      try { detail = JSON.parse(raw)?.error || raw; } catch { /* plain */ }
+      toast({ title: "Gagal menambah seat", description: detail, variant: "destructive" });
+    },
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: async (params: { userId?: string; email?: string }) => {
+      const qs = params.userId ? `userId=${encodeURIComponent(params.userId)}` : `email=${encodeURIComponent(params.email || "")}`;
+      return apiRequest("DELETE", `/api/partner/me/seats?${qs}`);
+    },
+    onSuccess: () => {
+      invalidate();
+      toast({ title: "Seat dicabut", description: "Akses anggota telah dinonaktifkan." });
+    },
+    onError: (e: any) => {
+      toast({ title: "Gagal mencabut seat", description: e?.message || "Terjadi kesalahan", variant: "destructive" });
+    },
+  });
+
+  const capacity = seats?.seatCapacity ?? partner.seatCapacity;
+  const used = seats?.seatsUsed ?? partner.seatsUsed;
+  const remaining = Math.max(0, capacity - used);
+  const full = remaining <= 0;
+  const pct = capacity > 0 ? Math.min(100, Math.round((used / capacity) * 100)) : 0;
+
+  return (
+    <Card data-testid="card-seat-management">
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <Users className="w-4 h-4" /> Lisensi Seat Anggota
+        </CardTitle>
+        <CardDescription>
+          Kelola seat anggota Anda. Tiap seat = 1 akun tim dengan akses Starter (pakai chatbot asosiasi + rakit s.d. 3 chatbot sendiri + kuota pesan).
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div>
+          <div className="flex items-baseline justify-between">
+            <p className="text-sm">
+              <strong className="text-2xl font-bold" data-testid="text-seats-used">{used}</strong>
+              <span className="text-muted-foreground"> / {capacity} seat terpakai</span>
+            </p>
+            <span className="text-xs text-muted-foreground" data-testid="text-seats-remaining">{remaining} tersisa</span>
+          </div>
+          <Progress value={pct} className="mt-2 h-2" data-testid="progress-seats" />
+        </div>
+
+        {!partner.hasDefaultAgent && (
+          <p className="text-xs text-destructive">Mitra belum punya chatbot default — seat tidak dapat diberikan. Hubungi Gustafta.</p>
+        )}
+
+        <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+          <div className="space-y-1.5 flex-1">
+            <Label htmlFor="seat-email">Email anggota</Label>
+            <Input
+              id="seat-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="anggota@perusahaan.co.id"
+              disabled={full || !partner.hasDefaultAgent}
+              data-testid="input-seat-email"
+            />
+          </div>
+          <div className="space-y-1.5 sm:w-40">
+            <Label>Peran</Label>
+            <Select value={role} onValueChange={(v) => setRole(v as "viewer" | "editor")}>
+              <SelectTrigger data-testid="select-seat-role" disabled={full || !partner.hasDefaultAgent}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="viewer">Anggota (viewer)</SelectItem>
+                <SelectItem value="editor">Editor</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Button
+            onClick={() => addMutation.mutate()}
+            disabled={full || !partner.hasDefaultAgent || !email.trim() || !email.includes("@") || addMutation.isPending}
+            data-testid="button-add-seat"
+          >
+            <Plus className="w-4 h-4 mr-1.5" /> {addMutation.isPending ? "Menambah..." : "Tambah"}
+          </Button>
+        </div>
+        {full && (
+          <p className="text-xs text-amber-600 dark:text-amber-500" data-testid="text-seats-full">
+            Kapasitas seat penuh. Ajukan tambah kapasitas lewat "Ajukan Top-Up" di bawah.
+          </p>
+        )}
+
+        <div className="space-y-2">
+          {isLoading ? (
+            <p className="text-sm text-muted-foreground py-3 text-center">Memuat daftar seat...</p>
+          ) : (seats && (seats.active.length > 0 || seats.pending.length > 0)) ? (
+            <>
+              {seats.active.map((m) => (
+                <div key={m.userId} className="flex items-center justify-between gap-3 border rounded px-3 py-2" data-testid={`row-seat-${m.userId}`}>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{m.email || m.userId}</p>
+                    <p className="text-xs text-muted-foreground">{m.role === "editor" ? "Editor" : "Anggota"} · aktif</p>
+                  </div>
+                  <Button
+                    variant="ghost" size="sm"
+                    onClick={() => removeMutation.mutate({ userId: m.userId })}
+                    disabled={removeMutation.isPending}
+                    data-testid={`button-remove-seat-${m.userId}`}
+                  >
+                    <XCircle className="w-4 h-4 text-destructive" />
+                  </Button>
+                </div>
+              ))}
+              {seats.pending.map((p) => (
+                <div key={p.email} className="flex items-center justify-between gap-3 border border-dashed rounded px-3 py-2" data-testid={`row-seat-pending-${p.email}`}>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{p.email}</p>
+                    <p className="text-xs text-muted-foreground">{p.role === "editor" ? "Editor" : "Anggota"} · <span className="text-amber-600 dark:text-amber-500">undangan tertunda</span></p>
+                  </div>
+                  <Button
+                    variant="ghost" size="sm"
+                    onClick={() => removeMutation.mutate({ email: p.email })}
+                    disabled={removeMutation.isPending}
+                    data-testid={`button-remove-seat-pending-${p.email}`}
+                  >
+                    <XCircle className="w-4 h-4 text-destructive" />
+                  </Button>
+                </div>
+              ))}
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground py-3 text-center" data-testid="text-no-seats">Belum ada anggota. Tambahkan seat pertama Anda di atas.</p>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function formatMonth(ym: string): string {
   const [y, m] = ym.split("-").map(Number);
   if (!y || !m) return ym;
@@ -268,12 +456,21 @@ export default function PartnerDashboardPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold" data-testid="text-active-seats">{partner.activeSeats}</p>
+              <p className="text-3xl font-bold" data-testid="text-active-seats">
+                {partner.activeSeats}
+                {(partner.seatCapacity ?? 0) > 0 && (
+                  <span className="text-base font-normal text-muted-foreground"> / {partner.seatCapacity}</span>
+                )}
+              </p>
               <p className="text-xs text-muted-foreground mt-1">
-                fasilitator aktif
+                {(partner.seatCapacity ?? 0) > 0 ? "seat terpakai" : "fasilitator aktif"}
                 {partner.pendingSeats > 0 && <> · {partner.pendingSeats} undangan tertunda</>}
               </p>
-              <p className="text-xs text-muted-foreground mt-1">Jatah per unit: <strong>{partner.seatsPerUnit}</strong></p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {(partner.seatCapacity ?? 0) > 0
+                  ? <>Mode: <strong>Lisensi Seat</strong></>
+                  : <>Jatah per unit: <strong>{partner.seatsPerUnit}</strong></>}
+              </p>
             </CardContent>
           </Card>
 
@@ -314,6 +511,8 @@ export default function PartnerDashboardPage() {
             </CardContent>
           </Card>
         </div>
+
+        {(partner.seatCapacity ?? 0) > 0 && <SeatManagementCard partner={partner} key={`seats-${partner.id}`} />}
 
         <BrandSettingsCard partner={partner} key={`brand-${partner.id}`} />
 
