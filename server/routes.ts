@@ -21738,6 +21738,72 @@ Maksimal 600 kata.`;
     }
   });
 
+  // GET /api/portfolio — agregasi bukti kompetensi lintas-pilar (Academy + Workroom + Sertifikat) + badge
+  app.get("/api/portfolio", isAuthenticated, async (req: any, res: any) => {
+    try {
+      const userId = req.user?.id || req.user?.claims?.sub;
+      if (!userId) return res.status(401).json({ error: "Unauthenticated" });
+
+      const enrolledRes = await db.execute(sqlExpr`
+        SELECT COUNT(*)::int AS n FROM lms_enrollments WHERE user_id = ${userId}`);
+      const enrolledCount = (enrolledRes.rows[0] as any)?.n ?? 0;
+
+      const completedRes = await db.execute(sqlExpr`
+        SELECT c.id, c.title, c.emoji, c.color, c.category, e.completed_at AS "completedAt"
+        FROM lms_enrollments e JOIN lms_courses c ON c.id = e.course_id
+        WHERE e.user_id = ${userId} AND e.completed_at IS NOT NULL
+        ORDER BY e.completed_at DESC`);
+      const completedCourses = completedRes.rows as any[];
+
+      const rooms = await storage.getWorkrooms(userId);
+      const capstoneCount = rooms.filter((r: any) => r.context?.source === "capstone").length;
+
+      let deliverableCount = 0;
+      const roomIds = rooms.map((r: any) => r.id).filter((n: any) => Number.isInteger(n));
+      if (roomIds.length) {
+        const { workroomLogs } = await import("@shared/schema");
+        const dlRes = await db
+          .select({ n: sqlExpr<number>`count(*)::int` })
+          .from(workroomLogs)
+          .where(and(eq(workroomLogs.type, "deliverable"), inArray(workroomLogs.workroomId, roomIds)));
+        deliverableCount = (dlRes[0] as any)?.n ?? 0;
+      }
+
+      const certRes = await db.execute(sqlExpr`
+        SELECT id, title, competency_domain AS "competencyDomain", level, issued_at AS "issuedAt", verify_token AS "verifyToken"
+        FROM digital_certificates WHERE user_id = ${userId} AND status = 'active' ORDER BY created_at DESC`);
+      const certificates = certRes.rows as any[];
+
+      const badges: any[] = [];
+      if (enrolledCount > 0) badges.push({ id: "pelajar", label: "Pelajar Aktif", desc: "Terdaftar di kursus Academy", tone: "amber" });
+      if (completedCourses.length > 0) badges.push({ id: "lulusan", label: "Lulusan Academy", desc: `${completedCourses.length} kursus selesai`, tone: "emerald" });
+      if (rooms.length > 0) badges.push({ id: "praktisi", label: "Praktisi Workroom", desc: `${rooms.length} ruang kerja`, tone: "sky" });
+      if (capstoneCount > 0) badges.push({ id: "capstone", label: "Praktisi Capstone", desc: "Menyelesaikan praktik dari kursus", tone: "violet" });
+      if (deliverableCount > 0) badges.push({ id: "produktif", label: "Produktif", desc: `${deliverableCount} hasil kerja`, tone: "rose" });
+      if (certificates.length > 0) badges.push({ id: "tersertifikasi", label: "Tersertifikasi", desc: `${certificates.length} sertifikat`, tone: "indigo" });
+
+      res.json({
+        stats: {
+          enrolledCount,
+          completedCount: completedCourses.length,
+          workroomCount: rooms.length,
+          capstoneCount,
+          deliverableCount,
+          certCount: certificates.length,
+        },
+        badges,
+        completedCourses,
+        workrooms: rooms.map((r: any) => ({
+          id: r.id, title: r.title, domain: r.domain, status: r.status,
+          source: r.context?.source ?? null, courseTitle: r.context?.courseTitle ?? null,
+        })),
+        certificates,
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e?.message || "Gagal memuat portofolio" });
+    }
+  });
+
   // POST /api/workrooms — buat ruang kerja baru
   app.post("/api/workrooms", isAuthenticated, async (req: any, res: any) => {
     try {

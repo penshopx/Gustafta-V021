@@ -228,6 +228,7 @@ import AiToolsHub from "@/pages/ai-tools-hub";
 import GustaftaOs from "@/pages/gustafta-os";
 import WorkroomListPage from "@/pages/workroom";
 import WorkroomDetailPage from "@/pages/workroom-detail";
+import PortofolioPage from "@/pages/portofolio";
 import KbHub from "@/pages/kb-hub";
 import CertTracker from "@/pages/cert-tracker";
 import DocuGen from "@/pages/docu-gen";
@@ -1405,6 +1406,7 @@ function Router() {
         <Route path="/os" component={GustaftaOs} />
         <Route path="/workroom" component={WorkroomListPage} />
         <Route path="/workroom/:id" component={WorkroomDetailPage} />
+        <Route path="/portofolio" component={PortofolioPage} />
         <Route path="/cert-tracker" component={CertTracker} />
         <Route path="/docu-gen" component={DocuGen} />
         <Route path="/tender-mate" component={TenderMate} />
