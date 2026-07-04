@@ -221,6 +221,8 @@ import NotFound from "@/pages/not-found";
 import RabKalkulator from "@/pages/rab-kalkulator";
 import K3Vision from "@/pages/k3-vision";
 import ProposalJasa from "@/pages/proposal-jasa";
+import GeneratorBahanMarketing from "@/pages/generator-bahan-marketing";
+import GeneratorOutlineEbook from "@/pages/generator-outline-ebook";
 import PkbBuilder from "@/pages/pkb-builder";
 import AiToolsHub from "@/pages/ai-tools-hub";
 import KbHub from "@/pages/kb-hub";
@@ -1393,6 +1395,8 @@ function Router() {
         <Route path="/rab-kalkulator" component={RabKalkulator} />
         <Route path="/k3-vision" component={K3Vision} />
         <Route path="/proposal-jasa" component={ProposalJasa} />
+        <Route path="/generator-bahan-marketing" component={GeneratorBahanMarketing} />
+        <Route path="/generator-outline-ebook" component={GeneratorOutlineEbook} />
         <Route path="/pkb-builder" component={PkbBuilder} />
         <Route path="/ai-tools" component={AiToolsHub} />
         <Route path="/cert-tracker" component={CertTracker} />

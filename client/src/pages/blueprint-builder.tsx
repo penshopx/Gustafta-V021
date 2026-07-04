@@ -17,7 +17,7 @@ import {
 import {
   Sparkles, ArrowRight, ArrowLeft, Loader2, Lock, Check, AlertTriangle,
   Brain, Target, ClipboardList, Rocket, RotateCcw, Info, Gauge, Download, Copy,
-  FileJson, Share2, FileSignature,
+  FileJson, Share2, FileSignature, Megaphone, BookOpen,
 } from "lucide-react";
 
 /* ── Types (mirror server/blueprint-engine-routes.ts responses) ───────────── */
@@ -410,6 +410,34 @@ export default function BlueprintBuilderPage() {
       setLocation("/proposal-jasa");
     } catch {
       toast({ title: "Gagal membuka Generator Proposal", description: "Coba lagi sebentar.", variant: "destructive" });
+    }
+  };
+
+  /* Kirim brief ke Generator Bahan Marketing — prefill kolom "brief" lalu pindah halaman. */
+  const sendToMarketing = () => {
+    if (!blueprint) return;
+    try {
+      localStorage.setItem(
+        "gustafta_marketing_prefill_v1",
+        JSON.stringify({ brief: buildBlueprintBrief(), source: "blueprint" }),
+      );
+      setLocation("/generator-bahan-marketing");
+    } catch {
+      toast({ title: "Gagal membuka Generator Marketing", description: "Coba lagi sebentar.", variant: "destructive" });
+    }
+  };
+
+  /* Kirim brief ke Generator Outline Ebook/Ecourse — prefill kolom "brief" lalu pindah halaman. */
+  const sendToEbook = () => {
+    if (!blueprint) return;
+    try {
+      localStorage.setItem(
+        "gustafta_ebook_prefill_v1",
+        JSON.stringify({ brief: buildBlueprintBrief(), source: "blueprint" }),
+      );
+      setLocation("/generator-outline-ebook");
+    } catch {
+      toast({ title: "Gagal membuka Generator Outline", description: "Coba lagi sebentar.", variant: "destructive" });
     }
   };
 
@@ -855,9 +883,27 @@ export default function BlueprintBuilderPage() {
                 >
                   <FileSignature className="h-3.5 w-3.5" /> Kirim ke Generator Proposal
                 </Button>
+                <Button
+                  onClick={sendToMarketing}
+                  size="sm"
+                  variant="outline"
+                  className="gap-2 border-sky-300 dark:border-sky-500/40 text-sky-700 dark:text-sky-300"
+                  data-testid="btn-send-to-marketing"
+                >
+                  <Megaphone className="h-3.5 w-3.5" /> Kirim ke Generator Marketing
+                </Button>
+                <Button
+                  onClick={sendToEbook}
+                  size="sm"
+                  variant="outline"
+                  className="gap-2 border-sky-300 dark:border-sky-500/40 text-sky-700 dark:text-sky-300"
+                  data-testid="btn-send-to-ebook"
+                >
+                  <BookOpen className="h-3.5 w-3.5" /> Kirim ke Generator Outline
+                </Button>
               </div>
               <p className="text-[10px] text-sky-700/70 dark:text-sky-300/70 mt-2">
-                JSON = format terstruktur untuk diimpor. Brief = teks rapi untuk ditempel langsung ke tool lain. "Kirim ke Generator Proposal" langsung mengisi kebutuhan klien di sana.
+                JSON = format terstruktur untuk diimpor. Brief = teks rapi untuk ditempel langsung ke tool lain. Tombol "Kirim ke..." langsung mengisi brief di generator tujuan (Proposal, Marketing, atau Outline Ebook/Ecourse).
               </p>
             </div>
 

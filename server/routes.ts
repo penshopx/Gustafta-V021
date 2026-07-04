@@ -22141,6 +22141,180 @@ ${kebutuhan.trim()}`;
     }
   });
 
+  // POST /api/tools/generator-bahan-marketing — Bahan Marketing dari brief/blueprint chatbot (GPT-4o-mini)
+  app.post("/api/tools/generator-bahan-marketing", async (req: any, res: any) => {
+    try {
+      const { namaProduk, audiens, platform, brief } = req.body as {
+        namaProduk?: string; audiens?: string; platform?: string; brief?: string;
+      };
+      if (!brief || brief.trim().length < 15) {
+        return res.status(400).json({ message: "Deskripsi/brief terlalu singkat (min. 15 karakter)" });
+      }
+      const { OpenAI } = await import("openai");
+      const apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+      if (!apiKey) return res.status(503).json({ message: "Layanan AI belum dikonfigurasi (OPENAI_API_KEY tidak ada)" });
+      const openai = new OpenAI({ apiKey });
+
+      const systemPrompt = `Anda adalah "Penyusun Bahan Marketing" — membantu pemilik produk/jasa membuat DRAF bahan promosi yang persuasif, relevan, dan JUJUR untuk mempromosikan sebuah chatbot/asisten AI (atau produk apa pun) berdasar brief yang diberikan.
+
+Prinsip:
+- Gunakan Bahasa Indonesia yang natural, membumi, dan sesuai audiens sasaran.
+- JANGAN membuat urgensi palsu, janji hasil pasti, testimoni fiktif, atau angka/statistik yang tidak ada di brief. Bila perlu klaim yang belum pasti, tandai dengan [ASUMSI: ...].
+- Fokus pada MANFAAT nyata bagi pengguna, bukan sekadar fitur.
+- Sesuaikan gaya per platform (mis. TikTok/Reels lebih singkat & hook kuat, LinkedIn lebih profesional, WhatsApp lebih personal).
+- Ini DRAF untuk disunting manusia sebelum dipublikasikan.
+
+Balas HANYA dengan JSON valid (tanpa markdown fence) sesuai skema:
+{
+  "produk": "string — nama produk/chatbot",
+  "positioning": "string — 1-2 kalimat positioning inti",
+  "target_audiens": "string — siapa yang disasar",
+  "angle_iklan": [{"judul":"string — nama angle","deskripsi":"string — 1-2 kalimat"}],
+  "hook": ["string — kalimat pembuka penarik perhatian"],
+  "caption": [{"platform":"string — mis. Instagram / TikTok / Facebook / LinkedIn","teks":"string — caption siap pakai","hashtag":["string"]}],
+  "skrip_promosi": [{"kanal":"string — mis. 'WhatsApp broadcast' / 'Video 30 detik'","isi":"string — skrip lengkap"}],
+  "cta": ["string — ajakan bertindak"],
+  "catatan": "string — catatan/pengingat bahwa ini draf & perlu disunting"
+}`;
+
+      const userPrompt = `Buat draf bahan marketing berdasar input berikut:
+- Nama produk/chatbot: ${namaProduk?.trim() || "(ambil dari brief)"}
+- Target audiens: ${audiens?.trim() || "(tentukan dari brief)"}
+- Platform fokus: ${platform?.trim() || "(pilih platform paling relevan)"}
+- Brief/deskripsi:
+${brief.trim()}`;
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        temperature: 0.7,
+        max_tokens: 2500,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+      });
+
+      const raw = completion.choices?.[0]?.message?.content?.trim() || "{}";
+      let data: any;
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        return res.status(502).json({ message: "AI mengembalikan format tak terduga, coba lagi" });
+      }
+      // Normalisasi defensif agar UI aman.
+      data.produk = typeof data.produk === "string" ? data.produk : (namaProduk?.trim() || "Produk Anda");
+      data.positioning = typeof data.positioning === "string" ? data.positioning : "";
+      data.target_audiens = typeof data.target_audiens === "string" ? data.target_audiens : "";
+      data.angle_iklan = (Array.isArray(data.angle_iklan) ? data.angle_iklan : []).map((a: any) => ({
+        judul: typeof a?.judul === "string" ? a.judul : "",
+        deskripsi: typeof a?.deskripsi === "string" ? a.deskripsi : "",
+      }));
+      data.hook = (Array.isArray(data.hook) ? data.hook : []).filter((h: any) => typeof h === "string");
+      data.caption = (Array.isArray(data.caption) ? data.caption : []).map((c: any) => ({
+        platform: typeof c?.platform === "string" ? c.platform : "",
+        teks: typeof c?.teks === "string" ? c.teks : "",
+        hashtag: (Array.isArray(c?.hashtag) ? c.hashtag : []).filter((t: any) => typeof t === "string"),
+      }));
+      data.skrip_promosi = (Array.isArray(data.skrip_promosi) ? data.skrip_promosi : []).map((s: any) => ({
+        kanal: typeof s?.kanal === "string" ? s.kanal : "",
+        isi: typeof s?.isi === "string" ? s.isi : "",
+      }));
+      data.cta = (Array.isArray(data.cta) ? data.cta : []).filter((c: any) => typeof c === "string");
+      data.catatan = typeof data.catatan === "string" ? data.catatan : "";
+
+      res.json(data);
+    } catch (err: any) {
+      console.error("[Bahan Marketing]", err.message);
+      res.status(500).json({ message: err.message || "Terjadi kesalahan internal" });
+    }
+  });
+
+  // POST /api/tools/generator-outline-ebook — Outline Ebook/Ecourse dari brief/blueprint (GPT-4o-mini)
+  app.post("/api/tools/generator-outline-ebook", async (req: any, res: any) => {
+    try {
+      const { judul, audiens, format, brief } = req.body as {
+        judul?: string; audiens?: string; format?: string; brief?: string;
+      };
+      if (!brief || brief.trim().length < 15) {
+        return res.status(400).json({ message: "Deskripsi/brief terlalu singkat (min. 15 karakter)" });
+      }
+      const fmt = (format || "").toLowerCase().includes("course") || (format || "").toLowerCase().includes("kursus")
+        ? "Ecourse" : "Ebook";
+      const { OpenAI } = await import("openai");
+      const apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+      if (!apiKey) return res.status(503).json({ message: "Layanan AI belum dikonfigurasi (OPENAI_API_KEY tidak ada)" });
+      const openai = new OpenAI({ apiKey });
+
+      const systemPrompt = `Anda adalah "Perancang Kurikulum" — membantu pembuat materi menyusun DRAF kerangka (outline) ${fmt} yang runtut, praktis, dan JUJUR berdasar brief/pengetahuan yang diberikan.
+
+Prinsip:
+- Gunakan Bahasa Indonesia yang jelas dan enak diikuti.
+- Susun alur dari dasar ke lanjutan; tiap ${fmt === "Ecourse" ? "modul" : "bab"} punya tujuan yang jelas.
+- ${fmt === "Ecourse" ? "Untuk Ecourse, sertakan estimasi durasi tiap modul dan aktivitas/latihan bila relevan." : "Untuk Ebook, fokus pada struktur bab & poin bahasan; durasi boleh dikosongkan."}
+- JANGAN mengarang fakta/data yang tidak ada di brief; bila mengasumsikan, tandai dengan [ASUMSI: ...].
+- Ini DRAF untuk disunting & dikembangkan penulis.
+
+Balas HANYA dengan JSON valid (tanpa markdown fence) sesuai skema:
+{
+  "judul": "string — judul materi",
+  "format": "${fmt}",
+  "ringkasan": "string — 2-3 kalimat gambaran materi",
+  "target_pembaca": "string — untuk siapa materi ini",
+  "tujuan_pembelajaran": ["string — apa yang bisa dilakukan pembaca setelah selesai"],
+  "outline": [{"nomor": number, "judul":"string — judul ${fmt === "Ecourse" ? "modul" : "bab"}","ringkasan":"string — 1 kalimat isi","poin":["string — sub-topik/poin bahasan"],"durasi":"string — estimasi durasi (Ecourse) atau '' (Ebook)"}],
+  "cta": "string — ajakan/langkah lanjut untuk pembaca",
+  "catatan": "string — catatan bahwa ini draf & perlu dikembangkan"
+}`;
+
+      const userPrompt = `Buat draf outline ${fmt} berdasar input berikut:
+- Judul (usulan): ${judul?.trim() || "(usulkan judul dari brief)"}
+- Target pembaca: ${audiens?.trim() || "(tentukan dari brief)"}
+- Format: ${fmt}
+- Brief/pengetahuan sumber:
+${brief.trim()}`;
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        temperature: 0.6,
+        max_tokens: 2800,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+      });
+
+      const raw = completion.choices?.[0]?.message?.content?.trim() || "{}";
+      let data: any;
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        return res.status(502).json({ message: "AI mengembalikan format tak terduga, coba lagi" });
+      }
+      // Normalisasi defensif agar UI aman.
+      data.judul = typeof data.judul === "string" ? data.judul : (judul?.trim() || "Materi Belajar");
+      data.format = fmt;
+      data.ringkasan = typeof data.ringkasan === "string" ? data.ringkasan : "";
+      data.target_pembaca = typeof data.target_pembaca === "string" ? data.target_pembaca : "";
+      data.tujuan_pembelajaran = (Array.isArray(data.tujuan_pembelajaran) ? data.tujuan_pembelajaran : []).filter((t: any) => typeof t === "string");
+      data.outline = (Array.isArray(data.outline) ? data.outline : []).map((o: any, i: number) => ({
+        nomor: typeof o?.nomor === "number" ? o.nomor : i + 1,
+        judul: typeof o?.judul === "string" ? o.judul : "",
+        ringkasan: typeof o?.ringkasan === "string" ? o.ringkasan : "",
+        poin: (Array.isArray(o?.poin) ? o.poin : []).filter((p: any) => typeof p === "string"),
+        durasi: typeof o?.durasi === "string" ? o.durasi : "",
+      }));
+      data.cta = typeof data.cta === "string" ? data.cta : "";
+      data.catatan = typeof data.catatan === "string" ? data.catatan : "";
+
+      res.json(data);
+    } catch (err: any) {
+      console.error("[Outline Ebook/Ecourse]", err.message);
+      res.status(500).json({ message: err.message || "Terjadi kesalahan internal" });
+    }
+  });
+
   // POST /api/tools/k3-vision — AI Vision K3 Inspector (GPT-4o Vision)
   app.post("/api/tools/k3-vision", async (req: any, res: any) => {
     try {
