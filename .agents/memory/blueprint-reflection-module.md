@@ -13,22 +13,20 @@ Output surface = `buildMasteryProfile()` (pure engine) → `POST /api/blueprint/
 
 - **Reflection is a NON-AGENT module.** It must stay in `NON_AGENT_MODULES` in `mapping-engine.ts`
   so it is never written to `agents` columns. Adding an agent-facing module? Do NOT add it there.
-- **Reflection questions are priority 1 = dialogue-essential** (priority ≤ `ESSENTIAL_MAX_PRIORITY`).
-  So they count toward `remainingEssential`/`essentialComplete` even though the module is
-  `optional: true` in `confidence-engine` MODULE_SPECS. "Optional for confidence" ≠ "optional for dialogue".
-- **They sit near the FRONT of `QUESTION_BANK`** (right after `intent`, before `identity.*`).
-  The first batch of `selectNextQuestions` is now `["intent","reflection.educationBackground","reflection.knowledgeSource"]`.
+- **Reflection questions are OPTIONAL (priority 3 > `ESSENTIAL_MAX_PRIORITY`), by deliberate decision.**
+  They are offered AFTER the core identity/goal essentials, never before. Do NOT promote them to
+  priority ≤ 2 again.
+  **Why:** an earlier revision made all 22 reflection questions priority-1 essential AND placed them
+  at the front of `QUESTION_BANK` (before `identity.*`). The owner flagged that this hijacked the
+  Blueprint's lean "tanya sesedikit mungkin" flow — it buried the questions that actually define the
+  chatbot and risked an unfocused build. Reflection is an *additive* layer (feeds the mastery profile +
+  optional enrichment), not a mandatory gate.
 
-## Test pitfall (this bit us once)
+## Test pitfall
 
-Any test that calls `selectNextQuestions(bp, { max: N })` and expects a later field
-(e.g. `identity.description`) must use a **large enough `max`** — the 22 reflection essentials
-now occupy the early slots. `max: 10` silently truncates before identity fields, causing both
-false negatives (expected-included fails) AND false positives (expected-excluded passes for the
-wrong reason). Use `max: 50` when the assertion is about presence/absence of a specific field.
-
-**Why:** the reflection expansion changed batch ordering and essential counts platform-wide;
-downstream dialogue tests that hard-code the first-N ids or rely on a tight `max` window break.
+Dialogue tests that hard-code the first-N batch ids or the essential count depend on reflection
+staying OPTIONAL. If you ever change reflection priority, `tests/dialogue-engine.test.ts` (first-batch
+= identity-first; the all-essential completeness test) will need updating in lockstep.
 
 ## Inference enrichment (safety)
 

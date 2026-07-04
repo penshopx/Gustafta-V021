@@ -17,7 +17,7 @@ test("selectNextQuestions: Blueprint kosong → batch awal = 3 pertanyaan tier-1
   const bp = createEmptyBlueprint();
   const q = selectNextQuestions(bp);
   assert.equal(q.length, 3, "default max = 3 (tanya sesedikit mungkin)");
-  assert.deepEqual(ids(q), ["intent", "reflection.educationBackground", "reflection.knowledgeSource"]);
+  assert.deepEqual(ids(q), ["intent", "identity.name", "identity.description"]);
   for (const item of q) {
     assert.ok(item.priority <= ESSENTIAL_MAX_PRIORITY, "default hanya tier esensial");
   }
@@ -71,7 +71,7 @@ test("confidence-not-completion: field terisi tapi confidence rendah / needsConf
     source: "inferred",
     needsConfirmation: true,
   };
-  const q = selectNextQuestions(bp, { max: 50 });
+  const q = selectNextQuestions(bp, { max: 10 });
   assert.ok(ids(q).includes("identity.description"));
 });
 
@@ -83,7 +83,7 @@ test("confidence-not-completion: field inferred confidence TINGGI tanpa needsCon
     source: "inferred",
     needsConfirmation: false,
   };
-  const q = selectNextQuestions(bp, { max: 50 });
+  const q = selectNextQuestions(bp, { max: 10 });
   assert.ok(!ids(q).includes("identity.description"));
 });
 
@@ -111,29 +111,6 @@ test("getDialogueState: setelah semua esensial terjawab → essentialComplete + 
     "identity.avoidTopics": "politik",
     "policy.riskCompliance": "patuh OJK",
     "knowledge.ragEnabled": true,
-    // Dialog Reflektif 3 Gerbang — semua 22 field refleksi (priority 1 = esensial)
-    "reflection.educationBackground": "x",
-    "reflection.knowledgeSource": "x",
-    "reflection.mastered": "x",
-    "reflection.uncertain": "x",
-    "reflection.vision": "x",
-    "reflection.desiredChange": "x",
-    "reflection.personalMeaning": "x",
-    "reflection.currentReality": "x",
-    "reflection.painPoint": "x",
-    "reflection.stakeholders": "x",
-    "reflection.pastAttempts": "x",
-    "reflection.successStory": "x",
-    "reflection.lessonsLearned": "x",
-    "reflection.repetitiveBurden": "x",
-    "reflection.riskIfIgnored": "x",
-    "reflection.desiredRole": "pengarah",
-    "reflection.desiredCreation": "x",
-    "reflection.humanVsAiBoundary": "x",
-    "reflection.beneficiary": "x",
-    "reflection.successVision": "x",
-    "reflection.nonNegotiableValues": "x",
-    "reflection.biggestHope": "x",
   };
   bp = applyAnswers(bp, allEssential).blueprint;
 
