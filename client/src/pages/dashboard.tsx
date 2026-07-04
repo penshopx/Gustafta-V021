@@ -1095,6 +1095,18 @@ export default function Dashboard() {
             <div className="space-y-3">
               <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Aksi Cepat</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Link href="/os" className="sm:col-span-2">
+                  <div className="flex items-center gap-3 p-3 rounded-lg border border-primary/40 bg-gradient-to-r from-primary/10 to-sky-500/10 hover:border-primary hover:from-primary/15 hover:to-sky-500/15 transition-colors text-left cursor-pointer" data-testid="card-gustafta-os">
+                    <div className="w-8 h-8 rounded-md bg-primary/15 flex items-center justify-center shrink-0">
+                      <Sparkles className="w-4 h-4 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium">Gustafta OS — 5 Pilar</p>
+                      <p className="text-xs text-muted-foreground">Peta lengkap: Coach · Claw · Workroom · Academy · Kompetensi</p>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-primary shrink-0" />
+                  </div>
+                </Link>
                 <Link href="/blueprint-builder" className="sm:col-span-2">
                   <div className="flex items-center gap-3 p-3 rounded-lg border border-indigo-500/30 bg-gradient-to-r from-indigo-500/10 to-blue-500/10 hover:border-indigo-500 hover:from-indigo-500/15 hover:to-blue-500/15 transition-colors text-left cursor-pointer" data-testid="card-blueprint-builder">
                     <div className="w-8 h-8 rounded-md bg-indigo-500/15 flex items-center justify-center shrink-0">

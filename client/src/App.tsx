@@ -225,6 +225,7 @@ import GeneratorBahanMarketing from "@/pages/generator-bahan-marketing";
 import GeneratorOutlineEbook from "@/pages/generator-outline-ebook";
 import PkbBuilder from "@/pages/pkb-builder";
 import AiToolsHub from "@/pages/ai-tools-hub";
+import GustaftaOs from "@/pages/gustafta-os";
 import KbHub from "@/pages/kb-hub";
 import CertTracker from "@/pages/cert-tracker";
 import DocuGen from "@/pages/docu-gen";
@@ -1399,6 +1400,7 @@ function Router() {
         <Route path="/generator-outline-ebook" component={GeneratorOutlineEbook} />
         <Route path="/pkb-builder" component={PkbBuilder} />
         <Route path="/ai-tools" component={AiToolsHub} />
+        <Route path="/os" component={GustaftaOs} />
         <Route path="/cert-tracker" component={CertTracker} />
         <Route path="/docu-gen" component={DocuGen} />
         <Route path="/tender-mate" component={TenderMate} />
