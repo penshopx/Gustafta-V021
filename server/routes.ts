@@ -16452,10 +16452,10 @@ Buat dokumen KB berkualitas tinggi untuk topik ini.`;
       if (!(await isRequestAdmin(req))) return res.status(403).json({ error: "Akses ditolak" });
       const [partner] = await db.select().from(partners).where(eq(partners.id, Number(req.params.id)));
       if (!partner) return res.status(404).json({ error: "Mitra tidak ditemukan" });
-      if (!partner.defaultAgentId) return res.json({ active: [], pending: [], seatsPerUnit: partner.seatsPerUnit });
+      if (!partner.defaultAgentId) return res.json({ active: [], pending: [], seatsPerUnit: partner.seatsPerUnit, seatCapacity: partner.seatCapacity });
       const active = await storage.listCollaboratorsForAgent(partner.defaultAgentId);
       const pending = await storage.listPendingInvitesForAgent(partner.defaultAgentId);
-      res.json({ active, pending, seatsPerUnit: partner.seatsPerUnit });
+      res.json({ active, pending, seatsPerUnit: partner.seatsPerUnit, seatCapacity: partner.seatCapacity, seatsUsed: active.length + pending.length });
     } catch (error) {
       res.status(500).json({ error: "Gagal memuat daftar kursi fasilitator" });
     }
@@ -16472,14 +16472,17 @@ Buat dokumen KB berkualitas tinggi untuk topik ini.`;
       if (!partner.defaultAgentId) return res.status(400).json({ error: "Mitra belum punya chatbot default" });
       const invitedBy = (req.user as any)?.claims?.sub || "admin";
       const role = (req.body.role === "editor" ? "editor" : "viewer") as import("@shared/schema").CollaboratorRole;
-      // Jika user sudah terdaftar → langsung jadikan kolaborator; jika belum → simpan undangan pending.
-      const existingUser = (await db.select().from(users).where(eq(users.email, email)).limit(1))[0];
-      if (existingUser) {
-        await storage.addOrUpdateCollaborator({ agentId: partner.defaultAgentId, userId: existingUser.id, role, invitedBy });
-        return res.status(201).json({ status: "granted" });
+      // Klaim seat ATOMIK: cek kapasitas (Model B) + beri akses + sediakan langganan.
+      const claim = await storage.claimPartnerSeat({
+        partnerId: partner.id,
+        agentId: partner.defaultAgentId,
+        seatCapacity: partner.seatCapacity ?? 0,
+        email, role, invitedBy,
+      });
+      if (claim.reason === "seat_capacity_full") {
+        return res.status(409).json({ error: `Kapasitas seat penuh (${partner.seatCapacity}). Tambah kapasitas dulu.`, reason: "seat_capacity_full" });
       }
-      await storage.addOrUpdatePendingInvite({ agentId: partner.defaultAgentId, email, role, invitedBy });
-      res.status(201).json({ status: "pending" });
+      res.status(201).json({ status: claim.status });
     } catch (error) {
       res.status(500).json({ error: "Gagal menambah kursi fasilitator" });
     }
@@ -16493,13 +16496,9 @@ Buat dokumen KB berkualitas tinggi untuk topik ini.`;
       if (!partner || !partner.defaultAgentId) return res.status(404).json({ error: "Mitra tidak ditemukan" });
       const userId = req.query.userId as string | undefined;
       const email = req.query.email ? String(req.query.email).toLowerCase().trim() : undefined;
-      if (userId) {
-        await storage.removeCollaborator(partner.defaultAgentId, userId);
-      } else if (email) {
-        await storage.removePendingInvite(partner.defaultAgentId, email);
-      } else {
-        return res.status(400).json({ error: "userId atau email diperlukan" });
-      }
+      if (!userId && !email) return res.status(400).json({ error: "userId atau email diperlukan" });
+      // Cabut seat ATOMIK: nonaktifkan langganan + hapus akses.
+      await storage.revokePartnerSeat({ partnerId: partner.id, agentId: partner.defaultAgentId, userId, email });
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Gagal menghapus kursi fasilitator" });
@@ -16554,8 +16553,10 @@ Buat dokumen KB berkualitas tinggi untuk topik ini.`;
         contactEmail: partner.contactEmail,
         host: partner.host,
         seatsPerUnit: partner.seatsPerUnit,
+        seatCapacity: partner.seatCapacity, // total seat berbayar (Model B); 0 = mode pooled
         activeSeats,
         pendingSeats,
+        seatsUsed: activeSeats + pendingSeats,
         monthlyQuota: partner.monthlyQuota, // 0 = tak terbatas
         quotaUsed,
         billingMonth: month,
@@ -16610,6 +16611,89 @@ Buat dokumen KB berkualitas tinggi untuk topik ini.`;
       });
     } catch (error) {
       res.status(500).json({ error: "Gagal menyimpan pengaturan mitra" });
+    }
+  });
+
+  // ==================== Partner-Admin: Kelola Seat (Model B) ====================
+  // Pengurus asosiasi mengelola seat anggota mandiri dalam batas kapasitas berbayar.
+  // Hanya berlaku bila mitra memakai mode Lisensi Seat (seatCapacity > 0).
+
+  // PARTNER-ADMIN: daftar seat (anggota aktif + undangan pending) + info kapasitas.
+  app.get("/api/partner/me/seats", optionalAuthWithEmail, async (req: any, res) => {
+    try {
+      const resolved = await resolvePartnerForAdmin(req);
+      if (!resolved) return res.status(403).json({ error: "Anda bukan pengurus mitra terdaftar." });
+      const { partner } = resolved;
+      let active: any[] = [];
+      let pending: any[] = [];
+      if (partner.defaultAgentId) {
+        active = await storage.listCollaboratorsForAgent(partner.defaultAgentId);
+        pending = await storage.listPendingInvitesForAgent(partner.defaultAgentId);
+      }
+      res.json({
+        active,
+        pending,
+        seatCapacity: partner.seatCapacity,
+        seatsUsed: active.length + pending.length,
+        seatMode: (partner.seatCapacity ?? 0) > 0, // true = Model B (Lisensi Seat)
+        hasDefaultAgent: !!partner.defaultAgentId,
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Gagal memuat daftar seat" });
+    }
+  });
+
+  // PARTNER-ADMIN: tambah seat (undang anggota by email) dalam batas kapasitas.
+  app.post("/api/partner/me/seats", optionalAuthWithEmail, async (req: any, res) => {
+    try {
+      const resolved = await resolvePartnerForAdmin(req);
+      if (!resolved) return res.status(403).json({ error: "Anda bukan pengurus mitra terdaftar." });
+      const { partner, email: adminEmail } = resolved;
+      if ((partner.seatCapacity ?? 0) <= 0) {
+        return res.status(400).json({ error: "Mitra belum mengaktifkan Lisensi Seat. Hubungi Gustafta." });
+      }
+      if (!partner.defaultAgentId) {
+        return res.status(400).json({ error: "Mitra belum punya chatbot default." });
+      }
+      const email = String(req.body.email || "").toLowerCase().trim();
+      if (!email || !email.includes("@")) return res.status(400).json({ error: "Email tidak valid" });
+      const role = (req.body.role === "editor" ? "editor" : "viewer") as import("@shared/schema").CollaboratorRole;
+      // Klaim seat ATOMIK dalam batas kapasitas berbayar (race-safe + fail-closed).
+      const claim = await storage.claimPartnerSeat({
+        partnerId: partner.id,
+        agentId: partner.defaultAgentId,
+        seatCapacity: partner.seatCapacity ?? 0,
+        email, role, invitedBy: adminEmail,
+      });
+      if (claim.reason === "seat_capacity_full") {
+        return res.status(409).json({ error: `Kapasitas seat penuh (${partner.seatCapacity}). Ajukan tambah kapasitas.`, reason: "seat_capacity_full" });
+      }
+      res.status(201).json({ status: claim.status });
+    } catch (error) {
+      res.status(500).json({ error: "Gagal menambah seat" });
+    }
+  });
+
+  // PARTNER-ADMIN: cabut seat (anggota by userId, atau undangan pending by email).
+  app.delete("/api/partner/me/seats", optionalAuthWithEmail, async (req: any, res) => {
+    try {
+      const resolved = await resolvePartnerForAdmin(req);
+      if (!resolved) return res.status(403).json({ error: "Anda bukan pengurus mitra terdaftar." });
+      const { partner } = resolved;
+      // Mode pooled (seatCapacity=0) tetap perilaku lama: partner-admin TIDAK
+      // boleh mutasi keanggotaan lewat API self-service ini.
+      if ((partner.seatCapacity ?? 0) <= 0) {
+        return res.status(400).json({ error: "Mitra belum mengaktifkan Lisensi Seat. Hubungi Gustafta." });
+      }
+      if (!partner.defaultAgentId) return res.status(400).json({ error: "Mitra belum punya chatbot default." });
+      const userId = req.query.userId as string | undefined;
+      const email = req.query.email ? String(req.query.email).toLowerCase().trim() : undefined;
+      if (!userId && !email) return res.status(400).json({ error: "userId atau email diperlukan" });
+      // Cabut seat ATOMIK: nonaktifkan langganan + hapus akses.
+      await storage.revokePartnerSeat({ partnerId: partner.id, agentId: partner.defaultAgentId, userId, email });
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Gagal mencabut seat" });
     }
   });
 

@@ -50,6 +50,7 @@ import {
   certificationAuditLog,
   pendingPremiumDeliveries,
   notifications,
+  partners,
 } from "@shared/schema";
 import { users } from "@shared/models/auth";
 import type {
@@ -1449,6 +1450,35 @@ export class DatabaseStorage implements IStorage {
       });
     }
     await db.delete(pendingAgentInvites).where(eq(pendingAgentInvites.email, normalized));
+
+    // Lisensi Seat Asosiasi (Model B): jika undangan ini adalah seat mitra
+    // (agen default mitra ber-seatCapacity>0), sediakan langganan starter untuk
+    // anggota baru. Fire-and-forget; kegagalan tidak boleh membatalkan grant.
+    try {
+      const partnerRows = await db.select({
+        id: partners.id,
+        defaultAgentId: partners.defaultAgentId,
+        seatCapacity: partners.seatCapacity,
+      }).from(partners).where(eq(partners.active, true));
+      const agentToPartner = new Map<string, number>();
+      for (const p of partnerRows) {
+        if (p.defaultAgentId && (p.seatCapacity ?? 0) > 0) {
+          agentToPartner.set(String(p.defaultAgentId), p.id);
+        }
+      }
+      const seenPartners = new Set<number>();
+      for (const inv of invites) {
+        const pid = agentToPartner.get(String(inv.agentId));
+        if (pid && !seenPartners.has(pid)) {
+          seenPartners.add(pid);
+          await this.provisionPartnerSeatSubscription(userId, pid).catch((e) =>
+            console.error(`[partner-seat] provision gagal user=${userId} partner=${pid}:`, (e as any)?.message));
+        }
+      }
+    } catch (e) {
+      console.error("[partner-seat] cek seat undangan gagal:", (e as any)?.message || e);
+    }
+
     agentListCache.clear();
     return grants;
   }
@@ -2301,6 +2331,7 @@ export class DatabaseStorage implements IStorage {
       currency: row.currency || "IDR",
       chatbotLimit: row.chatbotLimit || 1,
       trialMessagesUsed: row.trialMessagesUsed || 0,
+      partnerId: row.partnerId ?? null,
       startDate: row.startDate?.toISOString(),
       endDate: row.endDate?.toISOString(),
       createdAt: row.createdAt.toISOString(),
@@ -2348,6 +2379,190 @@ export class DatabaseStorage implements IStorage {
       .limit(1);
     if (result.length === 0) return undefined;
     return this.mapSubscriptionRow(result[0]);
+  }
+
+  // ─── Lisensi Seat Asosiasi (Model B) ─────────────────────────────────────
+  // Sediakan langganan "starter" untuk 1 seat anggota yang dibiayai mitra.
+  // Idempotent: kalau anggota sudah punya seat aktif di mitra ini, tidak dobel.
+  async provisionPartnerSeatSubscription(userId: string, partnerId: number): Promise<void> {
+    if (!userId || !partnerId) return;
+    const existing = await db.select({ id: subscriptionsTable.id }).from(subscriptionsTable)
+      .where(and(
+        eq(subscriptionsTable.userId, userId),
+        eq(subscriptionsTable.partnerId, partnerId),
+        eq(subscriptionsTable.status, "active"),
+      ))
+      .limit(1);
+    if (existing.length > 0) return;
+    // endDate jauh ke depan: seat dikelola manual oleh mitra (bukan expiry otomatis),
+    // dan getActiveSubscription memilih status="active" dengan endDate terbaru.
+    const farFuture = new Date(Date.now() + 1000 * 60 * 60 * 24 * 365 * 5);
+    await db.insert(subscriptionsTable).values({
+      userId,
+      plan: "starter",
+      status: "active",
+      amount: 0,
+      currency: "IDR",
+      chatbotLimit: 3,
+      partnerId,
+      startDate: new Date(),
+      endDate: farFuture,
+    });
+  }
+
+  // Cabut seat: nonaktifkan langganan seat aktif anggota di mitra ini.
+  async deactivatePartnerSeatSubscription(userId: string, partnerId: number): Promise<void> {
+    if (!userId || !partnerId) return;
+    await db.update(subscriptionsTable)
+      .set({ status: "cancelled", updatedAt: new Date() })
+      .where(and(
+        eq(subscriptionsTable.userId, userId),
+        eq(subscriptionsTable.partnerId, partnerId),
+        eq(subscriptionsTable.status, "active"),
+      ));
+  }
+
+  // Jumlah seat aktif (langganan) yang dibiayai mitra ini.
+  async countPartnerSeatSubscriptions(partnerId: number): Promise<number> {
+    if (!partnerId) return 0;
+    const [row] = await db.select({ count: sql<number>`count(*)` })
+      .from(subscriptionsTable)
+      .where(and(
+        eq(subscriptionsTable.partnerId, partnerId),
+        eq(subscriptionsTable.status, "active"),
+      ));
+    return Number(row?.count ?? 0);
+  }
+
+  // Klaim 1 seat secara ATOMIK: cek kapasitas + beri akses + sediakan langganan
+  // dalam satu transaksi. Advisory lock per-mitra menyerialkan klaim serentak
+  // sehingga kapasitas berbayar tidak bisa dilampaui (race-safe). Bila langganan
+  // gagal disediakan, seluruh transaksi di-rollback (fail-closed, tanpa drift).
+  // seatCapacity=0 → mode pooled lama: tanpa lock/kuota/langganan (backward-compatible).
+  async claimPartnerSeat(params: {
+    partnerId: number;
+    agentId: string;
+    seatCapacity: number;
+    email: string;
+    role: CollaboratorRole;
+    invitedBy: string;
+  }): Promise<{ status: "granted" | "pending"; reason?: "seat_capacity_full"; seatsUsed?: number }> {
+    const aId = parseInt(params.agentId);
+    const email = (params.email || "").trim().toLowerCase();
+    const capacity = params.seatCapacity ?? 0;
+    if (Number.isNaN(aId) || !email) throw new Error("agentId/email tidak valid");
+
+    const result = await db.transaction(async (tx) => {
+      // Serialkan klaim seat untuk mitra ini (namespace SEAT=0x53454154).
+      if (capacity > 0) {
+        await tx.execute(sql`SELECT pg_advisory_xact_lock(1397051220, ${params.partnerId})`);
+      }
+      const existingUser = (await tx.select({ id: users.id }).from(users)
+        .where(sql`lower(${users.email}) = ${email}`).limit(1))[0];
+
+      // Apakah email ini sudah menempati seat? (update peran, bukan seat baru)
+      let alreadySeated = false;
+      if (existingUser) {
+        alreadySeated = (await tx.select({ id: agentCollaborators.id }).from(agentCollaborators)
+          .where(and(eq(agentCollaborators.agentId, aId), eq(agentCollaborators.userId, existingUser.id)))
+          .limit(1)).length > 0;
+      } else {
+        alreadySeated = (await tx.select({ id: pendingAgentInvites.id }).from(pendingAgentInvites)
+          .where(and(eq(pendingAgentInvites.agentId, aId), eq(pendingAgentInvites.email, email)))
+          .limit(1)).length > 0;
+      }
+
+      // Enforce kapasitas hanya untuk seat BARU (Model B).
+      if (capacity > 0 && !alreadySeated) {
+        const [{ c: activeCount }] = await tx.select({ c: sql<number>`count(*)::int` })
+          .from(agentCollaborators).where(eq(agentCollaborators.agentId, aId));
+        const [{ c: pendingCount }] = await tx.select({ c: sql<number>`count(*)::int` })
+          .from(pendingAgentInvites).where(eq(pendingAgentInvites.agentId, aId));
+        const used = Number(activeCount) + Number(pendingCount);
+        if (used >= capacity) {
+          return { status: "granted" as const, reason: "seat_capacity_full" as const, seatsUsed: used, _full: true };
+        }
+      }
+
+      if (existingUser) {
+        await tx.insert(agentCollaborators)
+          .values({ agentId: aId, userId: existingUser.id, role: params.role, invitedBy: params.invitedBy })
+          .onConflictDoUpdate({
+            target: [agentCollaborators.agentId, agentCollaborators.userId],
+            set: { role: params.role, invitedBy: params.invitedBy },
+          });
+        // Sediakan langganan seat (idempotent) dalam transaksi yang sama.
+        if (capacity > 0) {
+          const existingSub = await tx.select({ id: subscriptionsTable.id }).from(subscriptionsTable)
+            .where(and(
+              eq(subscriptionsTable.userId, existingUser.id),
+              eq(subscriptionsTable.partnerId, params.partnerId),
+              eq(subscriptionsTable.status, "active"),
+            )).limit(1);
+          if (existingSub.length === 0) {
+            const farFuture = new Date(Date.now() + 1000 * 60 * 60 * 24 * 365 * 5);
+            await tx.insert(subscriptionsTable).values({
+              userId: existingUser.id,
+              plan: "starter",
+              status: "active",
+              amount: 0,
+              currency: "IDR",
+              chatbotLimit: 3,
+              partnerId: params.partnerId,
+              startDate: new Date(),
+              endDate: farFuture,
+            });
+          }
+        }
+        return { status: "granted" as const };
+      }
+
+      // Belum punya akun → simpan undangan pending (langganan disediakan saat signup).
+      await tx.insert(pendingAgentInvites)
+        .values({ agentId: aId, email, role: params.role, invitedBy: params.invitedBy })
+        .onConflictDoUpdate({
+          target: [pendingAgentInvites.agentId, pendingAgentInvites.email],
+          set: { role: params.role, invitedBy: params.invitedBy },
+        });
+      return { status: "pending" as const };
+    });
+
+    agentListCache.clear();
+    if ((result as any)._full) {
+      return { status: "granted", reason: "seat_capacity_full", seatsUsed: result.seatsUsed };
+    }
+    return result as { status: "granted" | "pending" };
+  }
+
+  // Cabut 1 seat secara ATOMIK: nonaktifkan langganan + hapus akses dalam satu
+  // transaksi (fail-closed, tanpa drift). Untuk undangan pending (belum ada akun),
+  // cukup hapus barisnya (belum ada langganan).
+  async revokePartnerSeat(params: {
+    partnerId: number;
+    agentId: string;
+    userId?: string;
+    email?: string;
+  }): Promise<void> {
+    const aId = parseInt(params.agentId);
+    if (Number.isNaN(aId)) return;
+    await db.transaction(async (tx) => {
+      if (params.userId) {
+        await tx.update(subscriptionsTable)
+          .set({ status: "cancelled", updatedAt: new Date() })
+          .where(and(
+            eq(subscriptionsTable.userId, params.userId),
+            eq(subscriptionsTable.partnerId, params.partnerId),
+            eq(subscriptionsTable.status, "active"),
+          ));
+        await tx.delete(agentCollaborators)
+          .where(and(eq(agentCollaborators.agentId, aId), eq(agentCollaborators.userId, params.userId)));
+      } else if (params.email) {
+        const email = params.email.trim().toLowerCase();
+        await tx.delete(pendingAgentInvites)
+          .where(and(eq(pendingAgentInvites.agentId, aId), eq(pendingAgentInvites.email, email)));
+      }
+    });
+    agentListCache.clear();
   }
 
   async getLatestPendingSubscription(userId: string): Promise<Subscription | undefined> {

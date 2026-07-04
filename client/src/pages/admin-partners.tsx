@@ -38,6 +38,7 @@ type PartnerForm = {
   defaultAgentId: string;
   cheapModel: string;
   seatsPerUnit: number;
+  seatCapacity: number;
   monthlyQuota: number;
   adminEmails: string;
   hidePlatformBranding: boolean;
@@ -58,6 +59,7 @@ const emptyForm: PartnerForm = {
   defaultAgentId: "none",
   cheapModel: "gpt-4o-mini",
   seatsPerUnit: 3,
+  seatCapacity: 0,
   monthlyQuota: 0,
   adminEmails: "",
   hidePlatformBranding: true,
@@ -214,6 +216,7 @@ export default function AdminPartnersPage() {
       defaultAgentId: p.defaultAgentId || "none",
       cheapModel: p.cheapModel || "gpt-4o-mini",
       seatsPerUnit: p.seatsPerUnit,
+      seatCapacity: p.seatCapacity ?? 0,
       monthlyQuota: p.monthlyQuota,
       adminEmails: (p.adminEmails || []).join(", "),
       hidePlatformBranding: p.hidePlatformBranding,
@@ -304,6 +307,7 @@ export default function AdminPartnersPage() {
                           <span>Chatbot: <strong>{linkedAgent?.name || "—"}</strong></span>
                           <span>Model: <strong>{p.cheapModel}</strong></span>
                           <span>Seats/unit: <strong>{p.seatsPerUnit}</strong></span>
+                          <span data-testid={`text-seat-capacity-${p.id}`}>Lisensi Seat: <strong>{(p.seatCapacity ?? 0) === 0 ? "Nonaktif (mode pooled)" : `${p.seatCapacity} seat`}</strong></span>
                           <span>Kuota/bulan: <strong>{p.monthlyQuota === 0 ? "Tak terbatas" : `${p.monthlyQuota.toLocaleString("id-ID")} (${p.quotaUsed.toLocaleString("id-ID")} terpakai)`}</strong></span>
                         </div>
                         {pending.length > 0 && (
@@ -470,6 +474,11 @@ export default function AdminPartnersPage() {
               </div>
             </div>
             <p className="text-xs text-muted-foreground -mt-2">Kuota 0 = tak terbatas. Kuota di-pool per mitra (bukan per pengguna).</p>
+            <div className="space-y-2">
+              <Label htmlFor="p-seat-capacity">Kapasitas Lisensi Seat (Model B)</Label>
+              <Input id="p-seat-capacity" type="number" min={0} step={25} value={form.seatCapacity} onChange={(e) => setForm({ ...form, seatCapacity: Number(e.target.value) })} data-testid="input-partner-seat-capacity" />
+              <p className="text-xs text-muted-foreground">Total seat Starter berbayar (isi kelipatan 25 setelah asosiasi bayar). <strong>0 = nonaktif</strong> (mitra pakai mode pooled lama). Bila &gt; 0: tiap seat = 1 akun tim dapat akses Starter (rakit s.d. 3 chatbot + kuota pesan), dan pengurus asosiasi bisa kelola seat sendiri dalam batas kapasitas.</p>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="p-admins">Email Pengurus Mitra (Partner-Admin)</Label>
               <Input id="p-admins" value={form.adminEmails} onChange={(e) => setForm({ ...form, adminEmails: e.target.value })} placeholder="ketua@aspekindo.or.id, admin@aspekindo.or.id" data-testid="input-partner-admins" />

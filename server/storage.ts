@@ -265,6 +265,11 @@ export interface IStorage {
   getActiveSubscription(userId: string): Promise<Subscription | undefined>;
   updateSubscription(id: string, data: Partial<InsertSubscription>): Promise<Subscription | undefined>;
   getLatestPendingSubscription(userId: string): Promise<Subscription | undefined>;
+  provisionPartnerSeatSubscription(userId: string, partnerId: number): Promise<void>;
+  deactivatePartnerSeatSubscription(userId: string, partnerId: number): Promise<void>;
+  countPartnerSeatSubscriptions(partnerId: number): Promise<number>;
+  claimPartnerSeat(params: { partnerId: number; agentId: string; seatCapacity: number; email: string; role: CollaboratorRole; invitedBy: string }): Promise<{ status: "granted" | "pending"; reason?: "seat_capacity_full"; seatsUsed?: number }>;
+  revokePartnerSeat(params: { partnerId: number; agentId: string; userId?: string; email?: string }): Promise<void>;
   expireSubscriptions(): Promise<number>;
   incrementTrialMessages(subscriptionId: string): Promise<number>;
 
@@ -1782,6 +1787,66 @@ export class MemStorage implements IStorage {
     };
     this.subscriptions.set(id, updated);
     return updated;
+  }
+
+  async provisionPartnerSeatSubscription(userId: string, partnerId: number): Promise<void> {
+    if (!userId || !partnerId) return;
+    const existing = Array.from(this.subscriptions.values())
+      .find((s) => s.userId === userId && s.partnerId === partnerId && s.status === "active");
+    if (existing) return;
+    const id = randomUUID();
+    const now = new Date().toISOString();
+    const farFuture = new Date(Date.now() + 1000 * 60 * 60 * 24 * 365 * 5).toISOString();
+    this.subscriptions.set(id, {
+      id, userId, plan: "starter" as any, status: "active", amount: 0, currency: "IDR",
+      chatbotLimit: 3, trialMessagesUsed: 0, partnerId, startDate: now, endDate: farFuture,
+      createdAt: now, updatedAt: now,
+    });
+  }
+
+  async deactivatePartnerSeatSubscription(userId: string, partnerId: number): Promise<void> {
+    if (!userId || !partnerId) return;
+    for (const [id, s] of this.subscriptions.entries()) {
+      if (s.userId === userId && s.partnerId === partnerId && s.status === "active") {
+        this.subscriptions.set(id, { ...s, status: "cancelled", updatedAt: new Date().toISOString() });
+      }
+    }
+  }
+
+  async countPartnerSeatSubscriptions(partnerId: number): Promise<number> {
+    if (!partnerId) return 0;
+    return Array.from(this.subscriptions.values())
+      .filter((s) => s.partnerId === partnerId && s.status === "active").length;
+  }
+
+  async claimPartnerSeat(params: { partnerId: number; agentId: string; seatCapacity: number; email: string; role: CollaboratorRole; invitedBy: string }): Promise<{ status: "granted" | "pending"; reason?: "seat_capacity_full"; seatsUsed?: number }> {
+    const email = (params.email || "").trim().toLowerCase();
+    const capacity = params.seatCapacity ?? 0;
+    const existingUser = await this.getUserByEmail(email);
+    const collaborators = await this.listCollaboratorsForAgent(params.agentId);
+    const pending = await this.listPendingInvitesForAgent(params.agentId);
+    const alreadySeated = existingUser
+      ? collaborators.some((c) => c.userId === existingUser.id)
+      : pending.some((p) => p.email === email);
+    if (capacity > 0 && !alreadySeated && collaborators.length + pending.length >= capacity) {
+      return { status: "granted", reason: "seat_capacity_full", seatsUsed: collaborators.length + pending.length };
+    }
+    if (existingUser) {
+      await this.addOrUpdateCollaborator({ agentId: params.agentId, userId: existingUser.id, role: params.role, invitedBy: params.invitedBy });
+      if (capacity > 0) await this.provisionPartnerSeatSubscription(existingUser.id, params.partnerId);
+      return { status: "granted" };
+    }
+    await this.addOrUpdatePendingInvite({ agentId: params.agentId, email, role: params.role, invitedBy: params.invitedBy });
+    return { status: "pending" };
+  }
+
+  async revokePartnerSeat(params: { partnerId: number; agentId: string; userId?: string; email?: string }): Promise<void> {
+    if (params.userId) {
+      await this.deactivatePartnerSeatSubscription(params.userId, params.partnerId);
+      await this.removeCollaborator(params.agentId, params.userId);
+    } else if (params.email) {
+      await this.removePendingInvite(params.agentId, params.email.trim().toLowerCase());
+    }
   }
 
   async expireSubscriptions(): Promise<number> {
