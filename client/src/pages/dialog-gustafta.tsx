@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { dialogBlueprintToOrgDraft } from "@shared/proposal-to-org";
+import { usePartnerBranding } from "@/hooks/use-partner-branding";
 
 const ORG_PREFILL_KEY = "gustafta_org_prefill_v1";
 
@@ -70,18 +71,18 @@ const S1_LIMIT = 5;
 const S2_LIMIT = 10;
 const S3_LIMIT = 20;
 
-const GREETING = `Halo! Saya Dialog Gustafta — Teman Berpikir kamu. 🌟
+const greetingFor = (brand: string) => `Halo! Saya Dialog ${brand} — Teman Berpikir kamu. 🌟
 
 Saya hadir bukan untuk menjawab, tapi untuk *menggali* — karena saya yakin kamu punya potensi dan pengalaman luar biasa yang belum sempat diartikulasikan.
 
 Ceritakan padaku — kamu bekerja di bidang apa, atau ada tantangan apa yang ingin kamu selesaikan?`;
 
-const waUrl = (text: string) =>
-  `https://wa.me/6282299417818?text=${encodeURIComponent(text)}`;
+const GREETING = greetingFor("Gustafta");
 
-const S3_UNLOCK_WA = waUrl(
-  "Halo, saya sudah menyelesaikan Stage 2 Dialog Gustafta dan ingin lanjut ke Stage 3 — Pendalaman Blueprint. Saya siap beli Starter Kit Rp 245.000."
-);
+const DEFAULT_WA = "6282299417818";
+
+const waUrl = (text: string, phone: string = DEFAULT_WA) =>
+  `https://wa.me/${phone.replace(/[^0-9]/g, "").replace(/^0/, "62")}?text=${encodeURIComponent(text)}`;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function loadSession(): SavedSession | null {
@@ -99,7 +100,7 @@ function saveSession(s: SavedSession) {
 
 function clearSession() { localStorage.removeItem(LS_KEY); }
 
-function blueprintToText(b: Blueprint, profil?: ProfilAwal | null): string {
+function blueprintToText(b: Blueprint, profil?: ProfilAwal | null, brand: string = "Gustafta", partnerMode = false): string {
   return `📋 BLUEPRINT EKOSISTEM AI — ${b.judul}
 
 ${b.ringkasan}
@@ -118,7 +119,7 @@ ${b.estimasiDampak}
 ${profil ? `👤 PROFIL AWAL\nBidang: ${profil.bidang}\nPotensi: ${profil.potensi}` : ""}
 
 —
-Dibuat via Dialog Gustafta · gustafta.my.id/dialog-gustafta`;
+${partnerMode ? `Dibuat via Dialog ${brand}` : "Dibuat via Dialog Gustafta · gustafta.my.id/dialog-gustafta"}`;
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -126,6 +127,18 @@ export default function DialogGustaftaPage() {
   const { toast } = useToast();
   const { user } = useAuth();
   const [, navigate] = useLocation();
+  const { partner } = usePartnerBranding();
+
+  // Whitelabel: brand & kontak ikut mitra bila diakses dari host mitra
+  const brandName = partner?.brandName || "Gustafta";
+  const brandLogo = partner ? (partner.logoUrl || null) : "/logo-gustafta.png";
+  const waPhone = partner?.contactPhone ? partner.contactPhone : DEFAULT_WA;
+  const accentColor = partner?.primaryColor || null;
+
+  const s3UnlockWa = waUrl(
+    `Halo, saya sudah menyelesaikan Stage 2 Dialog ${brandName} dan ingin lanjut ke Stage 3 — Pendalaman Blueprint. Saya siap beli Starter Kit Rp 245.000.`,
+    waPhone
+  );
 
   const [messages, setMessages] = useState<Msg[]>([{ role: "assistant", content: GREETING }]);
   const [stage, setStage] = useState<AppStage>("s1_chat");
@@ -170,7 +183,7 @@ export default function DialogGustaftaPage() {
       setTrialActivated(true);
       queryClient.invalidateQueries({ queryKey: ["/api/trial/status"] });
       queryClient.invalidateQueries({ queryKey: ["/api/subscriptions/my"] });
-      toast({ title: "Trial Aktif! 🎉", description: "Kamu punya 75 pesan untuk eksplorasi Gustafta selama 7 hari." });
+      toast({ title: "Trial Aktif! 🎉", description: `Kamu punya 75 pesan untuk eksplorasi ${brandName} selama 7 hari.` });
     },
     onError: (err: any) => {
       const msg = (err as Error)?.message || "Gagal mengaktifkan trial.";
@@ -258,6 +271,16 @@ export default function DialogGustaftaPage() {
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
+
+  // ── Whitelabel greeting (hanya sebelum dialog dimulai) ──────────────────
+  useEffect(() => {
+    if (!partner) return;
+    setMessages(prev =>
+      prev.length === 1 && prev[0].role === "assistant" && prev[0].content === GREETING
+        ? [{ role: "assistant", content: greetingFor(partner.brandName || partner.name) }]
+        : prev
+    );
+  }, [partner]);
 
   // ── Load saved session on mount ──────────────────────────────────────────
   useEffect(() => {
@@ -408,19 +431,19 @@ export default function DialogGustaftaPage() {
         body: JSON.stringify({ messages: msgs }),
       });
       const data = await res.json();
-      const bp = data.blueprint ?? { judul: "Blueprint Ekosistem AI Anda", ringkasan: "Roadmap personal berdasarkan dialog.", langkahAwal: ["Daftar di Gustafta", "Konfigurasi chatbot pertama", "Upload knowledge base", "Rakit tim AI & bagikan ke rekan"], namaChatbot: "Chatbot Spesialis", persona: "Konsultan yang hangat", targetPengguna: "Profesional di bidang Anda", estimasiDampak: "Melayani ratusan klien otomatis 24/7" };
+      const bp = data.blueprint ?? { judul: "Blueprint Ekosistem AI Anda", ringkasan: "Roadmap personal berdasarkan dialog.", langkahAwal: [`Daftar di ${brandName}`, "Konfigurasi chatbot pertama", "Upload knowledge base", "Rakit tim AI & bagikan ke rekan"], namaChatbot: "Chatbot Spesialis", persona: "Konsultan yang hangat", targetPengguna: "Profesional di bidang Anda", estimasiDampak: "Melayani ratusan klien otomatis 24/7" };
       setBlueprint(bp);
       setStage("blueprint");
       persist({ stage: "blueprint", messages: msgs, profil, gambaran, blueprint: bp, s1Count: c1, s2Count: c2, s3Count: c3, s3Unlocked, savedAt: "" });
     } catch {
-      setBlueprint({ judul: "Blueprint Ekosistem AI Anda", ringkasan: "Roadmap personal.", langkahAwal: ["Daftar di Gustafta", "Konfigurasi chatbot", "Upload knowledge base", "Rakit tim AI & kolaborasi"], namaChatbot: "Chatbot Spesialis", persona: "Konsultan hangat", targetPengguna: "Profesional Anda", estimasiDampak: "Melayani klien 24/7" });
+      setBlueprint({ judul: "Blueprint Ekosistem AI Anda", ringkasan: "Roadmap personal.", langkahAwal: [`Daftar di ${brandName}`, "Konfigurasi chatbot", "Upload knowledge base", "Rakit tim AI & kolaborasi"], namaChatbot: "Chatbot Spesialis", persona: "Konsultan hangat", targetPengguna: "Profesional Anda", estimasiDampak: "Melayani klien 24/7" });
       setStage("blueprint");
     } finally { setProcessing(false); }
   };
 
   // ── Share & Copy ─────────────────────────────────────────────────────────
-  const shareText = blueprint ? blueprintToText(blueprint, profil) :
-    profil ? `📋 Profil Awal Dialog Gustafta\n\nBidang: ${profil.bidang}\nTantangan: ${profil.tantangan}\nPotensi: ${profil.potensi}\n\ngustafta.my.id/dialog-gustafta` : "";
+  const shareText = blueprint ? blueprintToText(blueprint, profil, brandName, !!partner) :
+    profil ? `📋 Profil Awal Dialog ${brandName}\n\nBidang: ${profil.bidang}\nTantangan: ${profil.tantangan}\nPotensi: ${profil.potensi}${partner ? "" : "\n\ngustafta.my.id/dialog-gustafta"}` : "";
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(shareText).then(() => {
@@ -430,7 +453,7 @@ export default function DialogGustaftaPage() {
   };
 
   const shareWA = () => {
-    window.open(waUrl(shareText), "_blank");
+    window.open(waUrl(shareText, waPhone), "_blank");
     setShowShareOptions(false);
   };
 
@@ -505,11 +528,13 @@ export default function DialogGustaftaPage() {
       {/* Header */}
       <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b border-white/10 bg-[#0a1628]/80 backdrop-blur">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-700 flex items-center justify-center overflow-hidden">
-            <img src="/logo-gustafta.png" alt="G" className="w-7 h-7 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-700 flex items-center justify-center overflow-hidden" style={accentColor ? { background: accentColor } : undefined}>
+            {brandLogo
+              ? <img src={brandLogo} alt={brandName} className="w-7 h-7 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+              : <span className="text-white text-sm font-bold">{brandName.charAt(0)}</span>}
           </div>
           <div>
-            <h1 className="text-sm font-bold text-white tracking-wide">DIALOG GUSTAFTA</h1>
+            <h1 className="text-sm font-bold text-white tracking-wide" data-testid="text-dialog-title">DIALOG {brandName.toUpperCase()}</h1>
             <p className="text-[10px] text-cyan-300/70">{stageLabel[stage]}</p>
           </div>
         </div>
@@ -587,9 +612,12 @@ export default function DialogGustaftaPage() {
         {messages.map((msg, i) => (
           <div key={i} className={cn("flex gap-2.5 animate-in fade-in slide-in-from-bottom-2 duration-300", msg.role === "user" && "flex-row-reverse")}>
             <div className={cn("w-7 h-7 rounded-full shrink-0 flex items-center justify-center text-[10px] font-bold",
-              msg.role === "assistant" ? "bg-gradient-to-br from-cyan-500 to-blue-700" : "bg-white/20 text-white")}>
+              msg.role === "assistant" ? "bg-gradient-to-br from-cyan-500 to-blue-700" : "bg-white/20 text-white")}
+              style={msg.role === "assistant" && accentColor ? { background: accentColor } : undefined}>
               {msg.role === "assistant"
-                ? <img src="/logo-gustafta.png" alt="" className="w-5 h-5 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                ? (brandLogo
+                  ? <img src={brandLogo} alt="" className="w-5 h-5 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                  : <span className="text-white">{brandName.charAt(0)}</span>)
                 : "U"}
             </div>
             <div className={cn("max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap break-words",
@@ -604,8 +632,10 @@ export default function DialogGustaftaPage() {
         {/* Loading dots */}
         {loading && (
           <div className="flex gap-2.5">
-            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-cyan-500 to-blue-700 shrink-0 flex items-center justify-center">
-              <img src="/logo-gustafta.png" alt="" className="w-5 h-5 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-cyan-500 to-blue-700 shrink-0 flex items-center justify-center" style={accentColor ? { background: accentColor } : undefined}>
+              {brandLogo
+                ? <img src={brandLogo} alt="" className="w-5 h-5 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                : <span className="text-white text-[10px] font-bold">{brandName.charAt(0)}</span>}
             </div>
             <div className="bg-white/10 rounded-2xl rounded-tl-sm px-4 py-3">
               <div className="flex gap-1 items-center">
@@ -758,7 +788,7 @@ export default function DialogGustaftaPage() {
                   <div className="text-base font-bold text-amber-300 mt-2">Starter Kit — Rp 245.000</div>
                   <div className="text-[10px] text-white/40">Lisensi platform + 3 Panduan Digital + 7 hari trial + Blueprint</div>
                 </div>
-                <a href={S3_UNLOCK_WA} target="_blank" rel="noopener noreferrer">
+                <a href={s3UnlockWa} target="_blank" rel="noopener noreferrer">
                   <Button className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-bold gap-2 h-11" data-testid="button-gate2-beli">
                     <MessageCircle className="w-4 h-4" /> Hubungi Kami untuk Lanjut ke Stage 3
                   </Button>
@@ -953,7 +983,9 @@ export default function DialogGustaftaPage() {
             {stage === "s3_chat" && `${s3Count}/${S3_LIMIT} chat`}
           </p>
           <p className="text-[10px] text-white/25">
-            Dialog Gustafta · <Link href="/" className="hover:text-white/50">gustafta.my.id</Link>
+            {partner
+              ? <>Dialog {brandName}</>
+              : <>Dialog Gustafta · <Link href="/" className="hover:text-white/50">gustafta.my.id</Link></>}
           </p>
         </div>
       </div>

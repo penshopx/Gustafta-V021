@@ -66,6 +66,11 @@ Endpoint: `GET /api/{nama}-claw/orchestrator` → `{ id, name, tagline, avatar }
 
 **Tabel lengkap 80 route (rute → nama → agen → hub slug → theme): `docs/multiclaw-routes.md`.** Saat menambah/mengubah claw, update tabel di docs itu (bukan di sini).
 
+## Whitelabel Partner Mode
+- **Deteksi mitra per host**: hook `client/src/hooks/use-partner-branding.ts` → `GET /api/partner/by-host?host=` (null bila bukan host mitra). Tabel `partners` (kolom `host` unique, `active`, `brand_name`, `logo_url`, `primary_color`, `tagline`, `description`, `contact_phone`, `contact_email`, `default_agent_id`, `hide_platform_branding`). Admin: `client/src/pages/admin-partners.tsx`.
+- **Halaman partner-aware**: `partner-landing.tsx` (root `/` di host mitra; CTA utama → `/dialog-gustafta`, tombol "Chat Asisten AI" bila `defaultAgentId` ada), `shared-header.tsx`, `dialog-gustafta.tsx` (greeting/judul/avatar/toast/share/WA/footer/fallback blueprint pakai brand mitra; WA ke `contactPhone` mitra), `dashboard.tsx` (banner upsell Gustafta disembunyikan, teks "Dialog Gustafta"→"Dialog Konsultasi", logo/nama sidebar+welcome pakai mitra, kartu `/packs` & `/monitor-marketing` disembunyikan).
+- **Aturan**: SEMUA halaman baru yang tampil di host mitra wajib cek `usePartnerBranding()` sebelum menampilkan branding/upsell Gustafta. Uji lokal: insert row `partners` dengan `host='localhost'`, hapus setelah selesai.
+
 ## Tender Data Relay (SIRUP)
 - `sirup.lkpp.go.id` TIDAK bisa diakses dari hosting ini (blokir geo/IP) — scraper terjadwal selalu gagal ke data demo. `isb.lkpp.go.id` reachable (jalur resmi, butuh akun/token LKPP — rencana jangka panjang).
 - Solusi sementara: **relay eksternal**. Skrip `scripts/tender-relay.mjs` dijalankan di komputer/server Indonesia (Node 18+, tanpa dependensi) → kirim ke `POST /api/tender-ingest` (auth header `x-tender-ingest-key` = secret `TENDER_INGEST_KEY`, timing-safe compare, batch maks 500, upsert dedup per `tenderId`).
