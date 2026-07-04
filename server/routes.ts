@@ -3536,8 +3536,11 @@ SKK berlaku 5 tahun. Perpanjangan via: Pengembangan Keprofesian Berkelanjutan (P
       const nonStreamSessionId = req.body.sessionId || `anon_${parsed.data.agentId}_${Date.now()}`;
       const nonStreamMemories = await storage.getUserMemories(String(parsed.data.agentId), nonStreamSessionId);
       
-      // Get recent conversation history
-      const allMessages = await storage.getMessages(parsed.data.agentId);
+      // Get recent conversation history (session-scoped when sessionId provided,
+      // agar riwayat pengunjung lain tidak bocor ke konteks percakapan)
+      const allMessages = req.body.sessionId
+        ? await storage.getMessagesBySession(parsed.data.agentId, req.body.sessionId)
+        : await storage.getMessages(parsed.data.agentId);
       const recentMessages = allMessages.slice(-10);
       
       // Build system prompt from agent persona + Kebijakan Agen (7 fields)
@@ -3844,6 +3847,7 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
       // Save AI response (without memory tags)
       const aiMessage = await storage.createMessage({
         agentId: parsed.data.agentId,
+        sessionId: req.body.sessionId || "",
         role: "assistant",
         content: cleanAiResponse,
         reasoning: "",
@@ -4185,8 +4189,11 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
       const streamSessionId = req.body.sessionId || `anon_${parsed.data.agentId}_${Date.now()}`;
       const existingMemories = await storage.getUserMemories(String(parsed.data.agentId), streamSessionId);
       
-      // Get recent conversation history
-      const allMessages = await storage.getMessages(parsed.data.agentId);
+      // Get recent conversation history (session-scoped when sessionId provided,
+      // agar riwayat pengunjung lain tidak bocor ke konteks percakapan)
+      const allMessages = req.body.sessionId
+        ? await storage.getMessagesBySession(parsed.data.agentId, req.body.sessionId)
+        : await storage.getMessages(parsed.data.agentId);
       const recentMessages = allMessages.slice(-10);
       
       // Build system prompt from agent persona + Kebijakan Agen (7 fields)
@@ -5081,6 +5088,7 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
         // Save the complete AI response (without memory tags)
         const aiMessage = await storage.createMessage({
           agentId: parsed.data.agentId,
+          sessionId: req.body.sessionId || "",
           role: "assistant",
           content: cleanContent,
           reasoning: "",
