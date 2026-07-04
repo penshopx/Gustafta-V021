@@ -16353,11 +16353,21 @@ Buat dokumen KB berkualitas tinggi untuk topik ini.`;
   // PUBLIC: branding whitelabel per host. Tanpa auth — hanya field brand publik.
   app.get("/api/partner/by-host", async (req: any, res) => {
     try {
-      const host = ((req.query.host as string) || req.headers["host"] || "").split(":")[0].toLowerCase().trim();
-      if (!host) return res.json(null);
-      const [row] = await db.select().from(partners)
-        .where(and(eq(partners.host, host), eq(partners.active, true)));
-      if (!row) return res.json(null);
+      // Mode pratinjau: ?preview=<slug> mengabaikan host, cari mitra by slug
+      // (agar landing mitra bisa dilihat dari domain .replit.app sebelum domain asli tersambung).
+      const previewSlug = (req.query.preview as string || "").toLowerCase().trim();
+      let row: typeof partners.$inferSelect | undefined;
+      if (previewSlug) {
+        [row] = await db.select().from(partners)
+          .where(and(eq(partners.slug, previewSlug), eq(partners.active, true)));
+        if (!row) return res.json(null);
+      } else {
+        const host = ((req.query.host as string) || req.headers["host"] || "").split(":")[0].toLowerCase().trim();
+        if (!host) return res.json(null);
+        [row] = await db.select().from(partners)
+          .where(and(eq(partners.host, host), eq(partners.active, true)));
+        if (!row) return res.json(null);
+      }
       res.json({
         slug: row.slug,
         name: row.name,
