@@ -61,11 +61,19 @@ export default function PartnerLanding() {
                 className="gap-2 text-base px-8"
                 style={{ backgroundColor: accent, color: "#fff" }}
               >
-                <Link href={chatHref} data-testid="link-partner-start-chat">
+                <Link href="/dialog-gustafta" data-testid="link-partner-start-dialog">
                   <MessageCircle className="h-5 w-5" />
                   Mulai Konsultasi
                 </Link>
               </Button>
+              {partner.defaultAgentId && (
+                <Button asChild size="lg" variant="outline" className="gap-2 text-base px-8">
+                  <Link href={chatHref} data-testid="link-partner-start-chat">
+                    <Bot className="h-5 w-5" />
+                    Chat Asisten AI
+                  </Link>
+                </Button>
+              )}
               {!isAuthenticated && (
                 <Button asChild size="lg" variant="outline" className="gap-2 text-base px-8">
                   <a href="/login" data-testid="link-partner-login">

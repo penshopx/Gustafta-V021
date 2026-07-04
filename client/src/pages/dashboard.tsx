@@ -9,6 +9,7 @@ import {
   FileSignature, GitBranch, Lock, FileDown, ArrowRight
 } from "lucide-react";
 import { useFeatureAccess } from "@/hooks/use-feature-access";
+import { usePartnerBranding } from "@/hooks/use-partner-branding";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -111,6 +112,7 @@ const navItems: { id: NavItem; label: string; shortLabel: string; icon: typeof B
 ];
 
 function TrialQuotaBanner() {
+  const { partner } = usePartnerBranding();
   const { data, isLoading } = useQuery<{
     hasActiveTrial: boolean;
     trialMessagesUsed: number;
@@ -128,7 +130,7 @@ function TrialQuotaBanner() {
         <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-sm">
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-cyan-500 shrink-0" />
-            <span className="text-muted-foreground">Selesaikan <strong>Dialog Gustafta</strong> untuk aktifkan trial gratis (75 pesan)</span>
+            <span className="text-muted-foreground">Selesaikan <strong>{partner ? "Dialog Konsultasi" : "Dialog Gustafta"}</strong> untuk aktifkan trial gratis (75 pesan)</span>
           </div>
           <Link href="/dialog-gustafta">
             <Button size="sm" variant="outline" className="h-7 text-xs gap-1 border-cyan-500/40 text-cyan-600 dark:text-cyan-400">
@@ -169,7 +171,7 @@ function TrialQuotaBanner() {
           style={{ width: `${pct}%` }}
         />
       </div>
-      {isNearLimit && (
+      {isNearLimit && !partner && (
         <div className="flex items-center justify-between">
           <span className="text-xs text-muted-foreground">Kuota hampir habis — upgrade untuk akses penuh</span>
           <Link href="/onboarding">
@@ -186,6 +188,7 @@ function TrialQuotaBanner() {
 const BLUEPRINT_STORAGE_KEY = "gustafta_blueprint_pending";
 
 function BlueprintPendingBanner() {
+  const { partner } = usePartnerBranding();
   const [bp, setBp] = useState<{ namaAI: string; domain: string; status?: string } | null>(null);
   const [dismissed, setDismissed] = useState(false);
 
@@ -199,7 +202,7 @@ function BlueprintPendingBanner() {
     } catch { /* ignore */ }
   }, []);
 
-  if (!bp || dismissed) return null;
+  if (!bp || dismissed || partner) return null;
 
   return (
     <div className="flex items-start gap-3 px-4 py-3 rounded-xl border-2 border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/20">
@@ -236,12 +239,13 @@ function BlueprintPendingBanner() {
 }
 
 function BlueprintUpsellBanner() {
+  const { partner } = usePartnerBranding();
   const { data } = useQuery<{
     hasActiveTrial: boolean;
     dialogCompleted: boolean;
   }>({ queryKey: ["/api/trial/status"], retry: 1 });
 
-  if (!data?.hasActiveTrial) return null;
+  if (!data?.hasActiveTrial || partner) return null;
 
   const LOCKED_FEATURES = [
     "Multi-Agent Orchestration",
@@ -276,6 +280,7 @@ function BlueprintUpsellBanner() {
 }
 
 function PlanStatusBanner() {
+  const { partner } = usePartnerBranding();
   const { planInfo, isLoading } = useFeatureAccess();
   if (isLoading || planInfo.status === "unauthenticated") return null;
 
@@ -318,6 +323,8 @@ function PlanStatusBanner() {
     );
   }
 
+  if (partner) return null;
+
   return (
     <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-primary/5 border border-primary/20 text-sm">
       <div className="flex items-center gap-2">
@@ -334,6 +341,7 @@ function PlanStatusBanner() {
 }
 
 export default function Dashboard() {
+  const { partner } = usePartnerBranding();
   const [activeNav, setActiveNav] = useState<NavItem>("persona");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createAsOrchestrator, setCreateAsOrchestrator] = useState(false);
@@ -967,11 +975,17 @@ export default function Dashboard() {
             {/* Welcome header */}
             <div className="text-center space-y-2">
               <div className="w-14 h-14 mx-auto rounded-full bg-white flex items-center justify-center overflow-hidden shadow-sm border border-border">
-                <img src="/logo-gustafta.png" alt="Gustafta" className="w-12 h-12 object-contain" />
+                {partner ? (
+                  partner.logoUrl
+                    ? <img src={partner.logoUrl} alt={partner.brandName} className="w-12 h-12 object-contain" />
+                    : <span className="text-xl font-bold" style={{ color: partner.primaryColor || undefined }}>{partner.brandName.charAt(0)}</span>
+                ) : (
+                  <img src="/logo-gustafta.png" alt="Gustafta" className="w-12 h-12 object-contain" />
+                )}
               </div>
-              <h2 className="text-xl font-semibold">Selamat Datang di Gustafta</h2>
+              <h2 className="text-xl font-semibold">Selamat Datang di {partner ? partner.brandName : "Gustafta"}</h2>
               <p className="text-sm text-muted-foreground">
-                Platform AI Chatbot Builder untuk sektor konstruksi & profesional Indonesia.
+                {partner ? (partner.tagline || "Asisten AI untuk kebutuhan Anda.") : "Platform AI Chatbot Builder untuk sektor konstruksi & profesional Indonesia."}
               </p>
             </div>
 
@@ -1105,7 +1119,7 @@ export default function Dashboard() {
                     <ArrowRight className="w-4 h-4 text-violet-500 shrink-0" />
                   </div>
                 </Link>
-                <Link href="/monitor-marketing" className="sm:col-span-2">
+                {!partner && (<Link href="/monitor-marketing" className="sm:col-span-2">
                   <div className="flex items-center gap-3 p-3 rounded-lg border border-pink-500/30 bg-gradient-to-r from-pink-500/10 to-rose-500/10 hover:border-pink-500 hover:from-pink-500/15 hover:to-rose-500/15 transition-colors text-left cursor-pointer" data-testid="card-monitor-marketing">
                     <div className="w-8 h-8 rounded-md bg-pink-500/15 flex items-center justify-center shrink-0">
                       <TrendingUp className="w-4 h-4 text-pink-500" />
@@ -1116,7 +1130,7 @@ export default function Dashboard() {
                     </div>
                     <ArrowRight className="w-4 h-4 text-pink-500 shrink-0" />
                   </div>
-                </Link>
+                </Link>)}
                 <button
                   onClick={() => setBigIdeaDialogOpen(true)}
                   className="flex items-center gap-3 p-3 rounded-lg border border-dashed hover:border-primary hover:bg-primary/5 transition-colors text-left"
@@ -1159,7 +1173,7 @@ export default function Dashboard() {
                     <p className="text-xs text-muted-foreground">Hubungkan domain kustom</p>
                   </div>
                 </a>
-                <a href="/packs" className="flex items-center gap-3 p-3 rounded-lg border border-dashed hover:border-primary hover:bg-primary/5 transition-colors">
+                {!partner && (<a href="/packs" className="flex items-center gap-3 p-3 rounded-lg border border-dashed hover:border-primary hover:bg-primary/5 transition-colors">
                   <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
                     <ShoppingBag className="w-4 h-4 text-primary" />
                   </div>
@@ -1167,7 +1181,7 @@ export default function Dashboard() {
                     <p className="text-sm font-medium">Paket & Tender</p>
                     <p className="text-xs text-muted-foreground">Tools Wizard untuk tender</p>
                   </div>
-                </a>
+                </a>)}
               </div>
             </div>
           </div>
@@ -1215,7 +1229,7 @@ export default function Dashboard() {
         return (
           <div className="relative">
             {isFreePlan && (
-              <TrialLockOverlay feature="Mini Apps" description="Akses Mini Apps dengan paket Starter ke atas, atau aktifkan trial gratis via Dialog Gustafta." />
+              <TrialLockOverlay feature="Mini Apps" description={partner ? "Akses Mini Apps dengan paket Starter ke atas, atau aktifkan trial gratis via Dialog Konsultasi." : "Akses Mini Apps dengan paket Starter ke atas, atau aktifkan trial gratis via Dialog Gustafta."} />
             )}
             <MiniAppsPanel agent={currentAgent!} />
           </div>
@@ -1259,7 +1273,7 @@ export default function Dashboard() {
         return (
           <div className="relative">
             {isFreePlan && (
-              <TrialLockOverlay feature="Analytics" description="Lihat statistik chat & konversi dengan paket Starter ke atas, atau aktifkan trial gratis via Dialog Gustafta." />
+              <TrialLockOverlay feature="Analytics" description={partner ? "Lihat statistik chat & konversi dengan paket Starter ke atas, atau aktifkan trial gratis via Dialog Konsultasi." : "Lihat statistik chat & konversi dengan paket Starter ke atas, atau aktifkan trial gratis via Dialog Gustafta."} />
             )}
             <AnalyticsPanel agent={currentAgent!} />
           </div>
@@ -3053,12 +3067,18 @@ export default function Dashboard() {
         <div className="p-3 border-b border-sidebar-border">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 flex items-center justify-center bg-white">
-              <img src="/logo-gustafta.png" alt="Gustafta" className="w-9 h-9 object-contain" />
+              {partner ? (
+                partner.logoUrl
+                  ? <img src={partner.logoUrl} alt={partner.brandName} className="w-9 h-9 object-contain" />
+                  : <span className="text-lg font-bold" style={{ color: partner.primaryColor || undefined }}>{partner.brandName.charAt(0)}</span>
+              ) : (
+                <img src="/logo-gustafta.png" alt="Gustafta" className="w-9 h-9 object-contain" />
+              )}
             </div>
             {!sidebarCollapsed && (
               <div className="min-w-0">
-                <h1 className="font-semibold text-sidebar-foreground truncate">Gustafta</h1>
-                <p className="text-xs text-muted-foreground">AI Chatbot Builder</p>
+                <h1 className="font-semibold text-sidebar-foreground truncate">{partner ? partner.brandName : "Gustafta"}</h1>
+                <p className="text-xs text-muted-foreground">{partner ? (partner.tagline || "Asisten AI") : "AI Chatbot Builder"}</p>
               </div>
             )}
           </div>
@@ -3079,11 +3099,17 @@ export default function Dashboard() {
                 <div className="p-3 border-b border-sidebar-border">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center bg-white">
-                      <img src="/logo-gustafta.png" alt="Gustafta" className="w-9 h-9 object-contain" />
+                      {partner ? (
+                        partner.logoUrl
+                          ? <img src={partner.logoUrl} alt={partner.brandName} className="w-9 h-9 object-contain" />
+                          : <span className="text-lg font-bold" style={{ color: partner.primaryColor || undefined }}>{partner.brandName.charAt(0)}</span>
+                      ) : (
+                        <img src="/logo-gustafta.png" alt="Gustafta" className="w-9 h-9 object-contain" />
+                      )}
                     </div>
                     <div>
-                      <h1 className="font-semibold text-sidebar-foreground">Gustafta</h1>
-                      <p className="text-xs text-muted-foreground">AI Chatbot Builder</p>
+                      <h1 className="font-semibold text-sidebar-foreground">{partner ? partner.brandName : "Gustafta"}</h1>
+                      <p className="text-xs text-muted-foreground">{partner ? (partner.tagline || "Asisten AI") : "AI Chatbot Builder"}</p>
                     </div>
                   </div>
                 </div>
