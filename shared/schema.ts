@@ -2327,6 +2327,67 @@ export const insertAgenticDeliverableSchema = createInsertSchema(agenticDelivera
 export type InsertAgenticDeliverable = z.infer<typeof insertAgenticDeliverableSchema>;
 export type AgenticDeliverable = typeof agenticDeliverables.$inferSelect;
 
+// ==================== WORKROOMS (Fase 1 — ruang kerja manusia + agen) ====================
+// Ruang kerja: workflow bertahap → Human Gate ◆ → log → deliverable pack.
+export const workrooms = pgTable("workrooms", {
+  id:           serial("id").primaryKey(),
+  userId:       varchar("user_id", { length: 255 }).notNull(),
+  title:        text("title").notNull(),
+  domain:       text("domain").notNull().default("tender"), // tender | (future domains)
+  status:       text("status").notNull().default("active"),  // active | done | archived
+  currentStage: integer("current_stage").notNull().default(0),
+  stages:       jsonb("stages").notNull().default([]),  // [{key,label,status}]
+  context:      jsonb("context").notNull().default({}), // data domain (mis. detail tender)
+  createdAt:    timestamp("created_at").defaultNow().notNull(),
+  updatedAt:    timestamp("updated_at").defaultNow().notNull(),
+}, (t) => ({
+  userIdx: index("workrooms_user_idx").on(t.userId),
+}));
+
+export const insertWorkroomSchema = createInsertSchema(workrooms).omit({
+  id: true, createdAt: true, updatedAt: true,
+});
+export type InsertWorkroom = z.infer<typeof insertWorkroomSchema>;
+export type Workroom = typeof workrooms.$inferSelect;
+
+// Gerbang persetujuan manusia ◆ (mis. sebelum submit tender)
+export const workroomGates = pgTable("workroom_gates", {
+  id:         serial("id").primaryKey(),
+  workroomId: integer("workroom_id").notNull(),
+  stageKey:   text("stage_key").notNull().default(""),
+  question:   text("question").notNull(),
+  status:     text("status").notNull().default("pending"), // pending | approved | rejected
+  note:       text("note").notNull().default(""),
+  createdAt:  timestamp("created_at").defaultNow().notNull(),
+  decidedAt:  timestamp("decided_at"),
+}, (t) => ({
+  wrIdx: index("workroom_gates_wr_idx").on(t.workroomId),
+}));
+
+export const insertWorkroomGateSchema = createInsertSchema(workroomGates).omit({
+  id: true, createdAt: true, decidedAt: true,
+});
+export type InsertWorkroomGate = z.infer<typeof insertWorkroomGateSchema>;
+export type WorkroomGate = typeof workroomGates.$inferSelect;
+
+// Catatan kerja: keputusan / asumsi / risiko / perubahan / deliverable
+export const workroomLogs = pgTable("workroom_logs", {
+  id:         serial("id").primaryKey(),
+  workroomId: integer("workroom_id").notNull(),
+  type:       text("type").notNull().default("note"), // decision | assumption | risk | change | note | deliverable
+  content:    text("content").notNull(),
+  meta:       jsonb("meta").notNull().default({}),
+  createdAt:  timestamp("created_at").defaultNow().notNull(),
+}, (t) => ({
+  wrIdx: index("workroom_logs_wr_idx").on(t.workroomId),
+}));
+
+export const insertWorkroomLogSchema = createInsertSchema(workroomLogs).omit({
+  id: true, createdAt: true,
+});
+export type InsertWorkroomLog = z.infer<typeof insertWorkroomLogSchema>;
+export type WorkroomLog = typeof workroomLogs.$inferSelect;
+
 // ==================== DATA MASTER ====================
 
 // Tabel Data BUJK Binaan — data perusahaan klien yang ditangani

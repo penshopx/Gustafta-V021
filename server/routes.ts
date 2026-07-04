@@ -21705,6 +21705,245 @@ Maksimal 600 kata.`;
     } catch (err: any) { res.status(500).json({ error: err.message }); }
   });
 
+  // ==================== WORKROOMS (Fase 1 — ruang kerja manusia + agen) ====================
+  const TENDER_STAGES = [
+    { key: "identifikasi", label: "Identifikasi Peluang", status: "active" },
+    { key: "kelayakan",    label: "Analisis Kelayakan",   status: "pending" },
+    { key: "strategi",     label: "Strategi & Win Probability", status: "pending" },
+    { key: "dokumen",      label: "Penyusunan Dokumen",   status: "pending" },
+    { key: "review",       label: "Review & Gerbang Manusia ◆", status: "pending" },
+    { key: "submit",       label: "Submit & Arsip",       status: "pending" },
+  ];
+
+  // Ambil workroom + pastikan milik user (return null bila tidak ada / bukan milik)
+  async function getOwnedWorkroom(req: any): Promise<{ workroom: any; userId: string } | null> {
+    const userId = req.user?.id || req.user?.claims?.sub;
+    if (!userId) return null;
+    const id = parseInt(req.params.id);
+    if (Number.isNaN(id)) return null;
+    const workroom = await storage.getWorkroom(id);
+    if (!workroom || workroom.userId !== userId) return null;
+    return { workroom, userId };
+  }
+
+  // GET /api/workrooms — daftar ruang kerja milik user
+  app.get("/api/workrooms", isAuthenticated, async (req: any, res: any) => {
+    try {
+      const userId = req.user?.id || req.user?.claims?.sub;
+      if (!userId) return res.status(401).json({ error: "Unauthenticated" });
+      const rooms = await storage.getWorkrooms(userId);
+      res.json(rooms);
+    } catch (e: any) {
+      res.status(500).json({ error: e?.message || "Gagal memuat workroom" });
+    }
+  });
+
+  // POST /api/workrooms — buat ruang kerja baru
+  app.post("/api/workrooms", isAuthenticated, async (req: any, res: any) => {
+    try {
+      const userId = req.user?.id || req.user?.claims?.sub;
+      if (!userId) return res.status(401).json({ error: "Unauthenticated" });
+      const { title, domain, context } = req.body as { title?: string; domain?: string; context?: any };
+      if (!title || title.trim().length < 3) {
+        return res.status(400).json({ error: "Judul workroom minimal 3 karakter" });
+      }
+      const room = await storage.createWorkroom({
+        userId,
+        title: title.trim(),
+        domain: domain || "tender",
+        status: "active",
+        currentStage: 0,
+        stages: TENDER_STAGES,
+        context: context ?? {},
+      } as any);
+      res.status(201).json(room);
+    } catch (e: any) {
+      res.status(500).json({ error: e?.message || "Gagal membuat workroom" });
+    }
+  });
+
+  // GET /api/workrooms/:id — detail (workroom + gates + logs)
+  app.get("/api/workrooms/:id", isAuthenticated, async (req: any, res: any) => {
+    try {
+      const owned = await getOwnedWorkroom(req);
+      if (!owned) return res.status(404).json({ error: "Workroom tidak ditemukan" });
+      const [gates, logs] = await Promise.all([
+        storage.getWorkroomGates(owned.workroom.id),
+        storage.getWorkroomLogs(owned.workroom.id),
+      ]);
+      res.json({ ...owned.workroom, gates, logs });
+    } catch (e: any) {
+      res.status(500).json({ error: e?.message || "Gagal memuat workroom" });
+    }
+  });
+
+  // PATCH /api/workrooms/:id — perbarui stage / status / context
+  app.patch("/api/workrooms/:id", isAuthenticated, async (req: any, res: any) => {
+    try {
+      const owned = await getOwnedWorkroom(req);
+      if (!owned) return res.status(404).json({ error: "Workroom tidak ditemukan" });
+      const { currentStage, status, context, title } = req.body as any;
+      const patch: any = {};
+      if (typeof title === "string" && title.trim().length >= 3) patch.title = title.trim();
+      if (typeof status === "string") patch.status = status;
+      if (context !== undefined) patch.context = context;
+      if (typeof currentStage === "number" && Number.isFinite(currentStage)) {
+        const total = (owned.workroom.stages as any[]).length;
+        const idx = Math.max(0, Math.min(Math.trunc(currentStage), Math.max(0, total - 1)));
+        const stages = (owned.workroom.stages as any[]).map((s, i) => ({
+          ...s,
+          status: i < idx ? "done" : i === idx ? "active" : "pending",
+        }));
+        patch.currentStage = idx;
+        patch.stages = stages;
+      }
+      const updated = await storage.updateWorkroom(owned.workroom.id, patch);
+      res.json(updated);
+    } catch (e: any) {
+      res.status(500).json({ error: e?.message || "Gagal memperbarui workroom" });
+    }
+  });
+
+  // DELETE /api/workrooms/:id
+  app.delete("/api/workrooms/:id", isAuthenticated, async (req: any, res: any) => {
+    try {
+      const owned = await getOwnedWorkroom(req);
+      if (!owned) return res.status(404).json({ error: "Workroom tidak ditemukan" });
+      const ok = await storage.deleteWorkroom(owned.workroom.id);
+      res.json({ ok });
+    } catch (e: any) {
+      res.status(500).json({ error: e?.message || "Gagal menghapus workroom" });
+    }
+  });
+
+  // POST /api/workrooms/:id/log — tambah catatan (decision/assumption/risk/change/note)
+  app.post("/api/workrooms/:id/log", isAuthenticated, async (req: any, res: any) => {
+    try {
+      const owned = await getOwnedWorkroom(req);
+      if (!owned) return res.status(404).json({ error: "Workroom tidak ditemukan" });
+      const { type, content, meta } = req.body as { type?: string; content?: string; meta?: any };
+      if (!content || content.trim().length < 1) {
+        return res.status(400).json({ error: "Isi catatan tidak boleh kosong" });
+      }
+      const allowed = ["decision", "assumption", "risk", "change", "note", "deliverable"];
+      const log = await storage.createWorkroomLog({
+        workroomId: owned.workroom.id,
+        type: allowed.includes(type || "") ? (type as string) : "note",
+        content: content.trim(),
+        meta: meta ?? {},
+      } as any);
+      res.status(201).json(log);
+    } catch (e: any) {
+      res.status(500).json({ error: e?.message || "Gagal menambah catatan" });
+    }
+  });
+
+  // POST /api/workrooms/:id/gate — buat gerbang persetujuan manusia ◆
+  app.post("/api/workrooms/:id/gate", isAuthenticated, async (req: any, res: any) => {
+    try {
+      const owned = await getOwnedWorkroom(req);
+      if (!owned) return res.status(404).json({ error: "Workroom tidak ditemukan" });
+      const { question, stageKey } = req.body as { question?: string; stageKey?: string };
+      if (!question || question.trim().length < 3) {
+        return res.status(400).json({ error: "Pertanyaan gerbang minimal 3 karakter" });
+      }
+      const gate = await storage.createWorkroomGate({
+        workroomId: owned.workroom.id,
+        stageKey: stageKey || "",
+        question: question.trim(),
+        status: "pending",
+        note: "",
+      } as any);
+      res.status(201).json(gate);
+    } catch (e: any) {
+      res.status(500).json({ error: e?.message || "Gagal membuat gerbang" });
+    }
+  });
+
+  // POST /api/workrooms/:id/gate/:gateId/decide — putuskan gerbang (approve/reject)
+  app.post("/api/workrooms/:id/gate/:gateId/decide", isAuthenticated, async (req: any, res: any) => {
+    try {
+      const owned = await getOwnedWorkroom(req);
+      if (!owned) return res.status(404).json({ error: "Workroom tidak ditemukan" });
+      const gateId = parseInt(req.params.gateId);
+      if (Number.isNaN(gateId)) return res.status(400).json({ error: "gateId tidak valid" });
+      const gates = await storage.getWorkroomGates(owned.workroom.id);
+      const gate = gates.find((g) => g.id === gateId);
+      if (!gate) return res.status(404).json({ error: "Gerbang tidak ditemukan" });
+      const { status, note } = req.body as { status?: string; note?: string };
+      if (status !== "approved" && status !== "rejected") {
+        return res.status(400).json({ error: "status harus 'approved' atau 'rejected'" });
+      }
+      const decided = await storage.decideWorkroomGate(gateId, status, note || "");
+      // Catat keputusan ke log
+      await storage.createWorkroomLog({
+        workroomId: owned.workroom.id,
+        type: "decision",
+        content: `Gerbang "${gate.question}" ${status === "approved" ? "DISETUJUI" : "DITOLAK"}${note ? ` — ${note}` : ""}`,
+        meta: { gateId, status },
+      } as any);
+      res.json(decided);
+    } catch (e: any) {
+      res.status(500).json({ error: e?.message || "Gagal memutuskan gerbang" });
+    }
+  });
+
+  // POST /api/workrooms/:id/analyze — analisis AI (kelayakan + win probability) → deliverable
+  app.post("/api/workrooms/:id/analyze", isAuthenticated, async (req: any, res: any) => {
+    try {
+      const owned = await getOwnedWorkroom(req);
+      if (!owned) return res.status(404).json({ error: "Workroom tidak ditemukan" });
+      const ctx = (owned.workroom.context as any) || {};
+      const brief = [
+        `Judul: ${owned.workroom.title}`,
+        ctx.instansi ? `Instansi: ${ctx.instansi}` : "",
+        ctx.nilai ? `Nilai pagu: ${ctx.nilai}` : "",
+        ctx.kualifikasi ? `Kualifikasi/SBU: ${ctx.kualifikasi}` : "",
+        ctx.deadline ? `Deadline: ${ctx.deadline}` : "",
+        ctx.catatan ? `Catatan: ${ctx.catatan}` : "",
+      ].filter(Boolean).join("\n");
+
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const systemPrompt = `Anda adalah analis tender konstruksi Indonesia senior. Analisis peluang tender berikut secara jujur dan realistis berbasis Perpres 16/2018 jo Perpres 12/2021 (Pengadaan Barang/Jasa).
+
+Keluarkan JSON dengan struktur:
+{
+  "kelayakan": { "layak": true|false, "alasan": "ringkas", "syarat_kurang": ["..."] },
+  "win_probability": { "skor": 0-100, "dasar": "ringkas" },
+  "kekuatan": ["..."],
+  "risiko": ["..."],
+  "rekomendasi": ["langkah konkret"],
+  "asumsi": ["[ASUMSI: nilai | basis: ... | verifikasi-ke: ...]"]
+}
+
+ATURAN: Bila data kurang, JANGAN mengarang — nyatakan sebagai [ASUMSI]. Keputusan akhir ikut/tidak ikut tender ADALAH keputusan manusia (◆ gerbang manusia), bukan Anda.`;
+
+      const resp = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Analisis peluang tender ini:\n\n${brief || "(data minim — beri analisis berbasis asumsi eksplisit)"}` },
+        ],
+        temperature: 0.3,
+        max_tokens: 1500,
+        response_format: { type: "json_object" },
+      });
+      const raw = resp.choices[0]?.message?.content ?? "{}";
+      let parsed: any;
+      try { parsed = JSON.parse(raw); } catch { parsed = { raw }; }
+
+      const log = await storage.createWorkroomLog({
+        workroomId: owned.workroom.id,
+        type: "deliverable",
+        content: `Analisis Kelayakan & Win Probability — ${owned.workroom.title}`,
+        meta: { kind: "analisis_tender", result: parsed },
+      } as any);
+      res.status(201).json({ log, result: parsed });
+    } catch (e: any) {
+      res.status(500).json({ error: e?.message || "Gagal menganalisis" });
+    }
+  });
+
   // POST /api/tools/rab-kalkulator — Kalkulator RAB Otomatis (GPT-4o)
   app.post("/api/tools/rab-kalkulator", async (req: any, res: any) => {
     try {
