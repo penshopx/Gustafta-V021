@@ -21884,6 +21884,60 @@ MAKNA FIELD: "kelayakan.layak" = apakah rencana/kondisi K3 layak untuk mulai bek
     }
   });
 
+  // GET /api/earnings — ringkasan penghasilan kreator (marketplace 80/20 dari LISENSI).
+  // userId-scoped, anti-IDOR (tak ada target id user-controlled). Reuse tabel store_orders,
+  // tanpa tabel baru. Hanya bagi hasil kreator; PII pembeli TIDAK diekspos.
+  app.get("/api/earnings", isAuthenticated, async (req: any, res: any) => {
+    try {
+      const userId = req.user?.id || req.user?.claims?.sub;
+      if (!userId) return res.status(401).json({ error: "Unauthenticated" });
+
+      // Ringkasan agregat bagi hasil kreator (paid/completed = cair, pending = menunggu).
+      const sumRes = await db.execute(sqlExpr`
+        SELECT
+          COUNT(*)::int AS "totalOrders",
+          COALESCE(SUM(CASE WHEN status IN ('paid','completed') THEN creator_share ELSE 0 END), 0)::int AS "paidEarned",
+          COALESCE(SUM(CASE WHEN status = 'pending' THEN creator_share ELSE 0 END), 0)::int AS "pendingEarned",
+          COALESCE(SUM(CASE WHEN status IN ('paid','completed') THEN 1 ELSE 0 END), 0)::int AS "paidCount",
+          COALESCE(SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END), 0)::int AS "pendingCount"
+        FROM store_orders WHERE creator_user_id = ${userId}`);
+      const agg = (sumRes.rows[0] as any) || {};
+
+      // Berapa produk milik user yang aktif di toko (terbit/listed) — konteks meski belum ada penjualan.
+      const listedRes = await db.execute(sqlExpr`
+        SELECT COUNT(*)::int AS n FROM agents WHERE user_id = ${userId} AND is_listed = true`);
+      const listedCount = (listedRes.rows[0] as any)?.n ?? 0;
+
+      // Pesanan terbaru — nama item dari produk/agen, TANPA identitas pembeli.
+      const recentRes = await db.execute(sqlExpr`
+        SELECT o.id,
+               COALESCE(p.name, a.name, 'Produk') AS "itemName",
+               o.amount, o.creator_share AS "creatorShare", o.status,
+               o.created_at AS "createdAt"
+        FROM store_orders o
+        LEFT JOIN store_products p ON p.id = o.product_id
+        LEFT JOIN agents a ON a.id = o.agent_id
+        WHERE o.creator_user_id = ${userId}
+        ORDER BY o.created_at DESC
+        LIMIT 20`);
+      const recentOrders = recentRes.rows as any[];
+
+      res.json({
+        stats: {
+          totalOrders: agg.totalOrders ?? 0,
+          paidCount: agg.paidCount ?? 0,
+          pendingCount: agg.pendingCount ?? 0,
+          paidEarned: agg.paidEarned ?? 0,
+          pendingEarned: agg.pendingEarned ?? 0,
+          listedCount,
+        },
+        recentOrders,
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e?.message || "Gagal memuat penghasilan" });
+    }
+  });
+
   // POST /api/workrooms — buat ruang kerja baru
   app.post("/api/workrooms", isAuthenticated, async (req: any, res: any) => {
     try {
