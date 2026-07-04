@@ -20,3 +20,4 @@ export * from "./gap-analysis-engine";
 export * from "./critic-engine";
 export * from "./simulation-engine";
 export * from "./evolution-engine";
+export * from "./mastery-profile-engine";

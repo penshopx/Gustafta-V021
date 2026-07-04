@@ -53,6 +53,18 @@ export interface DialogueOption {
   label: string;
 }
 
+/**
+ * Gerbang Dialog Reflektif (Trilogi Gustafta). Pertanyaan refleksi dikelompokkan
+ * ke 3 gerbang; pertanyaan konfigurasi teknis biasa TIDAK punya gate.
+ */
+export type DialogueGate = "dialog" | "kolaborasi" | "kreasi";
+
+export const DIALOGUE_GATE_LABELS: Record<DialogueGate, string> = {
+  dialog: "Gerbang 1 — Dialog",
+  kolaborasi: "Gerbang 2 — Kolaborasi",
+  kreasi: "Gerbang 3 — Kreasi",
+};
+
 /** Satu simpul pertanyaan dalam bank pertanyaan kurasi. */
 export interface DialogueNode {
   id: string;
@@ -61,6 +73,8 @@ export interface DialogueNode {
   field: string;
   /** Tier prioritas: makin kecil makin dulu ditanya. 1=inti, 2=persona, 3=opsional. */
   priority: number;
+  /** Gerbang refleksi (bila pertanyaan ini bagian dari Dialog Reflektif). */
+  gate?: DialogueGate;
   /** Pertanyaan dalam Bahasa Indonesia. */
   question: string;
   /** Alasan kenapa ini ditanya (boleh ditampilkan ke user). */
@@ -88,10 +102,19 @@ export interface DialogueQuestion {
   module: DialogueTargetModule;
   field: string;
   priority: number;
+  gate?: DialogueGate;
   question: string;
   why?: string;
   inputType: DialogueInputType;
   options?: DialogueOption[];
+}
+
+/** Progres per gerbang refleksi (untuk UI). */
+export interface GateProgress {
+  gate: DialogueGate;
+  label: string;
+  total: number;
+  answered: number;
 }
 
 export interface DialogueState {
@@ -105,6 +128,8 @@ export interface DialogueState {
   essentialComplete: boolean;
   /** Batch pertanyaan berikutnya (dibatasi `max`). */
   nextQuestions: DialogueQuestion[];
+  /** Progres per gerbang Dialog Reflektif (Trilogi Gustafta). */
+  gateProgress: GateProgress[];
 }
 
 export interface ApplyAnswerResult {
@@ -148,10 +173,243 @@ export const QUESTION_BANK: DialogueNode[] = [
     module: "meta",
     field: "intent",
     priority: 1,
-    question: "Apa ide besar atau tujuan utama dari asisten AI yang ingin Anda bangun?",
-    why: "Menjadi 'DNA' yang mengarahkan seluruh konfigurasi lain.",
+    question: "Apa topik atau tema utama yang ingin Anda dalami dan bangun lewat dialog ini?",
+    why: "Menjadi 'DNA' yang mengarahkan seluruh konfigurasi lain — sekaligus topik peta pemahaman Anda.",
     inputType: "textarea",
   },
+
+  /* --- GERBANG 1: DIALOG (latar belakang, pengetahuan, visi) ---------- */
+  {
+    id: "reflection.educationBackground",
+    module: "reflection",
+    field: "educationBackground",
+    priority: 1,
+    gate: "dialog",
+    question: "Ceritakan latar belakang Anda dengan topik ini — pendidikan, pelatihan, atau pengalaman yang membawa Anda ke sini.",
+    why: "Menandai titik berangkat pemahaman Anda.",
+    inputType: "textarea",
+  },
+  {
+    id: "reflection.knowledgeSource",
+    module: "reflection",
+    field: "knowledgeSource",
+    priority: 1,
+    gate: "dialog",
+    question: "Dari mana selama ini Anda memperoleh pengetahuan tentang topik ini? (mis. praktik langsung, buku, mentor, kursus)",
+    why: "Menunjukkan cara Anda belajar dan sumber yang Anda percaya.",
+    inputType: "textarea",
+  },
+  {
+    id: "reflection.mastered",
+    module: "reflection",
+    field: "mastered",
+    priority: 1,
+    gate: "dialog",
+    question: "Bagian mana dari topik ini yang menurut Anda sudah benar-benar Anda kuasai?",
+    why: "Menemukan kekuatan yang bisa jadi fondasi.",
+    inputType: "textarea",
+  },
+  {
+    id: "reflection.uncertain",
+    module: "reflection",
+    field: "uncertain",
+    priority: 1,
+    gate: "dialog",
+    question: "Bagian mana yang masih membuat Anda ragu, bingung, atau ingin lebih dalami?",
+    why: "Menandai celah pemahaman yang ingin ditumbuhkan — tanpa penghakiman.",
+    inputType: "textarea",
+  },
+  {
+    id: "reflection.vision",
+    module: "reflection",
+    field: "vision",
+    priority: 1,
+    gate: "dialog",
+    question: "Apa visi atau cita-cita besar Anda terkait topik ini? Gambaran ideal yang ingin Anda wujudkan.",
+    why: "Arah jauh yang memberi makna pada seluruh proses.",
+    inputType: "textarea",
+  },
+  {
+    id: "reflection.desiredChange",
+    module: "reflection",
+    field: "desiredChange",
+    priority: 1,
+    gate: "dialog",
+    question: "Perubahan apa yang Anda harapkan terjadi — pada diri Anda, pekerjaan, atau lingkungan Anda?",
+    why: "Menghubungkan visi dengan dampak nyata yang diinginkan.",
+    inputType: "textarea",
+  },
+  {
+    id: "reflection.personalMeaning",
+    module: "reflection",
+    field: "personalMeaning",
+    priority: 1,
+    gate: "dialog",
+    question: "Mengapa topik ini terasa penting secara pribadi bagi Anda?",
+    why: "Motivasi pribadi = bahan bakar yang membuat Anda bertahan.",
+    inputType: "textarea",
+  },
+
+  /* --- GERBANG 2: KOLABORASI (realita, pain point, keberhasilan) ------ */
+  {
+    id: "reflection.currentReality",
+    module: "reflection",
+    field: "currentReality",
+    priority: 1,
+    gate: "kolaborasi",
+    question: "Seperti apa kondisi nyata sehari-hari Anda saat berurusan dengan topik ini sekarang?",
+    why: "Membumikan visi ke kenyataan yang sedang Anda hadapi.",
+    inputType: "textarea",
+  },
+  {
+    id: "reflection.painPoint",
+    module: "reflection",
+    field: "painPoint",
+    priority: 1,
+    gate: "kolaborasi",
+    question: "Apa masalah atau hambatan yang paling menyakitkan / melelahkan dari kondisi itu?",
+    why: "Titik nyeri = tempat perubahan paling terasa.",
+    inputType: "textarea",
+  },
+  {
+    id: "reflection.stakeholders",
+    module: "reflection",
+    field: "stakeholders",
+    priority: 1,
+    gate: "kolaborasi",
+    question: "Siapa saja yang terlibat atau ikut terdampak dalam urusan topik ini? (mis. tim, klien, keluarga)",
+    why: "Memetakan orang-orang di sekitar perjalanan Anda.",
+    inputType: "textarea",
+  },
+  {
+    id: "reflection.pastAttempts",
+    module: "reflection",
+    field: "pastAttempts",
+    priority: 1,
+    gate: "kolaborasi",
+    question: "Apa saja yang sudah pernah Anda coba untuk mengatasinya, dan bagaimana hasilnya?",
+    why: "Belajar dari upaya lampau agar tak mengulang jalan buntu.",
+    inputType: "textarea",
+  },
+  {
+    id: "reflection.successStory",
+    module: "reflection",
+    field: "successStory",
+    priority: 1,
+    gate: "kolaborasi",
+    question: "Ceritakan satu momen keberhasilan Anda dengan topik ini — apa kunci yang membuatnya berhasil?",
+    why: "Menemukan pola menang yang bisa diulang.",
+    inputType: "textarea",
+  },
+  {
+    id: "reflection.lessonsLearned",
+    module: "reflection",
+    field: "lessonsLearned",
+    priority: 1,
+    gate: "kolaborasi",
+    question: "Pelajaran paling berharga apa yang Anda petik dari pengalaman-pengalaman itu?",
+    why: "Menyulingkan pengalaman menjadi kebijaksanaan.",
+    inputType: "textarea",
+  },
+  {
+    id: "reflection.repetitiveBurden",
+    module: "reflection",
+    field: "repetitiveBurden",
+    priority: 1,
+    gate: "kolaborasi",
+    question: "Bagian mana yang terasa berulang, membosankan, atau menyita waktu — yang andai bisa dibantu akan sangat melegakan?",
+    why: "Kandidat utama untuk dibantu asisten AI.",
+    inputType: "textarea",
+  },
+  {
+    id: "reflection.riskIfIgnored",
+    module: "reflection",
+    field: "riskIfIgnored",
+    priority: 1,
+    gate: "kolaborasi",
+    question: "Apa kerugian atau risikonya bila masalah ini dibiarkan begitu saja?",
+    why: "Menegaskan urgensi perubahan.",
+    inputType: "textarea",
+  },
+
+  /* --- GERBANG 3: KREASI (peran, karya, harapan) --------------------- */
+  {
+    id: "reflection.desiredRole",
+    module: "reflection",
+    field: "desiredRole",
+    priority: 1,
+    gate: "kreasi",
+    question: "Dalam perubahan ini, peran seperti apa yang ingin Anda pegang?",
+    why: "Menentukan pembagian kerja antara Anda dan asisten AI.",
+    inputType: "select",
+    options: [
+      { value: "pelaku", label: "Pelaku langsung — saya tetap yang mengerjakan" },
+      { value: "pengarah", label: "Pengarah — saya mengarahkan, AI membantu mengerjakan" },
+      { value: "pengambil-keputusan", label: "Pengambil keputusan — saya menimbang & memutuskan" },
+      { value: "kombinasi", label: "Kombinasi — tergantung situasi" },
+    ],
+  },
+  {
+    id: "reflection.desiredCreation",
+    module: "reflection",
+    field: "desiredCreation",
+    priority: 1,
+    gate: "kreasi",
+    question: "Karya atau hasil nyata apa yang ingin Anda ciptakan lewat topik ini?",
+    why: "Wujud konkret dari visi Anda.",
+    inputType: "textarea",
+  },
+  {
+    id: "reflection.humanVsAiBoundary",
+    module: "reflection",
+    field: "humanVsAiBoundary",
+    priority: 1,
+    gate: "kreasi",
+    question: "Bagian mana yang tetap harus Anda putuskan sendiri sebagai manusia, dan bagian mana yang boleh dibantu AI?",
+    why: "Menjaga gerbang keputusan manusia (◆) tetap di tangan Anda.",
+    inputType: "textarea",
+  },
+  {
+    id: "reflection.beneficiary",
+    module: "reflection",
+    field: "beneficiary",
+    priority: 1,
+    gate: "kreasi",
+    question: "Siapa yang akan memakai atau menikmati hasil karya ini nantinya?",
+    why: "Memusatkan karya pada orang yang dilayani.",
+    inputType: "textarea",
+  },
+  {
+    id: "reflection.successVision",
+    module: "reflection",
+    field: "successVision",
+    priority: 1,
+    gate: "kreasi",
+    question: "Seperti apa gambaran 'berhasil' menurut Anda dalam 3–6 bulan ke depan?",
+    why: "Tolok ukur konkret untuk mengukur kemajuan.",
+    inputType: "textarea",
+  },
+  {
+    id: "reflection.nonNegotiableValues",
+    module: "reflection",
+    field: "nonNegotiableValues",
+    priority: 1,
+    gate: "kreasi",
+    question: "Nilai atau prinsip apa yang tidak boleh dilanggar dalam prosesnya?",
+    why: "Rambu-rambu yang menjaga karya tetap selaras dengan diri Anda.",
+    inputType: "textarea",
+  },
+  {
+    id: "reflection.biggestHope",
+    module: "reflection",
+    field: "biggestHope",
+    priority: 1,
+    gate: "kreasi",
+    question: "Apa harapan terbesar Anda dari seluruh perjalanan ini?",
+    why: "Penutup reflektif yang merangkum makna Anda.",
+    inputType: "textarea",
+  },
+
   {
     id: "identity.name",
     module: "identity",
@@ -400,7 +658,18 @@ export function getDialogueState(
     remainingEssential: remaining,
     essentialComplete,
     nextQuestions,
+    gateProgress: computeGateProgress(blueprint, minConfidence),
   };
+}
+
+/** Hitung progres tiap gerbang Dialog Reflektif dari bank pertanyaan. */
+function computeGateProgress(blueprint: Blueprint, minConfidence: number): GateProgress[] {
+  const gates: DialogueGate[] = ["dialog", "kolaborasi", "kreasi"];
+  return gates.map((gate) => {
+    const nodes = QUESTION_BANK.filter((n) => n.gate === gate);
+    const answered = nodes.filter((n) => isFieldKnown(blueprint, n, minConfidence)).length;
+    return { gate, label: DIALOGUE_GATE_LABELS[gate], total: nodes.length, answered };
+  });
 }
 
 /* ===========================================================================
@@ -474,6 +743,7 @@ function toQuestion(node: DialogueNode): DialogueQuestion {
     module: node.module,
     field: node.field,
     priority: node.priority,
+    gate: node.gate,
     question: node.question,
     why: node.why,
     inputType: node.inputType,

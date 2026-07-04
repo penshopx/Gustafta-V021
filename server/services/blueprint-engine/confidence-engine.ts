@@ -75,6 +75,11 @@ export const MODULE_SPECS: Record<BlueprintModuleName, ModuleSpec> = {
   landingPage: { weight: 0.5, requiredFields: [], optional: true },
   marketing: { weight: 0.5, requiredFields: [], optional: true },
   integration: { weight: 0.5, requiredFields: [], optional: true },
+  // Refleksi — "peta pemahaman" user. Bukan modul inti agen, jadi optional
+  // (skip tanpa hukuman), tapi berbobot tinggi & tanpa requiredFields sehingga
+  // begitu user mengisi, ia dinilai dari rata-rata field terisi (semua source=user
+  // → confidence 1.0) dan mengangkat keyakinan keseluruhan.
+  reflection: { weight: 2, requiredFields: [], optional: true },
 };
 
 /* ===========================================================================

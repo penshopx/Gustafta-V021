@@ -124,6 +124,14 @@ const CHILD_KEYS: Partial<Record<BlueprintModuleName, Set<string>>> = {
   integration: new Set(["integrations"]),
 };
 
+/**
+ * Modul yang SAMA SEKALI bukan bagian dari agen — tidak dipetakan ke kolom
+ * `agents` maupun ke tabel anak. `reflection` adalah "peta pemahaman" pribadi
+ * user (bahan Profil Penguasaan atas Topik), bukan konfigurasi agen. Dilewati
+ * total agar field-nya tidak bocor menjadi kolom `agents` yang tak ada.
+ */
+const NON_AGENT_MODULES = new Set<BlueprintModuleName>(["reflection"]);
+
 /* ===========================================================================
  * Mapping Engine
  * ======================================================================== */
@@ -149,6 +157,7 @@ export function mapBlueprintToBuilder(
   let fieldsSkipped = 0;
 
   for (const moduleName of BLUEPRINT_MODULE_NAMES) {
+    if (NON_AGENT_MODULES.has(moduleName)) continue;
     const module = blueprint.modules[moduleName];
     if (!module) continue;
     const data = (module.data ?? {}) as Record<string, any>;

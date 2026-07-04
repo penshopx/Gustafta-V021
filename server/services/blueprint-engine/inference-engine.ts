@@ -160,14 +160,27 @@ function slugify(s: string): string {
 
 function corpus(bp: Blueprint): string {
   const id = bp.modules.identity.data as Record<string, any>;
+  const ref = (bp.modules.reflection?.data ?? {}) as Record<string, any>;
   const parts = [
     bp.meta.intent,
     id.name,
     id.description,
     id.tagline,
     ...(Array.isArray(id.expertise) ? id.expertise : []),
+    // Jawaban reflektif ikut memperkaya deteksi kategori/RAG/konversi.
+    ref.vision,
+    ref.mastered,
+    ref.currentReality,
+    ref.painPoint,
+    ref.desiredCreation,
   ];
   return parts.filter(Boolean).join(" ").toLowerCase();
+}
+
+/** Ambil field refleksi (string) bila terisi, atau null. */
+function reflectionField(bp: Blueprint, field: string): string | null {
+  const v = (bp.modules.reflection?.data as Record<string, any> | undefined)?.[field];
+  return typeof v === "string" && v.trim().length > 0 ? v.trim() : null;
 }
 
 const KEYWORD_REGEX_CACHE = new Map<string, RegExp>();
@@ -373,6 +386,60 @@ export const INFERENCE_RULES: InferenceRule[] = [
         confidence: 0.85,
         evidence: "Agen ditandai sebagai orchestrator → mode agentic dihidupkan.",
         needsConfirmation: false,
+      };
+    },
+  },
+
+  // primaryOutcome ← refleksi (successVision / desiredCreation) bila kosong
+  {
+    id: "goals.primaryOutcome",
+    module: "goals",
+    field: "primaryOutcome",
+    infer: (bp) => {
+      const src = reflectionField(bp, "successVision") ?? reflectionField(bp, "desiredCreation");
+      if (!src) return null;
+      return {
+        value: src.length > 220 ? src.slice(0, 217).trimEnd() + "…" : src,
+        confidence: 0.5,
+        evidence: "Diturunkan dari refleksi Anda (gambaran berhasil / karya yang diinginkan). Mohon dikonfirmasi.",
+      };
+    },
+  },
+
+  // productTargetUser ← refleksi (beneficiary) bila kosong
+  {
+    id: "monetization.productTargetUser",
+    module: "monetization",
+    field: "productTargetUser",
+    infer: (bp) => {
+      const src = reflectionField(bp, "beneficiary");
+      if (!src) return null;
+      return {
+        value: src.length > 160 ? src.slice(0, 157).trimEnd() + "…" : src,
+        confidence: 0.5,
+        evidence: "Diturunkan dari refleksi Anda (siapa yang memakai hasil karya). Mohon dikonfirmasi.",
+      };
+    },
+  },
+
+  // domainCharter ← refleksi (visi + nilai + pain point) bila kosong
+  {
+    id: "policy.domainCharter",
+    module: "policy",
+    field: "domainCharter",
+    infer: (bp) => {
+      const vision = reflectionField(bp, "vision");
+      const values = reflectionField(bp, "nonNegotiableValues");
+      const pain = reflectionField(bp, "painPoint");
+      if (!vision && !values && !pain) return null;
+      const lines: string[] = [];
+      if (vision) lines.push(`Visi: ${vision}`);
+      if (pain) lines.push(`Masalah yang ingin diatasi: ${pain}`);
+      if (values) lines.push(`Nilai yang wajib dijaga: ${values}`);
+      return {
+        value: lines.join("\n"),
+        confidence: 0.5,
+        evidence: "Disusun dari refleksi Anda (visi, masalah, & nilai). Tinjau sebelum dipakai.",
       };
     },
   },

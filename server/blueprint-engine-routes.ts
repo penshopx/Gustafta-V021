@@ -39,6 +39,7 @@ import {
   analyzeGaps,
   critiqueBlueprint,
   simulateBlueprint,
+  buildMasteryProfile,
   applyBlueprintToBuilder,
 } from "./services/blueprint-engine";
 
@@ -210,6 +211,7 @@ export function registerBlueprintEngineRoutes(app: Express): void {
         gaps: analyzeGaps(blueprint),
         critique: critiqueBlueprint(blueprint),
         simulation: simulateBlueprint(blueprint),
+        masteryProfile: buildMasteryProfile(blueprint),
         lint: lintBlueprintFieldMeta(blueprint),
       });
     }),
