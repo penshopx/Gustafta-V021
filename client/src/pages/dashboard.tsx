@@ -380,9 +380,9 @@ export default function Dashboard() {
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importLoading, setImportLoading] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
-  const [premiumGroupOpen, setPremiumGroupOpen] = useState(true);
-  const [biasaGroupOpen, setBiasaGroupOpen] = useState(true);
-  const [shortcutBiasaOpen, setShortcutBiasaOpen] = useState(true);
+  const [premiumGroupOpen, setPremiumGroupOpen] = useState(false);
+  const [biasaGroupOpen, setBiasaGroupOpen] = useState(false);
+  const [shortcutBiasaOpen, setShortcutBiasaOpen] = useState(false);
   const [shortcutPremiumOpen, setShortcutPremiumOpen] = useState(false);
   
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
