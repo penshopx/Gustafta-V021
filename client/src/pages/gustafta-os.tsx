@@ -13,6 +13,7 @@ interface Destination {
   label: string;
   desc: string;
   icon: React.ReactNode;
+  group?: string;
 }
 
 interface Pillar {
@@ -126,13 +127,13 @@ const PILLARS: Pillar[] = [
     icon: <Award className="h-6 w-6" />,
     status: "aktif",
     destinations: [
-      { href: "/portofolio", label: "Portofolio Kompetensi", desc: "Kumpulan bukti: kursus, hasil kerja Workroom, sertifikat & lencana.", icon: <Trophy className="h-5 w-5" /> },
-      { href: "/penghasilan", label: "Penghasilan Kreator", desc: "Lacak bagi hasil 80/20 dari lisensi produk Anda di marketplace.", icon: <Wallet className="h-5 w-5" /> },
-      { href: "/sertifikat-digital", label: "E-Sertifikat Digital", desc: "Terbitkan sertifikat terverifikasi dengan QR publik.", icon: <FileCheck className="h-5 w-5" /> },
-      { href: "/jalur-sertifikasi", label: "Jalur Sertifikasi", desc: "Peta jalan menuju sertifikasi kompetensi resmi.", icon: <Award className="h-5 w-5" /> },
-      { href: "/store", label: "Gustafta Store", desc: "Marketplace chatbot & template siap pakai.", icon: <Store className="h-5 w-5" /> },
-      { href: "/affiliate", label: "Program Afiliasi", desc: "Dapatkan komisi dengan merekomendasikan Gustafta.", icon: <Handshake className="h-5 w-5" /> },
-      { href: "/monitor-marketing", label: "Monitor & Analitik", desc: "Pantau performa penjualan & kampanye pemasaran.", icon: <TrendingUp className="h-5 w-5" /> },
+      { group: "Bukti & Kompetensi", href: "/portofolio", label: "Portofolio Kompetensi", desc: "Kumpulan bukti: kursus, hasil kerja Workroom, sertifikat & lencana.", icon: <Trophy className="h-5 w-5" /> },
+      { group: "Bukti & Kompetensi", href: "/sertifikat-digital", label: "E-Sertifikat Digital", desc: "Terbitkan sertifikat terverifikasi dengan QR publik.", icon: <FileCheck className="h-5 w-5" /> },
+      { group: "Bukti & Kompetensi", href: "/jalur-sertifikasi", label: "Jalur Sertifikasi", desc: "Peta jalan menuju sertifikasi kompetensi resmi.", icon: <Award className="h-5 w-5" /> },
+      { group: "Menghasilkan", href: "/penghasilan", label: "Penghasilan Kreator", desc: "Lacak bagi hasil 80/20 dari lisensi produk Anda di marketplace.", icon: <Wallet className="h-5 w-5" /> },
+      { group: "Menghasilkan", href: "/store", label: "Gustafta Store", desc: "Marketplace chatbot & template siap pakai.", icon: <Store className="h-5 w-5" /> },
+      { group: "Menghasilkan", href: "/affiliate", label: "Program Afiliasi", desc: "Dapatkan komisi dengan merekomendasikan Gustafta.", icon: <Handshake className="h-5 w-5" /> },
+      { group: "Menghasilkan", href: "/monitor-marketing", label: "Monitor & Analitik", desc: "Pantau performa penjualan & kampanye pemasaran.", icon: <TrendingUp className="h-5 w-5" /> },
     ],
   },
 ];
@@ -209,9 +210,9 @@ export default function GustaftaOs() {
               </div>
             </div>
 
-            {/* Destinations grid */}
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {pillar.destinations.map((d) => (
+            {/* Destinations grid — dikelompokkan bila destinasi punya `group` */}
+            {(() => {
+              const renderCard = (d: Destination) => (
                 <Link
                   key={d.href}
                   href={d.href}
@@ -225,8 +226,40 @@ export default function GustaftaOs() {
                   </div>
                   <p className="text-xs text-muted-foreground leading-relaxed">{d.desc}</p>
                 </Link>
-              ))}
-            </div>
+              );
+
+              const hasGroups = pillar.destinations.some((d) => d.group);
+              if (!hasGroups) {
+                return (
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {pillar.destinations.map(renderCard)}
+                  </div>
+                );
+              }
+
+              const groupOrder = pillar.destinations.reduce<string[]>((acc, d) => {
+                const g = d.group ?? "";
+                if (!acc.includes(g)) acc.push(g);
+                return acc;
+              }, []);
+
+              return (
+                <div className="space-y-5">
+                  {groupOrder.map((g) => (
+                    <div key={g || "_"} className="space-y-3">
+                      {g && (
+                        <p className={`text-xs font-semibold uppercase tracking-wide ${pillar.iconColor}`} data-testid={`text-group-${pillar.id}-${g.replace(/[^a-zA-Z]+/g, "-").toLowerCase()}`}>
+                          {g}
+                        </p>
+                      )}
+                      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        {pillar.destinations.filter((d) => (d.group ?? "") === g).map(renderCard)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           </section>
         ))}
       </div>
