@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,6 +9,8 @@ import { proposalTeamToOrgMembers } from "@shared/proposal-to-org";
 
 /** Kunci handoff Proposal → Organization Builder (dibaca sekali lalu dihapus). */
 const ORG_PREFILL_KEY = "gustafta_org_prefill_v1";
+/** Kunci handoff Blueprint Builder → Proposal (dibaca sekali lalu dihapus). */
+const PROPOSAL_PREFILL_KEY = "gustafta_proposal_prefill_v1";
 
 interface ProposalResult {
   judul: string;
@@ -119,7 +121,23 @@ export default function ProposalJasa() {
   const [result, setResult] = useState<ProposalResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [fromBlueprint, setFromBlueprint] = useState(false);
   const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(PROPOSAL_PREFILL_KEY);
+      if (!raw) return;
+      localStorage.removeItem(PROPOSAL_PREFILL_KEY);
+      const data = JSON.parse(raw) as { kebutuhan?: string; source?: string };
+      if (data?.kebutuhan && typeof data.kebutuhan === "string") {
+        setKebutuhan(data.kebutuhan);
+        if (data.source === "blueprint") setFromBlueprint(true);
+      }
+    } catch {
+      /* prefill rusak — abaikan */
+    }
+  }, []);
 
   function handleRakitTim() {
     if (!result) return;
@@ -235,6 +253,12 @@ export default function ProposalJasa() {
 
             <div>
               <label className="text-sm font-medium text-white/70 block mb-1.5">Kebutuhan klien</label>
+              {fromBlueprint && (
+                <div className="flex items-center gap-2 mb-2 text-xs text-sky-300 bg-sky-500/10 border border-sky-500/30 rounded-lg px-3 py-2" data-testid="notice-from-blueprint">
+                  <Wand2 className="h-3.5 w-3.5 flex-shrink-0" />
+                  Diisi otomatis dari Blueprint chatbot Anda. Silakan sunting bila perlu.
+                </div>
+              )}
               <Textarea
                 value={kebutuhan}
                 onChange={(e) => setKebutuhan(e.target.value)}
