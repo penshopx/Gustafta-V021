@@ -1936,6 +1936,9 @@ export const partners = pgTable("partners", {
   logoUrl: text("logo_url"),                                        // logo whitelabel
   primaryColor: varchar("primary_color", { length: 32 }),           // aksen hex, mis. "#0f766e"
   tagline: text("tagline"),
+  description: text("description"),                                 // deskripsi singkat untuk landing mitra
+  contactPhone: varchar("contact_phone", { length: 32 }),           // WA/telepon mitra (menggantikan kontak Gustafta)
+  contactEmail: text("contact_email"),                              // email kontak mitra
   defaultAgentId: text("default_agent_id"),                         // chatbot konstruksi default
   cheapModel: varchar("cheap_model", { length: 64 }).default("gpt-4o-mini").notNull(), // model hemat default
   seatsPerUnit: integer("seats_per_unit").default(3).notNull(),     // ASPEKINDO=3/unit, lainnya=2

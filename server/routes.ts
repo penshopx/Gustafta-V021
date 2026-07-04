@@ -604,12 +604,12 @@ export async function registerRoutes(
       const knownHosts = ["localhost", "0.0.0.0", "127.0.0.1"];
       if (knownHosts.includes(host) || host.endsWith(".replit.dev") || host.endsWith(".repl.co") || host.endsWith(".replit.app")) return next();
 
-      // Lookup whitelabel partner (asosiasi/reseller) host first
+      // Lookup whitelabel partner (asosiasi/reseller) host first.
+      // Host mitra TIDAK di-redirect ke chat: SPA merender landing netral mitra
+      // (PartnerLanding) di "/" dengan CTA menuju chatbot default mitra.
       const [partnerRow] = await db.select().from(partners)
         .where(and(eq(partners.host, host), eq(partners.active, true)));
-      if (partnerRow?.defaultAgentId && req.path === "/") {
-        return res.redirect(302, `/chat/${partnerRow.defaultAgentId}`);
-      }
+      if (partnerRow) return next();
 
       // Lookup in custom domains
       const [row] = await db.select().from(customDomains)
@@ -16365,6 +16365,10 @@ Buat dokumen KB berkualitas tinggi untuk topik ini.`;
         logoUrl: row.logoUrl,
         primaryColor: row.primaryColor,
         tagline: row.tagline,
+        description: row.description,
+        contactPhone: row.contactPhone,
+        contactEmail: row.contactEmail,
+        defaultAgentId: row.defaultAgentId,
         hidePlatformBranding: row.hidePlatformBranding,
       });
     } catch (error) {

@@ -7,6 +7,10 @@ export interface PartnerBranding {
   logoUrl: string | null;
   primaryColor: string | null;
   tagline: string | null;
+  description: string | null;
+  contactPhone: string | null;
+  contactEmail: string | null;
+  defaultAgentId: string | null;
   hidePlatformBranding: boolean;
 }
 
