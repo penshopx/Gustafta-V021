@@ -21706,14 +21706,94 @@ Maksimal 600 kata.`;
   });
 
   // ==================== WORKROOMS (Fase 1 — ruang kerja manusia + agen) ====================
-  const TENDER_STAGES = [
-    { key: "identifikasi", label: "Identifikasi Peluang", status: "active" },
-    { key: "kelayakan",    label: "Analisis Kelayakan",   status: "pending" },
-    { key: "strategi",     label: "Strategi & Win Probability", status: "pending" },
-    { key: "dokumen",      label: "Penyusunan Dokumen",   status: "pending" },
-    { key: "review",       label: "Review & Gerbang Manusia ◆", status: "pending" },
-    { key: "submit",       label: "Submit & Arsip",       status: "pending" },
-  ];
+  // Registry domain Workroom: stage machine + prompt analisis per bidang.
+  // JSON output analisis SENGAJA seragam lintas domain (kelayakan/win_probability/
+  // kekuatan/risiko/rekomendasi/asumsi) supaya rendering frontend tak berubah.
+  const WORKROOM_DOMAINS: Record<string, {
+    label: string;
+    stages: { key: string; label: string; status: string }[];
+    analyzeContent: string;
+    systemPrompt: string;
+  }> = {
+    tender: {
+      label: "Tender / Pengadaan",
+      stages: [
+        { key: "identifikasi", label: "Identifikasi Peluang", status: "active" },
+        { key: "kelayakan",    label: "Analisis Kelayakan",   status: "pending" },
+        { key: "strategi",     label: "Strategi & Win Probability", status: "pending" },
+        { key: "dokumen",      label: "Penyusunan Dokumen",   status: "pending" },
+        { key: "review",       label: "Review & Gerbang Manusia ◆", status: "pending" },
+        { key: "submit",       label: "Submit & Arsip",       status: "pending" },
+      ],
+      analyzeContent: "Analisis Kelayakan & Win Probability",
+      systemPrompt: `Anda adalah analis tender konstruksi Indonesia senior. Analisis peluang tender berikut secara jujur dan realistis berbasis Perpres 16/2018 jo Perpres 12/2021 (Pengadaan Barang/Jasa).
+
+MAKNA FIELD: "kelayakan.layak" = apakah perusahaan layak/pantas ikut tender ini. "win_probability.skor" = estimasi peluang MENANG (0-100).`,
+    },
+    perizinan: {
+      label: "Perizinan Berusaha (OSS)",
+      stages: [
+        { key: "identifikasi", label: "Identifikasi Jenis Izin & KBLI", status: "active" },
+        { key: "persyaratan",  label: "Cek Persyaratan & Tingkat Risiko", status: "pending" },
+        { key: "dokumen",      label: "Penyusunan Berkas",   status: "pending" },
+        { key: "pengajuan",    label: "Pengajuan via OSS",   status: "pending" },
+        { key: "review",       label: "Review & Gerbang Manusia ◆", status: "pending" },
+        { key: "terbit",       label: "Terbit & Arsip",      status: "pending" },
+      ],
+      analyzeContent: "Analisis Kesiapan Perizinan",
+      systemPrompt: `Anda adalah konsultan perizinan berusaha Indonesia senior. Analisis kesiapan pengurusan izin berikut secara jujur berbasis PP 28/2025 (Penyelenggaraan Perizinan Berusaha Berbasis Risiko/PBBR) dan sistem OSS RBA.
+
+MAKNA FIELD: "kelayakan.layak" = apakah berkas/kondisi usaha sudah layak diajukan ke OSS. "win_probability.skor" = estimasi skor KESIAPAN berkas untuk lolos tanpa perbaikan (0-100). "syarat_kurang" = persyaratan/dokumen yang masih kurang.`,
+    },
+    skk: {
+      label: "Sertifikasi Kompetensi (SKK)",
+      stages: [
+        { key: "identifikasi", label: "Identifikasi Jabatan & Jenjang", status: "active" },
+        { key: "kelayakan",    label: "Cek Kelayakan & Persyaratan", status: "pending" },
+        { key: "portofolio",   label: "Susun Portofolio & Bukti", status: "pending" },
+        { key: "pendaftaran",  label: "Pendaftaran ke LSP",  status: "pending" },
+        { key: "review",       label: "Review & Gerbang Manusia ◆", status: "pending" },
+        { key: "uji",          label: "Uji Kompetensi & Arsip", status: "pending" },
+      ],
+      analyzeContent: "Analisis Kesiapan Sertifikasi SKK",
+      systemPrompt: `Anda adalah asesor kompetensi konstruksi Indonesia senior (skema BNSP/LSP). Analisis kesiapan pemohon menuju uji kompetensi SKK Konstruksi secara jujur berbasis UU 2/2017 jo UU 6/2023 (Jasa Konstruksi) dan skema SKKNI.
+
+MAKNA FIELD: "kelayakan.layak" = apakah pemohon layak mendaftar uji untuk jenjang yang dituju. "win_probability.skor" = estimasi skor KESIAPAN LULUS uji kompetensi (0-100). "syarat_kurang" = persyaratan (pendidikan/pengalaman/portofolio) yang masih kurang.`,
+    },
+    k3: {
+      label: "K3 / SMK3 Konstruksi",
+      stages: [
+        { key: "identifikasi", label: "Identifikasi Lingkup & Bahaya", status: "active" },
+        { key: "penilaian",    label: "Penilaian Risiko (HIRADC)", status: "pending" },
+        { key: "rencana",      label: "Rencana Pengendalian K3", status: "pending" },
+        { key: "dokumen",      label: "Dokumen RKK / SMK3",  status: "pending" },
+        { key: "review",       label: "Review & Gerbang Manusia ◆", status: "pending" },
+        { key: "implementasi", label: "Implementasi & Arsip", status: "pending" },
+      ],
+      analyzeContent: "Analisis Kesiapan K3 / SMK3",
+      systemPrompt: `Anda adalah Ahli K3 Konstruksi Indonesia senior. Analisis kesiapan penerapan Keselamatan & Kesehatan Kerja proyek berikut secara jujur berbasis PermenPUPR 10/2021 (SMKK) dan PP 50/2012 (SMK3).
+
+MAKNA FIELD: "kelayakan.layak" = apakah rencana/kondisi K3 layak untuk mulai bekerja. "win_probability.skor" = estimasi skor KEMATANGAN/KESIAPAN sistem K3 (0-100). "risiko" = bahaya K3 utama yang perlu dikendalikan. "syarat_kurang" = elemen SMKK/dokumen yang masih kurang.`,
+    },
+  };
+  const DEFAULT_WORKROOM_DOMAIN = "tender";
+  const workroomDomainCfg = (d?: string | null) =>
+    WORKROOM_DOMAINS[(d || "").toLowerCase()] || WORKROOM_DOMAINS[DEFAULT_WORKROOM_DOMAIN];
+  // Label manusiawi untuk key konteks umum (dipakai membangun brief analisis).
+  const WORKROOM_CTX_LABELS: Record<string, string> = {
+    instansi: "Instansi / Pemberi Kerja",
+    nilai: "Nilai Pagu / HPS",
+    kualifikasi: "Kualifikasi / SBU",
+    deadline: "Deadline",
+    jenisUsaha: "Jenis Usaha / KBLI",
+    skala: "Skala Usaha",
+    jabatan: "Jabatan Kerja",
+    jenjang: "Jenjang",
+    pengalaman: "Pengalaman",
+    proyek: "Proyek",
+    lingkup: "Lingkup Pekerjaan",
+    catatan: "Catatan",
+  };
 
   // Ambil workroom + pastikan milik user (return null bila tidak ada / bukan milik)
   async function getOwnedWorkroom(req: any): Promise<{ workroom: any; userId: string } | null> {
@@ -21813,13 +21893,14 @@ Maksimal 600 kata.`;
       if (!title || title.trim().length < 3) {
         return res.status(400).json({ error: "Judul workroom minimal 3 karakter" });
       }
+      const domainKey = WORKROOM_DOMAINS[(domain || "").toLowerCase()] ? (domain as string).toLowerCase() : DEFAULT_WORKROOM_DOMAIN;
       const room = await storage.createWorkroom({
         userId,
         title: title.trim(),
-        domain: domain || "tender",
+        domain: domainKey,
         status: "active",
         currentStage: 0,
-        stages: TENDER_STAGES,
+        stages: workroomDomainCfg(domainKey).stages,
         context: context ?? {},
       } as any);
       res.status(201).json(room);
@@ -21959,18 +22040,17 @@ Maksimal 600 kata.`;
     try {
       const owned = await getOwnedWorkroom(req);
       if (!owned) return res.status(404).json({ error: "Workroom tidak ditemukan" });
+      const cfg = workroomDomainCfg(owned.workroom.domain);
       const ctx = (owned.workroom.context as any) || {};
       const brief = [
         `Judul: ${owned.workroom.title}`,
-        ctx.instansi ? `Instansi: ${ctx.instansi}` : "",
-        ctx.nilai ? `Nilai pagu: ${ctx.nilai}` : "",
-        ctx.kualifikasi ? `Kualifikasi/SBU: ${ctx.kualifikasi}` : "",
-        ctx.deadline ? `Deadline: ${ctx.deadline}` : "",
-        ctx.catatan ? `Catatan: ${ctx.catatan}` : "",
-      ].filter(Boolean).join("\n");
+        ...Object.entries(ctx)
+          .filter(([, v]) => typeof v === "string" && (v as string).trim().length > 0)
+          .map(([k, v]) => `${WORKROOM_CTX_LABELS[k] || k}: ${v}`),
+      ].join("\n");
 
       const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-      const systemPrompt = `Anda adalah analis tender konstruksi Indonesia senior. Analisis peluang tender berikut secara jujur dan realistis berbasis Perpres 16/2018 jo Perpres 12/2021 (Pengadaan Barang/Jasa).
+      const systemPrompt = `${cfg.systemPrompt}
 
 Keluarkan JSON dengan struktur:
 {
@@ -21982,13 +22062,13 @@ Keluarkan JSON dengan struktur:
   "asumsi": ["[ASUMSI: nilai | basis: ... | verifikasi-ke: ...]"]
 }
 
-ATURAN: Bila data kurang, JANGAN mengarang — nyatakan sebagai [ASUMSI]. Keputusan akhir ikut/tidak ikut tender ADALAH keputusan manusia (◆ gerbang manusia), bukan Anda.`;
+ATURAN: Bila data kurang, JANGAN mengarang — nyatakan sebagai [ASUMSI]. Keputusan akhir ADALAH keputusan manusia (◆ gerbang manusia), bukan Anda.`;
 
       const resp = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Analisis peluang tender ini:\n\n${brief || "(data minim — beri analisis berbasis asumsi eksplisit)"}` },
+          { role: "user", content: `Analisis kasus ini (bidang: ${cfg.label}):\n\n${brief || "(data minim — beri analisis berbasis asumsi eksplisit)"}` },
         ],
         temperature: 0.3,
         max_tokens: 1500,
@@ -22001,8 +22081,8 @@ ATURAN: Bila data kurang, JANGAN mengarang — nyatakan sebagai [ASUMSI]. Keputu
       const log = await storage.createWorkroomLog({
         workroomId: owned.workroom.id,
         type: "deliverable",
-        content: `Analisis Kelayakan & Win Probability — ${owned.workroom.title}`,
-        meta: { kind: "analisis_tender", result: parsed },
+        content: `${cfg.analyzeContent} — ${owned.workroom.title}`,
+        meta: { kind: `analisis_${owned.workroom.domain || "tender"}`, result: parsed },
       } as any);
       res.status(201).json({ log, result: parsed });
     } catch (e: any) {

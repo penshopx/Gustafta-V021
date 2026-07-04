@@ -63,6 +63,41 @@ const CAPSTONE_BY_CATEGORY: Record<string, { domain: string; label: string; desc
     label: "Praktik Nyata: Workroom Tender",
     desc: "Terapkan yang Anda pelajari — buat ruang kerja tender, jalankan analisis kelayakan & peluang menang, lalu simpan hasilnya sebagai bukti portofolio.",
   },
+  tender: {
+    domain: "tender",
+    label: "Praktik Nyata: Workroom Tender",
+    desc: "Terapkan yang Anda pelajari — buat ruang kerja tender, jalankan analisis kelayakan & peluang menang, lalu simpan hasilnya sebagai bukti portofolio.",
+  },
+  perizinan: {
+    domain: "perizinan",
+    label: "Praktik Nyata: Workroom Perizinan",
+    desc: "Terapkan yang Anda pelajari — buat ruang kerja perizinan, jalankan analisis kesiapan berkas OSS, lalu simpan hasilnya sebagai bukti portofolio.",
+  },
+  legalitas: {
+    domain: "perizinan",
+    label: "Praktik Nyata: Workroom Perizinan",
+    desc: "Terapkan yang Anda pelajari — buat ruang kerja perizinan, jalankan analisis kesiapan berkas OSS, lalu simpan hasilnya sebagai bukti portofolio.",
+  },
+  skk: {
+    domain: "skk",
+    label: "Praktik Nyata: Workroom Sertifikasi SKK",
+    desc: "Terapkan yang Anda pelajari — buat ruang kerja SKK, jalankan analisis kesiapan uji kompetensi, lalu simpan hasilnya sebagai bukti portofolio.",
+  },
+  kompetensi: {
+    domain: "skk",
+    label: "Praktik Nyata: Workroom Sertifikasi SKK",
+    desc: "Terapkan yang Anda pelajari — buat ruang kerja SKK, jalankan analisis kesiapan uji kompetensi, lalu simpan hasilnya sebagai bukti portofolio.",
+  },
+  k3: {
+    domain: "k3",
+    label: "Praktik Nyata: Workroom K3 / SMK3",
+    desc: "Terapkan yang Anda pelajari — buat ruang kerja K3, jalankan analisis kematangan sistem K3 proyek, lalu simpan hasilnya sebagai bukti portofolio.",
+  },
+  keselamatan: {
+    domain: "k3",
+    label: "Praktik Nyata: Workroom K3 / SMK3",
+    desc: "Terapkan yang Anda pelajari — buat ruang kerja K3, jalankan analisis kematangan sistem K3 proyek, lalu simpan hasilnya sebagai bukti portofolio.",
+  },
 };
 
 export default function LmsCourse() {
