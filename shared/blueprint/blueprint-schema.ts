@@ -380,6 +380,47 @@ export const integrationDataSchema = z.object({
   integrations: z.array(integrationRefSchema).optional(),
 });
 
+/* --- 2.19 reflection (Dialog Reflektif 3 Gerbang — Trilogi Gustafta) ---
+ *
+ * Modul KHUSUS berisi jawaban REFLEKTIF user atas sebuah topik. Berbeda dari
+ * modul lain, isi modul ini BUKAN konfigurasi kolom `agents` — melainkan "peta
+ * pemahaman" pribadi user (bahan Profil Penguasaan atas Topik). Karena itu modul
+ * ini TIDAK dipetakan ke tabel `agents` (lihat mapping-engine NON_AGENT_MODULES)
+ * dan seluruh field-nya diisi LANGSUNG oleh user (source="user"), bukan inferensi.
+ *
+ * Tiga gerbang mengikuti Trilogi Gustafta:
+ *   - Gerbang 1 DIALOG     : latar belakang, pengetahuan, visi.
+ *   - Gerbang 2 KOLABORASI : realita, pain point, kisah keberhasilan.
+ *   - Gerbang 3 KREASI     : peran, karya, harapan.
+ */
+export const reflectionDataSchema = z.object({
+  // Gerbang 1 — DIALOG
+  educationBackground: z.string().optional(),
+  knowledgeSource: z.string().optional(),
+  mastered: z.string().optional(),
+  uncertain: z.string().optional(),
+  vision: z.string().optional(),
+  desiredChange: z.string().optional(),
+  personalMeaning: z.string().optional(),
+  // Gerbang 2 — KOLABORASI
+  currentReality: z.string().optional(),
+  painPoint: z.string().optional(),
+  stakeholders: z.string().optional(),
+  pastAttempts: z.string().optional(),
+  successStory: z.string().optional(),
+  lessonsLearned: z.string().optional(),
+  repetitiveBurden: z.string().optional(),
+  riskIfIgnored: z.string().optional(),
+  // Gerbang 3 — KREASI
+  desiredRole: z.string().optional(),
+  desiredCreation: z.string().optional(),
+  humanVsAiBoundary: z.string().optional(),
+  beneficiary: z.string().optional(),
+  successVision: z.string().optional(),
+  nonNegotiableValues: z.string().optional(),
+  biggestHope: z.string().optional(),
+});
+
 /* ===========================================================================
  * 3. BLUEPRINT LENGKAP
  * ======================================================================== */
@@ -418,6 +459,7 @@ export const blueprintModulesSchema = z.object({
   conversion: blueprintModule(conversionDataSchema),
   marketing: blueprintModule(marketingDataSchema),
   integration: blueprintModule(integrationDataSchema),
+  reflection: blueprintModule(reflectionDataSchema),
 });
 
 export const blueprintSchema = z.object({
@@ -451,6 +493,7 @@ export const BLUEPRINT_MODULE_NAMES: BlueprintModuleName[] = [
   "conversion",
   "marketing",
   "integration",
+  "reflection",
 ];
 
 /** Registry nama modul → schema data-nya (untuk validasi & mapping nanti). */
@@ -473,6 +516,7 @@ export const MODULE_DATA_SCHEMAS: Record<BlueprintModuleName, z.ZodObject<any>> 
   conversion: conversionDataSchema,
   marketing: marketingDataSchema,
   integration: integrationDataSchema,
+  reflection: reflectionDataSchema,
 };
 
 /* ===========================================================================
@@ -503,6 +547,7 @@ export function createEmptyBlueprint(intent?: string): Blueprint {
       conversion: emptyModule,
       marketing: emptyModule,
       integration: emptyModule,
+      reflection: emptyModule,
     },
     overallConfidence: 0,
   });

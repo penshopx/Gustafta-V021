@@ -22,6 +22,7 @@ import {
 /* ── Types (mirror server/blueprint-engine-routes.ts responses) ───────────── */
 type InputType = "text" | "textarea" | "select" | "multiselect" | "boolean" | "number" | "list";
 
+type DialogueGate = "dialog" | "kolaborasi" | "kreasi";
 interface DialogueQuestion {
   id: string;
   module: string;
@@ -31,6 +32,13 @@ interface DialogueQuestion {
   why?: string;
   inputType: InputType;
   options?: { value: string; label: string }[];
+  gate?: DialogueGate;
+}
+interface GateProgress {
+  gate: DialogueGate;
+  label: string;
+  total: number;
+  answered: number;
 }
 interface DialogueState {
   totalEssential: number;
@@ -38,6 +46,7 @@ interface DialogueState {
   remainingEssential: number;
   essentialComplete: boolean;
   nextQuestions: DialogueQuestion[];
+  gateProgress?: GateProgress[];
 }
 interface ConfidenceReport {
   overallConfidence: number;
@@ -64,11 +73,31 @@ interface SimulationReport {
   unreadyCount: number;
   summary: string;
 }
+interface MasteryGateSummary {
+  gate: DialogueGate;
+  label: string;
+  answered: number;
+  total: number;
+  completion: number;
+}
+interface MasteryProfile {
+  topic: string | null;
+  gates: MasteryGateSummary[];
+  answeredFields: number;
+  totalFields: number;
+  completion: number;
+  strengths: string[];
+  growthAreas: string[];
+  focus: string | null;
+  role: string | null;
+  narrative: string;
+}
 interface AnalyzeResponse {
   confidence: ConfidenceReport;
   gaps: GapReport;
   critique: CritiqueReport;
   simulation: SimulationReport;
+  masteryProfile?: MasteryProfile;
 }
 interface ConfigureResult {
   applied: boolean;
@@ -314,6 +343,16 @@ export default function BlueprintBuilderPage() {
                 </span>
               </div>
               <Progress value={dPct} className="h-2" />
+              {dialogue.gateProgress && dialogue.gateProgress.length > 0 && (
+                <div className="grid grid-cols-3 gap-2 mt-3" data-testid="gate-progress">
+                  {dialogue.gateProgress.map((g) => (
+                    <div key={g.gate} className="rounded-lg border border-gray-100 dark:border-gray-800 p-2" data-testid={`gate-${g.gate}`}>
+                      <div className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 leading-tight mb-1">{g.label}</div>
+                      <div className="text-xs font-bold text-indigo-600 dark:text-indigo-400">{g.answered}/{g.total}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
               {confidence && (
                 <div className="flex items-center gap-2 mt-3 text-xs text-gray-500 dark:text-gray-400">
                   <Gauge className="h-3.5 w-3.5 text-emerald-500" />
@@ -371,6 +410,43 @@ export default function BlueprintBuilderPage() {
               <ScoreCard label="Mutu (Kritik)" value={`${pct(analysis.critique.overallScore)}%`} sub={`Grade ${analysis.critique.grade}`} ok={analysis.critique.overallScore >= 0.7} />
               <ScoreCard label="Simulasi" value={`${pct(analysis.simulation.coverage)}%`} sub={`${analysis.simulation.readyCount} skenario siap`} ok={analysis.simulation.coverage >= 0.7} />
             </div>
+
+            {/* Profil Penguasaan atas Topik (sertifikat pembelajaran reflektif) */}
+            {analysis.masteryProfile && analysis.masteryProfile.answeredFields > 0 && (
+              <div className="rounded-2xl border border-violet-200 dark:border-violet-500/30 bg-violet-50 dark:bg-violet-950/20 p-5" data-testid="card-mastery-profile">
+                <div className="flex items-center gap-2 mb-1">
+                  <Brain className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+                  <h3 className="text-sm font-bold text-gray-900 dark:text-white">Profil Penguasaan atas Topik</h3>
+                </div>
+                <p className="text-[11px] text-violet-700/80 dark:text-violet-300/80 mb-3">
+                  Peta pemahaman dari refleksi Anda — bukan tes atau penilaian benar-salah.
+                </p>
+                <p className="text-xs text-gray-700 dark:text-gray-300 mb-4 leading-relaxed" data-testid="text-mastery-narrative">
+                  {analysis.masteryProfile.narrative}
+                </p>
+                <div className="grid grid-cols-3 gap-2 mb-4">
+                  {analysis.masteryProfile.gates.map((g) => (
+                    <div key={g.gate} className="rounded-lg bg-white dark:bg-card border p-2 text-center" data-testid={`mastery-gate-${g.gate}`}>
+                      <div className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 leading-tight mb-1">{g.label}</div>
+                      <div className="text-sm font-bold text-violet-600 dark:text-violet-400">{pct(g.completion)}%</div>
+                      <div className="text-[10px] text-gray-400">{g.answered}/{g.total}</div>
+                    </div>
+                  ))}
+                </div>
+                {analysis.masteryProfile.strengths.length > 0 && (
+                  <div className="mb-2" data-testid="mastery-strengths">
+                    <span className="text-[11px] font-semibold text-gray-600 dark:text-gray-400">Sudah diuraikan jelas: </span>
+                    <span className="text-[11px] text-gray-700 dark:text-gray-300">{analysis.masteryProfile.strengths.slice(0, 6).join(", ")}</span>
+                  </div>
+                )}
+                {analysis.masteryProfile.growthAreas.length > 0 && (
+                  <div data-testid="mastery-growth">
+                    <span className="text-[11px] font-semibold text-gray-600 dark:text-gray-400">Masih bisa ditumbuhkan: </span>
+                    <span className="text-[11px] text-gray-700 dark:text-gray-300">{analysis.masteryProfile.growthAreas.slice(0, 6).join(", ")}</span>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Gaps */}
             <div className="rounded-2xl border bg-white dark:bg-card p-5" data-testid="card-gaps">
