@@ -17402,6 +17402,7 @@ Return HANYA JSON berikut (tanpa penjelasan lain):
           amount: 0,
           currency: "IDR",
           chatbotLimit,
+          grantedBy: req.user?.claims?.sub || null,
           mayarOrderId: `EARLY-${plan.toUpperCase()}-${userId.slice(0, 8)}-${Date.now()}`,
           startDate: now,
           endDate,
@@ -17472,7 +17473,11 @@ Return HANYA JSON berikut (tanpa penjelasan lain):
       const allUsers = await db.select({ id: users.id, email: users.email, firstName: users.firstName, lastName: users.lastName }).from(users);
       const userMap: Record<string, any> = {};
       for (const u of allUsers) userMap[u.id] = u;
-      const result = subs.map(s => ({ ...s, user: userMap[s.userId] || null }));
+      const result = subs.map(s => ({
+        ...s,
+        user: userMap[s.userId] || null,
+        grantedByUser: s.grantedBy ? (userMap[s.grantedBy] || null) : null,
+      }));
       res.json(result);
     } catch (error: any) {
       console.error("Admin subscriptions error:", error);
@@ -17524,6 +17529,7 @@ Return HANYA JSON berikut (tanpa penjelasan lain):
             amount: 0,
             currency: "IDR",
             chatbotLimit: 999,
+            grantedBy: req.user?.claims?.sub || null,
             startDate: now,
             endDate,
           });
@@ -17595,6 +17601,8 @@ Return HANYA JSON berikut (tanpa penjelasan lain):
   app.patch("/api/admin/subscriptions/:id", isAuthenticated, requireAdmin, async (req: any, res: any) => {
     try {
       const { id } = req.params;
+      // Hanya status & endDate yang boleh diubah. grantedBy sengaja TIDAK bisa
+      // ditulis di sini agar jejak audit "diberi oleh siapa" tetap utuh.
       const { status, endDate } = req.body;
       const updates: any = { updatedAt: new Date() };
       if (status) updates.status = status;
