@@ -1064,6 +1064,20 @@ export default function Landing() {
                 desc: "Chatbot tepercaya di GUSTAFTA Store kini punya badge \"Bersertifikat\" — jaminan kualitas agar pembeli lebih yakin memilih.",
                 cta: "Lihat di Store", href: "/store",
               },
+              {
+                emoji: "🐾",
+                accent: "border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/20",
+                title: "MultiClaw Suite",
+                desc: "80 chatbot AI premium siap pakai lintas bidang — tiap \"claw\" menurunkan beberapa spesialis paralel untuk analisis, desain, dan perhitungan.",
+                cta: "Jelajahi MultiClaw", href: "/multiclaw",
+              },
+              {
+                emoji: "🛠️",
+                accent: "border-cyan-200 dark:border-cyan-800 bg-cyan-50 dark:bg-cyan-950/20",
+                title: "AI Tools Hub",
+                desc: "Kumpulan alat AI siap pakai — Kalkulator RAB, Inspektor K3 Vision, Generator Proposal, dan lainnya — langsung pakai tanpa merakit.",
+                cta: "Buka AI Tools", href: "/ai-tools",
+              },
             ].map((f) => (
               <div key={f.title} className={`rounded-2xl border ${f.accent} p-6 flex flex-col`}>
                 <div className="text-3xl mb-3">{f.emoji}</div>

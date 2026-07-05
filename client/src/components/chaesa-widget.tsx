@@ -118,10 +118,12 @@ export function ChaesaWidget() {
 
   const QUICK_PROMPTS = [
     { emoji: "🤖", text: "Apa bedanya Agentic AI Gustafta dengan chatbot biasa?" },
+    { emoji: "🧩", text: "Bagaimana cara merakit satu tim AI lewat Blueprint Builder?" },
     { emoji: "⚡", text: "Tunjukkan cara kerja MultiClaw — apa itu dan kapan digunakan?" },
+    { emoji: "🛠️", text: "AI Tools apa saja yang siap pakai (RAB, K3 Vision, Proposal)?" },
     { emoji: "🧭", text: "Saya mau mulai dari nol — harus dari mana dulu?" },
     { emoji: "🏗️", text: "Saya kontraktor/konsultan konstruksi — tools paling cocok apa?" },
-    { emoji: "💡", text: "Jelaskan OpenClaw — apa bedanya dengan chatbot lain?" },
+    { emoji: "💰", text: "Bagaimana jadi Creator & jual chatbot (bagi hasil 80/20)?" },
     { emoji: "💳", text: "Harga paket Gustafta & cara berlangganan?" },
   ];
 
