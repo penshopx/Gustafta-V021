@@ -1,4 +1,5 @@
 import { Link } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -138,7 +139,15 @@ const PILLARS: Pillar[] = [
   },
 ];
 
+const ADMIN_ONLY_HREFS = new Set(["/monitor-marketing"]);
+
 export default function GustaftaOs() {
+  const { data: adminMe } = useQuery<{ isAdmin: boolean; isSuperAdmin: boolean; role: string }>({ queryKey: ["/api/admin/me"] });
+  const isAdminUser = adminMe?.isAdmin === true;
+  const pillars = PILLARS.map((p) => ({
+    ...p,
+    destinations: p.destinations.filter((d) => isAdminUser || !ADMIN_ONLY_HREFS.has(d.href)),
+  }));
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Header */}
@@ -175,7 +184,7 @@ export default function GustaftaOs() {
 
         {/* Pillar quick-nav */}
         <div className="flex flex-wrap justify-center gap-2 mt-8">
-          {PILLARS.map((p) => (
+          {pillars.map((p) => (
             <a
               key={p.id}
               href={`#pilar-${p.id}`}
@@ -190,7 +199,7 @@ export default function GustaftaOs() {
 
       {/* Pillars */}
       <div className="max-w-6xl mx-auto px-4 pb-20 space-y-14">
-        {PILLARS.map((pillar) => (
+        {pillars.map((pillar) => (
           <section key={pillar.id} id={`pilar-${pillar.id}`} className="scroll-mt-24" data-testid={`section-pilar-${pillar.id}`}>
             {/* Pillar header */}
             <div className={`rounded-2xl border ${pillar.accent} bg-card/40 p-6 mb-5`}>
