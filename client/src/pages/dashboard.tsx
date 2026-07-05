@@ -384,6 +384,7 @@ export default function Dashboard() {
   const [biasaGroupOpen, setBiasaGroupOpen] = useState(false);
   const [shortcutBiasaOpen, setShortcutBiasaOpen] = useState(false);
   const [shortcutPremiumOpen, setShortcutPremiumOpen] = useState(false);
+  const [openShortcutSections, setOpenShortcutSections] = useState<Set<string>>(new Set());
   const [collapsedRegularGroups, setCollapsedRegularGroups] = useState<Set<string>>(new Set());
 
   // Penjelasan singkat beda Chatbot Biasa vs Premium (dipakai di beberapa level navigasi)
@@ -392,6 +393,24 @@ export default function Dashboard() {
       <p className="mb-1"><span className="font-semibold text-blue-600 dark:text-blue-400">Chatbot Biasa</span> = 1 chatbot untuk 1 tugas, Anda rakit sendiri.</p>
       <p><span className="font-semibold text-purple-600 dark:text-purple-400">Chatbot Premium</span> = 1 tim agen (orkestrator) yang menggerakkan banyak spesialis sekaligus.</p>
     </div>
+  );
+
+  const toggleShortcutSection = (key: string) => {
+    setOpenShortcutSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
+  const renderShortcutSection = (key: string, label: string) => (
+    <button
+      onClick={() => toggleShortcutSection(key)}
+      className="w-full flex items-center gap-1.5 rounded-md px-2 pt-2 pb-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground hover:bg-muted/50 transition-colors"
+      data-testid={`toggle-shortcut-section-${key}`}
+    >
+      {openShortcutSections.has(key) ? <ChevronDown className="w-3 h-3 shrink-0" /> : <ChevronRight className="w-3 h-3 shrink-0" />}
+      <span className="flex-1 text-left">{label}</span>
+    </button>
   );
   
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
@@ -1575,7 +1594,7 @@ export default function Dashboard() {
                     <span className="flex-1 text-left">AI Chatbot Biasa</span>
                   </button>
                   {shortcutBiasaOpen && (
-                    <div className="mb-1 animate-group-open">
+                    <div className="mb-1 animate-group-open max-h-[55vh] overflow-y-auto pr-1">
                   <Link href="/brain-project">
                     <div className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm cursor-pointer transition-colors text-amber-700 dark:text-amber-400 hover:bg-amber-500/10 border border-amber-500/20 mb-1" data-testid="nav-shortcut-brain-project">
                       <Brain className="w-4 h-4 text-amber-500 shrink-0" />
@@ -1756,7 +1775,9 @@ export default function Dashboard() {
                     <span className="flex-1 text-left">AI Chatbot Premium</span>
                   </button>
                   {shortcutPremiumOpen && (
-                    <div className="mb-1 animate-group-open">
+                    <div className="mb-1 animate-group-open max-h-[60vh] overflow-y-auto pr-1">
+                  {renderShortcutSection('prem-utama', 'Claw Utama & Populer')}
+                  {openShortcutSections.has('prem-utama') && (<div className="animate-group-open">
                   <Link href="/sbu-claw">
                     <div className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm cursor-pointer transition-colors text-amber-700 dark:text-amber-400 hover:bg-amber-500/10 border border-amber-500/20 mb-2" data-testid="nav-shortcut-sbu-claw">
                       <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
@@ -2030,8 +2051,10 @@ export default function Dashboard() {
                       <ChevronRight className="w-3.5 h-3.5 text-blue-500/50" />
                     </div>
                   </Link>
+                  </div>)}
                   {/* ── Konstruksi Manajemen & Digital ── */}
-                  <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground px-2 pt-2 pb-0.5">Konstruksi — Manajemen & Digital</div>
+                  {renderShortcutSection('prem-konstruksi', 'Konstruksi — Manajemen & Digital')}
+                  {openShortcutSections.has('prem-konstruksi') && (<div className="animate-group-open">
                   <Link href="/konstra-claw">
                     <div className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm cursor-pointer transition-colors text-slate-700 dark:text-slate-400 hover:bg-slate-500/10 border border-slate-500/20 mb-1" data-testid="nav-shortcut-konstra-claw">
                       <HardHat className="w-4 h-4 text-slate-500 shrink-0" />
@@ -2067,8 +2090,10 @@ export default function Dashboard() {
                       <ChevronRight className="w-3.5 h-3.5 text-orange-500/50" />
                     </div>
                   </Link>
+                  </div>)}
                   {/* ── Energi & Pertambangan ── */}
-                  <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground px-2 pt-2 pb-0.5">Energi & Pertambangan</div>
+                  {renderShortcutSection('prem-energi', 'Energi & Pertambangan')}
+                  {openShortcutSections.has('prem-energi') && (<div className="animate-group-open">
                   <Link href="/ketenagalistrikan-claw">
                     <div className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm cursor-pointer transition-colors text-yellow-700 dark:text-yellow-400 hover:bg-yellow-500/10 border border-yellow-500/20 mb-1" data-testid="nav-shortcut-ketenagalistrikan-claw">
                       <span className="text-sm shrink-0">⚡</span>
@@ -2125,8 +2150,10 @@ export default function Dashboard() {
                       <ChevronRight className="w-3.5 h-3.5 text-amber-500/50" />
                     </div>
                   </Link>
+                  </div>)}
                   {/* ── Properti & Real Estate ── */}
-                  <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground px-2 pt-2 pb-0.5">Properti & Real Estate</div>
+                  {renderShortcutSection('prem-properti', 'Properti & Real Estate')}
+                  {openShortcutSections.has('prem-properti') && (<div className="animate-group-open">
                   <Link href="/dev-properti-claw">
                     <div className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm cursor-pointer transition-colors text-violet-700 dark:text-violet-400 hover:bg-violet-500/10 border border-violet-500/20 mb-1" data-testid="nav-shortcut-dev-properti-claw">
                       <Building2 className="w-4 h-4 text-violet-500 shrink-0" />
@@ -2141,8 +2168,10 @@ export default function Dashboard() {
                       <ChevronRight className="w-3.5 h-3.5 text-emerald-500/50" />
                     </div>
                   </Link>
+                  </div>)}
                   {/* ── Sertifikasi & Perizinan ── */}
-                  <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground px-2 pt-2 pb-0.5">Sertifikasi & Perizinan</div>
+                  {renderShortcutSection('prem-sertifikasi', 'Sertifikasi & Perizinan')}
+                  {openShortcutSections.has('prem-sertifikasi') && (<div className="animate-group-open">
                   <Link href="/skema-claw">
                     <div className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm cursor-pointer transition-colors text-indigo-700 dark:text-indigo-400 hover:bg-indigo-500/10 border border-indigo-500/20 mb-1" data-testid="nav-shortcut-skema-claw">
                       <Award className="w-4 h-4 text-indigo-500 shrink-0" />
@@ -2206,8 +2235,10 @@ export default function Dashboard() {
                       <ChevronRight className="w-3.5 h-3.5 text-indigo-500/50" />
                     </div>
                   </Link>
+                  </div>)}
                   {/* ── ETLO & Pendidikan ── */}
-                  <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground px-2 pt-2 pb-0.5">ETLO & Pendidikan</div>
+                  {renderShortcutSection('prem-etlo', 'ETLO & Pendidikan')}
+                  {openShortcutSections.has('prem-etlo') && (<div className="animate-group-open">
                   <Link href="/educounsel-claw">
                     <div className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm cursor-pointer transition-colors text-teal-700 dark:text-teal-400 hover:bg-teal-500/10 border border-teal-500/20 mb-1" data-testid="nav-shortcut-educounsel-claw">
                       <GraduationCap className="w-4 h-4 text-teal-500 shrink-0" />
@@ -2250,8 +2281,10 @@ export default function Dashboard() {
                       <ChevronRight className="w-3.5 h-3.5 text-blue-500/50" />
                     </div>
                   </Link>
+                  </div>)}
                   {/* ── Bisnis & HR ── */}
-                  <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground px-2 pt-2 pb-0.5">Bisnis & HR</div>
+                  {renderShortcutSection('prem-bisnis', 'Bisnis & HR')}
+                  {openShortcutSections.has('prem-bisnis') && (<div className="animate-group-open">
                   <Link href="/digital-marketing-claw">
                     <div className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm cursor-pointer transition-colors text-violet-700 dark:text-violet-400 hover:bg-violet-500/10 border border-violet-500/20 mb-1" data-testid="nav-shortcut-digital-marketing-claw">
                       <TrendingUp className="w-4 h-4 text-violet-500 shrink-0" />
@@ -2301,8 +2334,10 @@ export default function Dashboard() {
                       <ChevronRight className="w-3.5 h-3.5 text-indigo-500/50" />
                     </div>
                   </Link>
+                  </div>)}
                   {/* ── Regulasi & Hukum ── */}
-                  <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground px-2 pt-2 pb-0.5">Regulasi & Hukum</div>
+                  {renderShortcutSection('prem-regulasi', 'Regulasi & Hukum')}
+                  {openShortcutSections.has('prem-regulasi') && (<div className="animate-group-open">
                   <Link href="/nspk-navigator-claw">
                     <div className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm cursor-pointer transition-colors text-blue-700 dark:text-blue-400 hover:bg-blue-500/10 border border-blue-500/20 mb-1" data-testid="nav-shortcut-nspk-navigator-claw">
                       <Shield className="w-4 h-4 text-blue-500 shrink-0" />
@@ -2317,6 +2352,7 @@ export default function Dashboard() {
                       <ChevronRight className="w-3.5 h-3.5 text-indigo-500/50" />
                     </div>
                   </Link>
+                    </div>)}
                     </div>
                   )}
                   {orchestratorHub ? (
