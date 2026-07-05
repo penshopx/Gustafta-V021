@@ -384,6 +384,15 @@ export default function Dashboard() {
   const [biasaGroupOpen, setBiasaGroupOpen] = useState(false);
   const [shortcutBiasaOpen, setShortcutBiasaOpen] = useState(false);
   const [shortcutPremiumOpen, setShortcutPremiumOpen] = useState(false);
+  const [collapsedRegularGroups, setCollapsedRegularGroups] = useState<Set<string>>(new Set());
+
+  // Penjelasan singkat beda Chatbot Biasa vs Premium (dipakai di beberapa level navigasi)
+  const biasaPremiumInfo = (
+    <div className="mb-2 rounded-md border border-border/60 bg-muted/40 px-2.5 py-2 text-[11px] leading-snug text-muted-foreground" data-testid="info-biasa-premium">
+      <p className="mb-1"><span className="font-semibold text-blue-600 dark:text-blue-400">Chatbot Biasa</span> = 1 chatbot untuk 1 tugas, Anda rakit sendiri.</p>
+      <p><span className="font-semibold text-purple-600 dark:text-purple-400">Chatbot Premium</span> = 1 tim agen (orkestrator) yang menggerakkan banyak spesialis sekaligus.</p>
+    </div>
+  );
   
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
   const { planInfo } = useFeatureAccess();
@@ -1554,6 +1563,7 @@ export default function Dashboard() {
                     <ArrowLeft className="w-3 h-3" />
                     <span>Kembali ke Series</span>
                   </button>
+                  {biasaPremiumInfo}
                   {/* AI Chatbot Shortcuts */}
                   <button
                     className="w-full flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 transition-colors mb-1"
@@ -2437,6 +2447,8 @@ export default function Dashboard() {
                     <span>Kembali ke Modul</span>
                   </button>
 
+                  {biasaPremiumInfo}
+
                   {/* === AI Chatbot Premium === */}
                   {(() => {
                     const orchToolboxes = toolboxes.filter((tb: any) => tb.hasOrchestrator);
@@ -2592,6 +2604,21 @@ export default function Dashboard() {
                     const hasOrchAgent = filteredAgents.some((a: any) => a.isOrchestrator);
                     const orchAgents = filteredAgents.filter((a: any) => a.isOrchestrator);
                     const regularAgents = filteredAgents.filter((a: any) => !a.isOrchestrator);
+                    // Kelompokkan Alat Bantu ke grup bernama (accordion) agar tidak tersebar:
+                    // pakai Folder bila diatur, jika tidak ambil awalan nama (mis. "SBU Coach", "SKK Coach").
+                    const groupKeyFor = (a: any) => {
+                      const folder = (a.folderName || "").trim();
+                      if (folder) return folder;
+                      const nm = (a.name || "").trim();
+                      const prefix = nm.split(/[—–:|]/)[0].trim();
+                      return prefix && prefix.length >= 2 && prefix.length <= 28 ? prefix : "Lainnya";
+                    };
+                    const regularGroups = regularAgents.reduce((acc: Record<string, any[]>, a: any) => {
+                      const key = groupKeyFor(a);
+                      (acc[key] = acc[key] || []).push(a);
+                      return acc;
+                    }, {} as Record<string, any[]>);
+                    const regularGroupNames = Object.keys(regularGroups).sort((a, b) => a.localeCompare(b, "id"));
                     return agentsLoading ? (
                       <div className="py-3 text-sm text-muted-foreground text-center">Memuat...</div>
                     ) : (
@@ -2743,7 +2770,25 @@ export default function Dashboard() {
                             )}
                           </div>
                         ) : (
-                          regularAgents.map((agent) => (
+                          regularGroupNames.map((groupName) => {
+                            const groupAgents = regularGroups[groupName];
+                            const groupOpen = !collapsedRegularGroups.has(groupName);
+                            return (
+                              <div key={`grp-${groupName}`} className="mb-1">
+                                <button
+                                  type="button"
+                                  className="w-full flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground hover:bg-sidebar-accent/40 transition-colors"
+                                  onClick={() => setCollapsedRegularGroups(prev => { const next = new Set(prev); if (next.has(groupName)) next.delete(groupName); else next.add(groupName); return next; })}
+                                  data-testid={`toggle-agent-group-${groupName}`}
+                                >
+                                  {groupOpen ? <ChevronDown className="w-3 h-3 shrink-0" /> : <ChevronRight className="w-3 h-3 shrink-0" />}
+                                  <Folder className="w-3 h-3 shrink-0" />
+                                  <span className="flex-1 text-left truncate">{groupName}</span>
+                                  <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4 shrink-0">{groupAgents.length}</Badge>
+                                </button>
+                                {groupOpen && (
+                                  <div className="animate-group-open">
+                                    {groupAgents.map((agent) => (
                             <div
                               key={agent.id}
                               className={cn(
@@ -2854,7 +2899,12 @@ export default function Dashboard() {
                                 )}
                               </div>
                             </div>
-                          ))
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })
                         )}
                       </>
                     );
