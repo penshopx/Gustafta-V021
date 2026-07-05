@@ -84,6 +84,32 @@ export default function AdminPartnersPage() {
   const [seatsTarget, setSeatsTarget] = useState<Partner | null>(null);
   const [newSeatEmail, setNewSeatEmail] = useState("");
   const [newSeatRole, setNewSeatRole] = useState<"viewer" | "editor">("viewer");
+  const [newAdminEmail, setNewAdminEmail] = useState("");
+
+  const adminEmailList = form.adminEmails
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+
+  const addAdminEmail = () => {
+    const email = newAdminEmail.trim().toLowerCase();
+    if (!email) return;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast({ title: "Email tidak valid", description: `"${email}" bukan alamat email yang benar.`, variant: "destructive" });
+      return;
+    }
+    if (adminEmailList.includes(email)) {
+      toast({ title: "Sudah ada", description: "Email itu sudah terdaftar sebagai pengurus.", variant: "destructive" });
+      setNewAdminEmail("");
+      return;
+    }
+    setForm({ ...form, adminEmails: [...adminEmailList, email].join(", ") });
+    setNewAdminEmail("");
+  };
+
+  const removeAdminEmail = (email: string) => {
+    setForm({ ...form, adminEmails: adminEmailList.filter((e) => e !== email).join(", ") });
+  };
 
   const { data: partners = [], isLoading } = useQuery<Partner[]>({
     queryKey: ["/api/admin/partners"],
@@ -481,8 +507,39 @@ export default function AdminPartnersPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="p-admins">Email Pengurus Mitra (Partner-Admin)</Label>
-              <Input id="p-admins" value={form.adminEmails} onChange={(e) => setForm({ ...form, adminEmails: e.target.value })} placeholder="ketua@aspekindo.or.id, admin@aspekindo.or.id" data-testid="input-partner-admins" />
-              <p className="text-xs text-muted-foreground">Pisahkan dengan koma. Mereka bisa login lalu buka <code>/partner</code> untuk melihat pemakaian & meminta top-up kursi/kuota mandiri.</p>
+              <div className="flex gap-2">
+                <Input
+                  id="p-admins"
+                  type="email"
+                  value={newAdminEmail}
+                  onChange={(e) => setNewAdminEmail(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addAdminEmail(); } }}
+                  placeholder="ketua@aspekindo.or.id"
+                  data-testid="input-partner-admins"
+                />
+                <Button type="button" variant="outline" onClick={addAdminEmail} data-testid="button-add-partner-admin">
+                  <Plus className="h-4 w-4 mr-1" /> Tambah
+                </Button>
+              </div>
+              {adminEmailList.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {adminEmailList.map((email) => (
+                    <Badge key={email} variant="secondary" className="gap-1 pr-1" data-testid={`chip-partner-admin-${email}`}>
+                      {email}
+                      <button
+                        type="button"
+                        onClick={() => removeAdminEmail(email)}
+                        className="ml-0.5 rounded-full hover:bg-muted-foreground/20 p-0.5"
+                        aria-label={`Hapus ${email}`}
+                        data-testid={`button-remove-partner-admin-${email}`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">Ketik email lalu Enter / Tambah. Mereka bisa login lalu buka <code>/partner</code> untuk melihat pemakaian & meminta top-up kursi/kuota mandiri.</p>
             </div>
             <div className="flex items-center justify-between">
               <div>

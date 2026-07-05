@@ -648,6 +648,7 @@ export const subscriptionsTable = pgTable("subscriptions_new", {
   chatbotLimit: integer("chatbot_limit").default(1),
   trialMessagesUsed: integer("trial_messages_used").default(0),
   partnerId: integer("partner_id"),                                // jika di-set: langganan seat yang disediakan mitra asosiasi (Model B)
+  grantedBy: varchar("granted_by", { length: 255 }),               // jika di-set: userId admin/superadmin yang memberi akses manual (Early Adopter). null = via pembayaran normal. "kapan" = createdAt.
   startDate: timestamp("start_date"),
   endDate: timestamp("end_date"),
   createdAt: timestamp("created_at").defaultNow().notNull(),

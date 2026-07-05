@@ -77,7 +77,9 @@ interface AdminSubscription {
   startDate: string | null;
   endDate: string | null;
   createdAt: string;
+  grantedBy?: string | null;
   user: { id: string; email: string | null; firstName: string | null; lastName: string | null } | null;
+  grantedByUser?: { id: string; email: string | null; firstName: string | null; lastName: string | null } | null;
 }
 
 interface TrialRequest {
@@ -836,6 +838,38 @@ export default function AdminPage() {
           {/* ========== ADMINS TAB (Super Admin only) ========== */}
           {isSuperAdmin && (
             <TabsContent value="admins" className="mt-4">
+              <Card className="mb-4 border-dashed" data-testid="card-authority-legend">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Shield className="h-4 w-4" /> Siapa Boleh Apa
+                  </CardTitle>
+                  <p className="text-xs text-muted-foreground mt-1">Ringkasan kewenangan tiap peran di panel ini.</p>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-lg border border-purple-200 dark:border-purple-900/50 bg-purple-50/50 dark:bg-purple-950/20 p-3">
+                      <p className="text-sm font-semibold flex items-center gap-1.5 text-purple-800 dark:text-purple-300 mb-2"><Crown className="h-3.5 w-3.5" /> Super Admin</p>
+                      <ul className="text-xs text-muted-foreground space-y-1 list-disc pl-4">
+                        <li>Angkat / turunkan Admin</li>
+                        <li>Aktif / nonaktifkan akun Admin</li>
+                        <li>+ semua kewenangan Admin di bawah</li>
+                      </ul>
+                    </div>
+                    <div className="rounded-lg border border-blue-200 dark:border-blue-900/50 bg-blue-50/50 dark:bg-blue-950/20 p-3">
+                      <p className="text-sm font-semibold flex items-center gap-1.5 text-blue-800 dark:text-blue-300 mb-2"><Shield className="h-3.5 w-3.5" /> Admin</p>
+                      <ul className="text-xs text-muted-foreground space-y-1 list-disc pl-4">
+                        <li>Kelola pengguna: aktif/nonaktif &amp; beri Early Adopter</li>
+                        <li>Kelola langganan &amp; setujui trial</li>
+                        <li>Kelola mitra, seat &amp; permintaan top-up</li>
+                        <li>Kelola store, produk &amp; Scalev</li>
+                      </ul>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-3">
+                    Admin &amp; Super Admin otomatis mendapat akses fitur <strong>Enterprise</strong>. Mengubah peran &amp; mengelola akun admin <strong>hanya</strong> bisa dilakukan Super Admin.
+                  </p>
+                </CardContent>
+              </Card>
               <Card>
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
@@ -1050,6 +1084,38 @@ export default function AdminPage() {
 
           {/* ========== SUBSCRIPTIONS TAB ========== */}
           <TabsContent value="subscriptions" className="mt-4">
+            <Card className="mb-4 border-dashed" data-testid="card-status-flow">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <RefreshCw className="h-4 w-4" /> Alur Status Langganan
+                </CardTitle>
+                <p className="text-xs text-muted-foreground mt-1">Perjalanan sebuah langganan dari pengguna mendaftar sampai chatbot terkirim.</p>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col sm:flex-row sm:items-stretch gap-2">
+                  {[
+                    { n: "1", t: "Daftar", d: "Pengguna membuat akun & verifikasi email.", c: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300" },
+                    { n: "2", t: "Bayar", d: "Checkout via Scalev. Status: pending.", c: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300" },
+                    { n: "3", t: "Aktif", d: "Pembayaran lunas / diberi Early Adopter. Status: active.", c: "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300" },
+                    { n: "4", t: "Terkirim", d: "Chatbot premium disalin & masuk dashboard pengguna.", c: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300" },
+                  ].map((s, i, arr) => (
+                    <div key={s.n} className="flex items-center gap-2 flex-1" data-testid={`flow-step-${s.n}`}>
+                      <div className="rounded-lg border p-3 flex-1 h-full">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center ${s.c}`}>{s.n}</span>
+                          <span className="text-sm font-semibold">{s.t}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{s.d}</p>
+                      </div>
+                      {i < arr.length - 1 && <span className="hidden sm:block text-muted-foreground shrink-0">→</span>}
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-3">
+                  <strong>Early Adopter</strong> melompat langsung ke <strong>Aktif</strong> (gratis, Rp 0) tanpa tahap Bayar — tercatat pada kolom "Diberi oleh" di bawah.
+                </p>
+              </CardContent>
+            </Card>
             <Card>
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
@@ -1081,6 +1147,7 @@ export default function AdminPage() {
                           <th className="text-left py-2 pr-4 font-medium">Status</th>
                           <th className="text-left py-2 pr-4 font-medium">Mulai</th>
                           <th className="text-left py-2 pr-4 font-medium">Berakhir</th>
+                          <th className="text-left py-2 pr-4 font-medium">Diberi oleh</th>
                           <th className="text-right py-2 font-medium">Aksi</th>
                         </tr>
                       </thead>
@@ -1103,6 +1170,19 @@ export default function AdminPage() {
                             <td className="py-3 pr-4">{statusBadge(sub.status)}</td>
                             <td className="py-3 pr-4 text-muted-foreground text-xs">{formatDate(sub.startDate)}</td>
                             <td className="py-3 pr-4 text-muted-foreground text-xs">{formatDate(sub.endDate)}</td>
+                            <td className="py-3 pr-4 text-xs" data-testid={`text-granted-by-${sub.id}`}>
+                              {sub.grantedBy ? (
+                                <div>
+                                  <span className="inline-flex items-center gap-1 text-amber-700 dark:text-amber-300">
+                                    <Gift className="h-3 w-3" />
+                                    {[sub.grantedByUser?.firstName, sub.grantedByUser?.lastName].filter(Boolean).join(" ") || sub.grantedByUser?.email || "admin"}
+                                  </span>
+                                  <p className="text-[11px] text-muted-foreground">Diberi pada {formatDate(sub.createdAt)}</p>
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground">—</span>
+                              )}
+                            </td>
                             <td className="py-3 text-right">
                               <div className="flex items-center justify-end gap-1.5">
                                 {sub.status === "active" && (
