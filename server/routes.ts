@@ -2649,7 +2649,7 @@ SKK berlaku 5 tahun. Perpanjangan via: Pengembangan Keprofesian Berkelanjutan (P
 
   // ── Research Feed sweep — beri "mata" nyata ke tim riset (Google News RSS → KB) ──
   // Owner/admin dari agen feed yang boleh memicu. Resolusi agen via slug (bukan ID).
-  app.post("/api/research/sweep", isAuthenticated, async (req, res) => {
+  app.post("/api/research/sweep", isAuthenticated, requireAdmin, async (req, res) => {
     try {
       const { runResearchSweep, FEED_STREAMS, AD_MATERIAL_SLUG, RETENTION_SLUG, CLOSING_SLUG } =
         await import("./lib/research-feed");
@@ -2683,7 +2683,7 @@ SKK berlaku 5 tahun. Perpanjangan via: Pengembangan Keprofesian Berkelanjutan (P
   // Kumpulkan agen tim marketing (via SLUG, bukan ID) + dokumen KB harian yang
   // mereka hasilkan (materi iklan, retensi, closing, feed riset). Read-only; setiap
   // agen di-otorisasi terpisah (assertCanAccessAgentChat), skip yang tak boleh diakses.
-  app.get("/api/marketing-team/overview", isAuthenticated, async (req, res) => {
+  app.get("/api/marketing-team/overview", isAuthenticated, requireAdmin, async (req, res) => {
     try {
       const {
         AD_MATERIAL_SLUG, RETENTION_SLUG, CLOSING_SLUG,

@@ -431,6 +431,8 @@ export default function Dashboard() {
     }
   }, [authLoading, isAuthenticated, toast]);
   
+  const { data: adminMe } = useQuery<{ isAdmin: boolean; isSuperAdmin: boolean; role: string }>({ queryKey: ["/api/admin/me"] });
+  const isAdminUser = adminMe?.isAdmin === true;
   const { data: activeAgent } = useActiveAgent();
   const setActiveAgent = useSetActiveAgent();
   const agentCreationCooldown = useRef(false);
@@ -1183,7 +1185,7 @@ export default function Dashboard() {
                     <ArrowRight className="w-4 h-4 text-rose-500 shrink-0" />
                   </div>
                 </Link>)}
-                {!partner && (<Link href="/monitor-marketing" className="sm:col-span-2">
+                {isAdminUser && (<Link href="/monitor-marketing" className="sm:col-span-2">
                   <div className="flex items-center gap-3 p-3 rounded-lg border border-pink-500/30 bg-gradient-to-r from-pink-500/10 to-rose-500/10 hover:border-pink-500 hover:from-pink-500/15 hover:to-rose-500/15 transition-colors text-left cursor-pointer" data-testid="card-monitor-marketing">
                     <div className="w-8 h-8 rounded-md bg-pink-500/15 flex items-center justify-center shrink-0">
                       <TrendingUp className="w-4 h-4 text-pink-500" />

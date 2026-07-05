@@ -155,7 +155,12 @@ function StreamCard({ stream }: { stream: Stream }) {
 
 export default function MonitorMarketing() {
   const { toast } = useToast();
-  const { data, isLoading, error } = useQuery<Overview>({ queryKey: ["/api/marketing-team/overview"] });
+  const { data: adminMe, isLoading: adminLoading } = useQuery<{ isAdmin: boolean; isSuperAdmin: boolean; role: string }>({ queryKey: ["/api/admin/me"] });
+  const isAdminUser = adminMe?.isAdmin === true;
+  const { data, isLoading, error } = useQuery<Overview>({
+    queryKey: ["/api/marketing-team/overview"],
+    enabled: isAdminUser,
+  });
 
   const sweepMutation = useMutation({
     mutationFn: async () => {
@@ -179,6 +184,41 @@ export default function MonitorMarketing() {
     .flatMap((s) => s.docs.map((d) => new Date(d.createdAt).getTime()))
     .filter((t) => !Number.isNaN(t))
     .sort((a, b) => b - a)[0];
+
+  if (adminLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="max-w-5xl mx-auto px-4 py-6 space-y-4">
+          <Skeleton className="h-10 w-64" />
+          <Skeleton className="h-40 w-full" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAdminUser) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+        <Card className="max-w-md w-full" data-testid="card-access-denied">
+          <CardContent className="pt-6 text-center space-y-4">
+            <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
+              <AlertCircle className="w-6 h-6 text-destructive" />
+            </div>
+            <div>
+              <h1 className="text-lg font-bold" data-testid="text-access-denied">Akses Terbatas</h1>
+              <p className="text-sm text-muted-foreground mt-1">Halaman ini hanya untuk tim internal Gustafta.</p>
+            </div>
+            <Link href="/dashboard">
+              <Button variant="outline" className="gap-2" data-testid="button-back-dashboard">
+                <ArrowLeft className="w-4 h-4" />
+                Kembali ke Dashboard
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
