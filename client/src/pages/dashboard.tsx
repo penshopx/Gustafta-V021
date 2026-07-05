@@ -2610,7 +2610,13 @@ export default function Dashboard() {
                       const folder = (a.folderName || "").trim();
                       if (folder) return folder;
                       const nm = (a.name || "").trim();
-                      const prefix = nm.split(/[—–:|]/)[0].trim();
+                      // Pisah pada pemisah umum: em/en-dash, hyphen ber-spasi, titik dua, pipa
+                      let prefix = nm.split(/\s[—–-]\s|[—–:|]/)[0].trim();
+                      // Bila tak ada pemisah, kelompokkan berdasarkan 2 kata pertama
+                      if (prefix === nm) {
+                        const words = nm.split(/\s+/);
+                        if (words.length > 2) prefix = words.slice(0, 2).join(" ");
+                      }
                       return prefix && prefix.length >= 2 && prefix.length <= 28 ? prefix : "Lainnya";
                     };
                     const regularGroups = regularAgents.reduce((acc: Record<string, any[]>, a: any) => {
@@ -2777,6 +2783,7 @@ export default function Dashboard() {
                               <div key={`grp-${groupName}`} className="mb-1">
                                 <button
                                   type="button"
+                                  aria-expanded={groupOpen}
                                   className="w-full flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground hover:bg-sidebar-accent/40 transition-colors"
                                   onClick={() => setCollapsedRegularGroups(prev => { const next = new Set(prev); if (next.has(groupName)) next.delete(groupName); else next.add(groupName); return next; })}
                                   data-testid={`toggle-agent-group-${groupName}`}
