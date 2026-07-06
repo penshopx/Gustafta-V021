@@ -9,6 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { ArrowLeft, Loader2, Zap, CheckCircle2, Clock, AlertCircle, ChevronDown, ChevronUp, Workflow } from "lucide-react";
 import { Link } from "wouter";
 import { ChatInputBar, ChatAttachment } from "@/components/chat-input-bar";
+import { WarRoomToolbar } from "@/components/war-room-toolbar";
 
 interface SubAgentStatus { agentId: number; role: string; status: "waiting"|"running"|"done"|"error"; elapsed?: number; }
 interface Message { role: "user"|"assistant"; content: string; isStreaming?: boolean; subAgents?: SubAgentStatus[]; orchestrationMs?: number;
@@ -136,6 +137,7 @@ export default function FunnelOtomatisChat() {
           <div className="text-xs text-white/40 flex items-center gap-1"><Workflow className="h-2.5 w-2.5 text-green-400"/><span>6 Divisi: Peta · Magnet · WA · CS Bot · Closing · Retensi</span></div>
         </div>
         <div className="flex items-center gap-2">
+          <WarRoomToolbar agentSlug="funnel-otomatis" agentName="Funnel Otomatis" accentClass="bg-green-600 hover:bg-green-500" messages={messages} streaming={streaming} onRun={sendMessage} />
           <Badge variant="outline" className="text-xs border-green-600/40 text-green-300 hidden sm:flex">Funnel · 6 Divisi</Badge>
           {isLoading&&<Loader2 className="h-4 w-4 animate-spin text-white/40"/>}
           {ready&&<div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"/>}

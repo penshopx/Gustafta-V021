@@ -28,6 +28,7 @@ import {
   type Agent,
   type MiniApp,
   type MiniAppType,
+  insertResearchReportSchema,
 } from "@shared/schema";
 import { priceForClass, isPremiumClass, resolveLicensePrice, DEFAULT_LICENSE_PRICE } from "@shared/premium-classes";
 import { formatTeamPlansForPrompt, parseTierNumber, tierPlanToTimAgen } from "@shared/team-blueprints";
@@ -52,7 +53,7 @@ import {
 } from "./lib/file-processing";
 import { processKnowledgeBaseForRAG, searchKnowledgeBase } from "./lib/rag-service";
 import { buildFinalSystemPrompt, buildAgenticPrinciplesBlock } from "./lib/build-final-system-prompt";
-import { decideAgentMutation, decideAgentReadAccess, type AgentAuthzResult } from "./lib/agent-authz";
+import { decideAgentMutation, decideAgentReadAccess, canInvokeSubAgent, type AgentAuthzResult } from "./lib/agent-authz";
 import { makeAgentAccessGuards } from "./lib/agent-access-guards";
 import { sendAgentShareNotification, sendAgentInviteToSignup, sendAgentCertificationNotification } from "./lib/email";
 import { getDefaultPoliciesForSeries, type AgentPolicySet } from "./lib/agent-policies";
@@ -869,6 +870,54 @@ export async function registerRoutes(
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch series" });
+    }
+  });
+
+  // ── Arsip Laporan Riset (Fase 2 war-room claw) ─────────────────────────────
+  // Laporan disimpan per pengguna, di-scope ke (userId, agentSlug). Owner-only.
+  app.get("/api/research-reports", isAuthenticated, async (req: any, res: any) => {
+    try {
+      const userId = req.user?.id || req.user?.claims?.sub;
+      if (!userId) return res.status(401).json({ error: "Unauthenticated" });
+      const agentSlug = String(req.query.agentSlug || "").trim();
+      if (!agentSlug) return res.status(400).json({ error: "agentSlug wajib diisi" });
+      const reports = await storage.getResearchReports(String(userId), agentSlug);
+      res.json(reports);
+    } catch (e: any) {
+      res.status(500).json({ error: e?.message || "Gagal memuat arsip laporan" });
+    }
+  });
+
+  app.post("/api/research-reports", isAuthenticated, async (req: any, res: any) => {
+    try {
+      const userId = req.user?.id || req.user?.claims?.sub;
+      if (!userId) return res.status(401).json({ error: "Unauthenticated" });
+      const parsed = insertResearchReportSchema.safeParse({ ...req.body, userId: String(userId) });
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Data laporan tidak valid", details: parsed.error.flatten() });
+      }
+      const report = await storage.createResearchReport(parsed.data);
+      res.status(201).json(report);
+    } catch (e: any) {
+      res.status(500).json({ error: e?.message || "Gagal menyimpan laporan" });
+    }
+  });
+
+  app.delete("/api/research-reports/:id", isAuthenticated, async (req: any, res: any) => {
+    try {
+      const userId = req.user?.id || req.user?.claims?.sub;
+      if (!userId) return res.status(401).json({ error: "Unauthenticated" });
+      const id = Number(req.params.id);
+      if (!Number.isFinite(id)) return res.status(400).json({ error: "ID tidak valid" });
+      const existing = await storage.getResearchReport(id);
+      if (!existing) return res.status(404).json({ error: "Laporan tidak ditemukan" });
+      if (String(existing.userId) !== String(userId)) {
+        return res.status(403).json({ error: "Bukan laporan milik Anda" });
+      }
+      await storage.deleteResearchReport(id);
+      res.json({ ok: true });
+    } catch (e: any) {
+      res.status(500).json({ error: e?.message || "Gagal menghapus laporan" });
     }
   });
 
@@ -4541,6 +4590,7 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
                 subAgentIdStr, callMessage, convHistory, 25000,
                 wantsJson ? { type: "json_object" } : undefined,
                 orchestratorKbContext || undefined,
+                (agent as any).userId ?? null,
               );
               const durationMs = Date.now() - t0;
 
@@ -6523,10 +6573,21 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
     timeoutMs: number = 25000,
     responseFormat?: { type: "json_object" },
     orchestratorKbContext?: string,
+    callerOwnerId?: string | null,
   ): Promise<string> {
     const subAgent = await storage.getAgent(agentId);
     if (!subAgent) return `[Sub-agent ${agentId} tidak ditemukan]`;
     if (subAgent.isEnabled === false) return `[Sub-agent ${subAgent.name} dinonaktifkan]`;
+    // Gerbang inter-agen: orkestrator satu user TIDAK boleh memanggil agen PRIVAT
+    // milik user lain (IDOR). Divisi sistem/bersama (userId kosong) & agen publik
+    // tetap boleh — model jual (salinan pembeli → divisi bersama) tidak rusak.
+    if (!canInvokeSubAgent({
+      callerOwnerId,
+      subAgentOwnerId: (subAgent as any).userId ?? null,
+      subAgentIsPublic: subAgent.isPublic,
+    })) {
+      return `[Sub-agent ${subAgent.name} tidak diizinkan untuk orkestrator ini]`;
+    }
 
     let knowledgeContext = "";
     if (subAgent.ragEnabled !== false) {

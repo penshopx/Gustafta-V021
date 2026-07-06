@@ -43,3 +43,4 @@
 - [Gustafta AI OS — 5 Pilar direction](gustafta-os-vision.md) — evolve to AI OS via 5 pillars (Coach/Claw/Workroom/Academy/Competency); modular MONOLITH not microservices; map to existing tables (no duplicates); curation-first, Workroom(Tender) next.
 - [Subscription grant audit](subscription-grant-audit.md) — grantedBy must be stamped on EVERY admin-mediated active-sub insert (early-adopter AND trial-approval); keep it immutable in the PATCH.
 - [Sellable claw seed](sellable-claw-seed.md) — Store-listed hands-off product needs isListed+premiumClass:private (createAgent DROPS both → post-create updateAgent); use aiModel not model; seed must RECONCILE not early-return.
+- [Inter-agent invocation authz](inter-agent-invocation-authz.md) — callAgentInternal gate checks ORCHESTRATOR owner not end-user; allow falsy/public sub-agent owner or same-owner. Tightening the falsy-owner rule silently breaks every sold clone.

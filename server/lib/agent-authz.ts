@@ -87,3 +87,35 @@ export function decideAgentReadAccess(ctx: AgentReadContext): AgentAuthzResult {
   if (collaboratorRole === "editor" || collaboratorRole === "viewer") return { ok: true };
   return { ok: false, status: 403, error: "Forbidden" };
 }
+
+export interface SubAgentInvocationContext {
+  /**
+   * Pemilik orkestrator PEMANGGIL:
+   *  - `undefined` → konteks server tepercaya (mis. pipeline marketing terjadwal) → lewati cek.
+   *  - `null`/"" → orkestrator sistem tanpa pemilik.
+   *  - string → user pemilik orkestrator.
+   */
+  callerOwnerId?: string | null;
+  /** Pemilik sub-agen target; null/"" = agen sistem/bersama (divisi siap-jual). */
+  subAgentOwnerId?: string | null;
+  /** Apakah sub-agen publik. */
+  subAgentIsPublic?: boolean | null;
+}
+
+/**
+ * Keputusan INTER-AGEN: bolehkah orkestrator memanggil sebuah sub-agen?
+ * Mencegah orkestrator milik satu user memanggil agen PRIVAT milik user lain
+ * (IDOR: kebocoran perilaku + Basis Pengetahuan + biaya token). Izinkan bila:
+ *   1) konteks server tepercaya (callerOwnerId === undefined), ATAU
+ *   2) sub-agen sistem/bersama tanpa pemilik (divisi siap-jual tetap bisa dipanggil
+ *      salinan pembeli — model jual tidak rusak), ATAU
+ *   3) sub-agen publik, ATAU
+ *   4) pemilik sub-agen == pemilik orkestrator (creator merangkai timnya sendiri).
+ */
+export function canInvokeSubAgent(ctx: SubAgentInvocationContext): boolean {
+  const { callerOwnerId, subAgentOwnerId, subAgentIsPublic } = ctx;
+  if (callerOwnerId === undefined) return true;
+  if (!subAgentOwnerId) return true;
+  if (subAgentIsPublic === true) return true;
+  return subAgentOwnerId === callerOwnerId;
+}
