@@ -41,6 +41,7 @@ import {
   userOnboarding,
   storeProducts,
   storeOrders,
+  researchReports,
   scalevMappings,
   agenticDeliverables,
   workrooms,
@@ -4317,6 +4318,27 @@ export class DatabaseStorage implements IStorage {
   async updateStoreOrderStatus(id: number, status: string): Promise<StoreOrder | undefined> {
     const rows = await db.update(storeOrders).set({ status }).where(eq(storeOrders.id, id)).returning();
     return rows[0];
+  }
+
+  // ── Research Report (arsip laporan war-room) methods ───────────────────────
+  async getResearchReports(userId: string, agentSlug: string): Promise<ResearchReport[]> {
+    return await db.select().from(researchReports)
+      .where(and(eq(researchReports.userId, userId), eq(researchReports.agentSlug, agentSlug)))
+      .orderBy(desc(researchReports.createdAt));
+  }
+
+  async getResearchReport(id: number): Promise<ResearchReport | undefined> {
+    const rows = await db.select().from(researchReports).where(eq(researchReports.id, id)).limit(1);
+    return rows[0];
+  }
+
+  async createResearchReport(data: InsertResearchReport): Promise<ResearchReport> {
+    const rows = await db.insert(researchReports).values(data as any).returning();
+    return rows[0];
+  }
+
+  async deleteResearchReport(id: number): Promise<void> {
+    await db.delete(researchReports).where(eq(researchReports.id, id));
   }
 
   // ── Scalev Mapping methods ─────────────────────────────────────────────────

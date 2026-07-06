@@ -9,6 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { ArrowLeft, Loader2, Zap, CheckCircle2, Clock, AlertCircle, ChevronDown, ChevronUp, Radar } from "lucide-react";
 import { Link } from "wouter";
 import { ChatInputBar, ChatAttachment } from "@/components/chat-input-bar";
+import { WarRoomToolbar } from "@/components/war-room-toolbar";
 
 interface SubAgentStatus { agentId: number; role: string; status: "waiting"|"running"|"done"|"error"; elapsed?: number; }
 interface Message { role: "user"|"assistant"; content: string; isStreaming?: boolean; subAgents?: SubAgentStatus[]; orchestrationMs?: number;
@@ -140,6 +141,7 @@ export default function MarketIntelligenceClawChat() {
           <div className="text-xs text-white/40 flex items-center gap-1"><Radar className="h-2.5 w-2.5 text-emerald-400"/><span>8 Divisi: Kompetitor · Audiens · Tren · Angle · Hook · Offer · Kanal · Funnel</span></div>
         </div>
         <div className="flex items-center gap-2">
+          <WarRoomToolbar agentSlug="market-intelligence-claw" agentName="Market Intelligence" accentClass="bg-emerald-600 hover:bg-emerald-500" messages={messages} streaming={streaming} onRun={sendMessage} />
           <Badge variant="outline" className="text-xs border-emerald-600/40 text-emerald-300 hidden sm:flex">Intel · 8 Divisi</Badge>
           {isLoading&&<Loader2 className="h-4 w-4 animate-spin text-white/40"/>}
           {ready&&<div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"/>}

@@ -9,6 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { ArrowLeft, Loader2, Zap, CheckCircle2, Clock, AlertCircle, ChevronDown, ChevronUp, Rocket } from "lucide-react";
 import { Link } from "wouter";
 import { ChatInputBar, ChatAttachment } from "@/components/chat-input-bar";
+import { WarRoomToolbar } from "@/components/war-room-toolbar";
 
 interface SubAgentStatus { agentId: number; role: string; status: "waiting"|"running"|"done"|"error"; elapsed?: number; }
 interface Message { role: "user"|"assistant"; content: string; isStreaming?: boolean; subAgents?: SubAgentStatus[]; orchestrationMs?: number;
@@ -136,6 +137,7 @@ export default function AutopilotJualanChat() {
           <div className="text-xs text-white/40 flex items-center gap-1"><Rocket className="h-2.5 w-2.5 text-indigo-400"/><span>6 Divisi: Riset · Audiens · Angle · Copy · Follow-up · Konten</span></div>
         </div>
         <div className="flex items-center gap-2">
+          <WarRoomToolbar agentSlug="autopilot-jualan" agentName="Autopilot Jualan" accentClass="bg-indigo-600 hover:bg-indigo-500" messages={messages} streaming={streaming} onRun={sendMessage} />
           <Badge variant="outline" className="text-xs border-indigo-600/40 text-indigo-300 hidden sm:flex">Kampanye · 6 Divisi</Badge>
           {isLoading&&<Loader2 className="h-4 w-4 animate-spin text-white/40"/>}
           {ready&&<div className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"/>}

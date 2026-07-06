@@ -9,6 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { ArrowLeft, Loader2, Zap, CheckCircle2, Clock, AlertCircle, ChevronDown, ChevronUp, Compass } from "lucide-react";
 import { Link } from "wouter";
 import { ChatInputBar, ChatAttachment } from "@/components/chat-input-bar";
+import { WarRoomToolbar } from "@/components/war-room-toolbar";
 
 interface SubAgentStatus { agentId: number; role: string; status: "waiting"|"running"|"done"|"error"; elapsed?: number; }
 interface Message { role: "user"|"assistant"; content: string; isStreaming?: boolean; subAgents?: SubAgentStatus[]; orchestrationMs?: number;
@@ -136,6 +137,7 @@ export default function AgenKeputusanChat() {
           <div className="text-xs text-white/40 flex items-center gap-1"><Compass className="h-2.5 w-2.5 text-amber-400"/><span>6 Divisi: Opsi · Data · Risiko · Skenario · Kriteria · Rekomendasi</span></div>
         </div>
         <div className="flex items-center gap-2">
+          <WarRoomToolbar agentSlug="agen-keputusan" agentName="Agen Keputusan" accentClass="bg-amber-600 hover:bg-amber-500" messages={messages} streaming={streaming} onRun={sendMessage} />
           <Badge variant="outline" className="text-xs border-amber-600/40 text-amber-300 hidden sm:flex">Keputusan · 6 Divisi</Badge>
           {isLoading&&<Loader2 className="h-4 w-4 animate-spin text-white/40"/>}
           {ready&&<div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"/>}

@@ -82,6 +82,8 @@ import type {
   InsertStoreProduct,
   StoreOrder,
   InsertStoreOrder,
+  ResearchReport,
+  InsertResearchReport,
   ScalevMapping,
   InsertScalevMapping,
   TenderAlertProfile,
@@ -481,6 +483,12 @@ export interface IStorage {
   getStoreOrderByAccessToken(token: string): Promise<StoreOrder | undefined>;
   createStoreOrder(data: InsertStoreOrder): Promise<StoreOrder>;
   updateStoreOrderStatus(id: number, status: string): Promise<StoreOrder | undefined>;
+
+  // Research Report (arsip laporan war-room) methods
+  getResearchReports(userId: string, agentSlug: string): Promise<ResearchReport[]>;
+  getResearchReport(id: number): Promise<ResearchReport | undefined>;
+  createResearchReport(data: InsertResearchReport): Promise<ResearchReport>;
+  deleteResearchReport(id: number): Promise<void>;
 
   // Scalev Mapping methods
   getScalevMappings(): Promise<ScalevMapping[]>;
@@ -2581,6 +2589,14 @@ export class MemStorage implements IStorage {
   async getStoreOrder(_id: number): Promise<StoreOrder | undefined> { return undefined; }
   async getStoreOrderByMidtransId(_orderId: string): Promise<StoreOrder | undefined> { return undefined; }
   async getStoreOrderByAccessToken(_token: string): Promise<StoreOrder | undefined> { return undefined; }
+  // Research Report stubs (MemStorage)
+  async getResearchReports(_userId: string, _agentSlug: string): Promise<ResearchReport[]> { return []; }
+  async getResearchReport(_id: number): Promise<ResearchReport | undefined> { return undefined; }
+  async createResearchReport(data: InsertResearchReport): Promise<ResearchReport> {
+    return { id: 1, ...data, createdAt: new Date() } as ResearchReport;
+  }
+  async deleteResearchReport(_id: number): Promise<void> { return; }
+
   async createStoreOrder(data: InsertStoreOrder): Promise<StoreOrder> {
     return { id: 1, ...data, createdAt: new Date() } as StoreOrder;
   }

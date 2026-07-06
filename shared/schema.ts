@@ -2182,6 +2182,25 @@ export const insertStoreOrderSchema = createInsertSchema(storeOrders).omit({ id:
 export type InsertStoreOrder = z.infer<typeof insertStoreOrderSchema>;
 export type StoreOrder = typeof storeOrders.$inferSelect;
 
+// Arsip Laporan Riset (Fase 2 war-room claw marketing) — tiap laporan yang
+// disimpan pengguna menumpuk jadi riwayat per (userId, agentSlug), bisa
+// dibuka/diekspor/dihapus. Milik pengguna (bukan agen sistem bersama).
+export const researchReports = pgTable("research_reports", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id", { length: 255 }).notNull(),
+  agentSlug: text("agent_slug").notNull(),
+  agentName: text("agent_name").default(""),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => ({
+  userSlugIdx: index("research_reports_user_slug_idx").on(t.userId, t.agentSlug),
+}));
+
+export const insertResearchReportSchema = createInsertSchema(researchReports).omit({ id: true, createdAt: true });
+export type InsertResearchReport = z.infer<typeof insertResearchReportSchema>;
+export type ResearchReport = typeof researchReports.$inferSelect;
+
 // ── Scalev Product Mappings ──────────────────────────────────────────────────
 export const scalevMappings = pgTable("scalev_mappings", {
   id: serial("id").primaryKey(),
