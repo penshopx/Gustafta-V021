@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { MessageContent } from "@/lib/format-message";
 import { Send, X, ChevronRight, Sparkles, BookOpen, Star, Zap, Mic, MicOff, Paperclip, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -279,13 +280,15 @@ export function DialogGustaftaWidget() {
                 </div>
                 <div
                   className={cn(
-                    "max-w-[78%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap break-words",
+                    "max-w-[78%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed break-words",
                     msg.role === "assistant"
                       ? "bg-muted rounded-tl-sm"
-                      : "bg-gradient-to-br from-cyan-500 to-blue-700 text-white rounded-tr-sm"
+                      : "bg-gradient-to-br from-cyan-500 to-blue-700 text-white rounded-tr-sm whitespace-pre-wrap"
                   )}
                 >
-                  {msg.content}
+                  {msg.role === "assistant"
+                    ? <MessageContent text={msg.content} className="text-sm" />
+                    : msg.content}
                 </div>
               </div>
             ))}

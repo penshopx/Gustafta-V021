@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { AiTransparencyLabel } from "@/components/ai-transparency-label";
 import { parseBrainUpdates, BrainChip } from "@/lib/brain-utils";
+import { MessageContent } from "@/lib/format-message";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -198,13 +199,13 @@ function ChatMessage({ msg }: { msg: Message }) {
   return (
     <div className="flex justify-start mb-4 group">
       <div className="max-w-[90%] space-y-1">
-        <div className="rounded-2xl rounded-tl-sm px-4 py-3 bg-white/8 border border-white/10 text-sm text-white/90 leading-relaxed whitespace-pre-wrap">
+        <div className="rounded-2xl rounded-tl-sm px-4 py-3 bg-white/8 border border-white/10 text-sm text-white/90 leading-relaxed">
           {msg.isStreaming && !msg.content ? (
             <span className="inline-flex items-center gap-1.5 text-white/40">
               <Loader2 className="h-3 w-3 animate-spin" />
               <span className="text-xs">Mengkoordinasikan 10 agen SBUClaw…</span>
             </span>
-          ) : cleanContent}
+          ) : <MessageContent text={cleanContent || ""} className="text-sm text-white/90" />}
         </div>
         <AiTransparencyLabel msg={msg} />
         <BrainChip fields={brainFields} />

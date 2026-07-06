@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { MessageContent } from "@/lib/format-message";
 import {
   Send, X, RefreshCw, Share2, Copy, MessageCircle,
   Sparkles, ArrowRight, Check, ChevronRight, RotateCcw, Rocket, Loader2,
@@ -620,11 +621,13 @@ export default function DialogGustaftaPage() {
                   : <span className="text-white">{brandName.charAt(0)}</span>)
                 : "U"}
             </div>
-            <div className={cn("max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap break-words",
+            <div className={cn("max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed break-words",
               msg.role === "assistant"
                 ? "bg-white/10 text-white rounded-tl-sm"
-                : "bg-gradient-to-br from-cyan-500 to-blue-700 text-white rounded-tr-sm")}>
-              {msg.content}
+                : "bg-gradient-to-br from-cyan-500 to-blue-700 text-white rounded-tr-sm whitespace-pre-wrap")}>
+              {msg.role === "assistant"
+                ? <MessageContent text={msg.content} className="text-sm text-white" />
+                : msg.content}
             </div>
           </div>
         ))}
