@@ -156,6 +156,7 @@ import OffshoreClawChat from "@/pages/offshore-safety-claw";
 import TransisiEnergiClawChat from "@/pages/transisi-energi-claw";
 import DigitalMarketingClawChat from "@/pages/digital-marketing-claw";
 import MarketIntelligenceClawChat from "@/pages/market-intelligence-claw";
+import AutopilotJualanChat from "@/pages/autopilot-jualan";
 import CrmSalesClawChat from "@/pages/crm-sales-claw";
 import BrandContentClawChat from "@/pages/brand-content-claw";
 import EcommerceClawChat from "@/pages/ecommerce-claw";
@@ -943,6 +944,15 @@ function Router() {
             highlights={["Intel Kompetitor — bedah angle & iklan pesaing, celah positioning","Audiens & Persona — pain/desire, bahasa pelanggan, segmen prioritas","Amunisi Iklan — angle, hook/headline, struktur penawaran siap uji","Aksi 7 Hari — laporan intelijen langsung jadi rencana eksekusi"]}
             icon={<span className="text-4xl">🎯</span>}
           ><MarketIntelligenceClawChat /></PremiumPageGuard>
+        )} />
+        <Route path="/autopilot-jualan" component={() => (
+          <PremiumPageGuard
+            feature="claw_bisnis" requiredPlan="bisnis"
+            title="Auto-Pilot Jualan — Ketua Tim Kampanye Otomatis"
+            description="Cukup satu input produk/usaha/jasa, 6 divisi kampanye bekerja paralel (dibagi per FUNGSI): riset kilat pasar & pesaing, audiens/persona & targeting Meta, angle & hook jualan, copy iklan siap pakai (3 variasi), skrip follow-up WA & closing, serta kalender konten 7 hari. Hasilnya paket kampanye SIAP TEMPEL — tinggal salin & jalankan."
+            highlights={["Copy Iklan Siap Pakai — 3 variasi (pendek/panjang/story) + teks gambar","Targeting Meta — rekomendasi interest FB/IG konkret + 2 persona","Follow-up WA — sequence closing + jawaban keberatan siap pakai","Kalender Konten 7 Hari — tema, format, hook, caption per hari"]}
+            icon={<span className="text-4xl">🚀</span>}
+          ><AutopilotJualanChat /></PremiumPageGuard>
         )} />
         <Route path="/digital-marketing-claw" component={() => (
           <PremiumPageGuard
