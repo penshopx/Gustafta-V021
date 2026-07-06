@@ -52,7 +52,7 @@ import {
   type FileAttachment,
 } from "./lib/file-processing";
 import { processKnowledgeBaseForRAG, searchKnowledgeBase } from "./lib/rag-service";
-import { buildFinalSystemPrompt, buildAgenticPrinciplesBlock } from "./lib/build-final-system-prompt";
+import { buildFinalSystemPrompt, buildAgenticPrinciplesBlock, KB_ANTI_INJECTION_GUARD } from "./lib/build-final-system-prompt";
 import { decideAgentMutation, decideAgentReadAccess, canInvokeSubAgent, type AgentAuthzResult } from "./lib/agent-authz";
 import { makeAgentAccessGuards } from "./lib/agent-access-guards";
 import { sendAgentShareNotification, sendAgentInviteToSignup, sendAgentCertificationNotification } from "./lib/email";
@@ -3613,7 +3613,7 @@ SKK berlaku 5 tahun. Perpanjangan via: Pengembangan Keprofesian Berkelanjutan (P
       }
 
       if (knowledgeContext) {
-        systemPrompt += `\n\nKnowledge Base:\n${knowledgeContext}`;
+        systemPrompt += `\n\n${KB_ANTI_INJECTION_GUARD}\n\nKnowledge Base:\n${knowledgeContext}`;
       }
 
       const activeProjectBrain = await storage.getActiveProjectBrainInstance(parsed.data.agentId);
@@ -4265,7 +4265,7 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
         }
       }
 
-      if (knowledgeContext) systemPrompt += `\n\nKnowledge Base:\n${knowledgeContext}`;
+      if (knowledgeContext) systemPrompt += `\n\n${KB_ANTI_INJECTION_GUARD}\n\nKnowledge Base:\n${knowledgeContext}`;
 
       const activeProjectBrainStream = await storage.getActiveProjectBrainInstance(parsed.data.agentId);
       if (activeProjectBrainStream && activeProjectBrainStream.values && Object.keys(activeProjectBrainStream.values).length > 0) {
@@ -6610,7 +6610,7 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
     let systemPrompt = buildFinalSystemPrompt(subAgent);
     // Defensive: strip leading """ corruption from legacy prompts
     if (systemPrompt.startsWith('"""')) systemPrompt = systemPrompt.slice(3).trimStart();
-    if (knowledgeContext) systemPrompt += `\n\nKnowledge Base:\n${knowledgeContext}`;
+    if (knowledgeContext) systemPrompt += `\n\n${KB_ANTI_INJECTION_GUARD}\n\nKnowledge Base:\n${knowledgeContext}`;
 
     try {
       const extBrain = await storage.getActiveProjectBrainInstance(agentId);
@@ -6984,7 +6984,7 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
     // ─────────────────────────────────────────────────────────────────────────
 
     if (knowledgeContext) {
-      systemPrompt += `\n\nKnowledge Base:\n${knowledgeContext}`;
+      systemPrompt += `\n\n${KB_ANTI_INJECTION_GUARD}\n\nKnowledge Base:\n${knowledgeContext}`;
     }
 
     // Inject Project Brain for external integrations
