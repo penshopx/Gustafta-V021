@@ -8650,7 +8650,7 @@ Instruksi:
       res.flushHeaders();
 
       const { OpenAI } = await import("openai");
-      const openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openaiClient = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const abortController = new AbortController();
       req.on("close", () => abortController.abort());
       const stream = await openaiClient.chat.completions.create({
@@ -21773,7 +21773,7 @@ POLA KERJA: ELICIT (pahami tahap & niat) → DISPATCH (agen sesuai kebutuhan) �
       };
 
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
 
       const subList = subAgentNames.map((n: string, i: number) => `${i + 1}. ${n}`).join('\n');
       const systemMsg = `Kamu adalah penulis system prompt untuk AI orchestrator Hub. 
@@ -22217,7 +22217,7 @@ MAKNA FIELD: "kelayakan.layak" = apakah rencana/kondisi K3 layak untuk mulai bek
           .map(([k, v]) => `${WORKROOM_CTX_LABELS[k] || k}: ${v}`),
       ].join("\n");
 
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const systemPrompt = `${cfg.systemPrompt}
 
 Keluarkan JSON dengan struktur:
@@ -22266,7 +22266,7 @@ ATURAN: Bila data kurang, JANGAN mengarang — nyatakan sebagai [ASUMSI]. Keputu
         return res.status(400).json({ message: "Catatan pekerjaan terlalu singkat (min. 10 karakter)" });
       }
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
 
       const systemPrompt = `Anda adalah Ahli Estimator Biaya Konstruksi Indonesia senior bersertifikat QS (Quantity Surveyor) dengan pengalaman 20+ tahun. Anda menguasai AHSP PermenPUPR 1/2022, SNI, dan harga pasar konstruksi Indonesia 2024-2025.
 
@@ -22878,7 +22878,7 @@ ${brief.trim()}`;
       }
 
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
 
       const systemPrompt = `Anda adalah Ahli K3 Konstruksi Indonesia senior bersertifikat AK3 Umum, AK3 Konstruksi, dan CSMS Assessor dengan pengalaman 20+ tahun di lapangan. Anda menganalisis foto lapangan secara mendalam untuk mendeteksi potensi bahaya dan pelanggaran K3 berdasarkan regulasi Indonesia dan standar internasional.
 
@@ -23216,7 +23216,7 @@ Instruksi pembuatan dokumen:
 
     try {
       const { OpenAI } = await import("openai");
-      const openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openaiClient = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
 
       const stream = await openaiClient.chat.completions.create({
         model: "gpt-4o-mini",
@@ -23441,7 +23441,7 @@ ${Object.entries(fields).map(([k, v]) => `- ${k}: ${v}`).join("\n")}
 Hasilkan dokumen lengkap yang siap ditandatangani. Gunakan format surat Indonesia yang benar (nomor surat, perihal, tujuan, isi, penutup, tanda tangan). Jangan tambahkan penjelasan — langsung isi dokumennya saja.`;
 
       const OpenAI = (await import("openai")).default;
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
 
       const completion = await openai.chat.completions.create({
         model: "gpt-4o",
@@ -23575,7 +23575,7 @@ Hasilkan dokumen lengkap yang siap ditandatangani. Gunakan format surat Indonesi
         if (!files.length) return res.status(400).json({ error: "Tidak ada screenshot yang dikirim" });
 
         const OpenAI = (await import("openai")).default;
-        const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+        const client = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
 
         const imageContents = files.map(f => ({
           type: "image_url" as const,
@@ -23636,7 +23636,7 @@ Jangan tambahkan penjelasan apapun. Hanya JSON.`;
       if (!data) return res.status(400).json({ error: "Data tidak ditemukan" });
 
       const OpenAI = (await import("openai")).default;
-      const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const client = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
 
       const namaPeserta = data.namaPeserta || "[NAMA PESERTA]";
       const institusi = data.institusi || "[INSTITUSI/LEMBAGA]";
@@ -23840,7 +23840,7 @@ Susun Executive Summary PKB 25 Poin sesuai format dan struktur di atas. Tulis le
       if (!prompt?.trim()) return res.status(400).json({ error: "Prompt kosong" });
 
       const OpenAI = (await import("openai")).default;
-      const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const client = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
 
       const response = await client.images.generate({
         model: "dall-e-3",
@@ -23942,7 +23942,7 @@ Susun Executive Summary PKB 25 Poin sesuai format dan struktur di atas. Tulis le
       const { education, fieldOfStudy, yearsExperience, currentRole, keyProjects, targetDomain, targetLevel } = req.body;
       if (!education || !targetDomain || !targetLevel) return res.status(400).json({ error: "Data tidak lengkap." });
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const prompt = `Anda adalah DIAGNOSTIK AI — pakar SKKNI, KKNI, dan regulasi BNSP Indonesia.
 
 PROFIL KANDIDAT:
@@ -23993,7 +23993,7 @@ Analisis profil ini dan kembalikan JSON SAJA (tanpa markdown) dengan format pers
       const { jabatan, klaimList } = req.body;
       if (!jabatan || !klaimList?.length) return res.status(400).json({ error: "Jabatan dan klaim wajib diisi." });
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const klaimText = klaimList.map((k: any, i: number) => `Unit ${i+1}: ${k.namaUnit}\nPengalaman: ${k.deskripsiPengalaman}\nBukti: ${k.buktiYangDimiliki || "tidak disebutkan"}`).join("\n\n");
       const prompt = `Anda adalah asesor BNSP senior yang menilai kekuatan klaim unit kompetensi SKK.
 
@@ -24036,7 +24036,7 @@ Skor Kuat: 80-100, Cukup: 60-79, Lemah: 40-59, Tidak Cukup: 0-39. Bersikap tegas
       const { jenisProyek, jenisSerahTerima, namaProyek, nilaiKontrak } = req.body;
       if (!jenisProyek || !namaProyek) return res.status(400).json({ error: "Jenis proyek dan nama proyek wajib diisi." });
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const prompt = `Anda adalah konsultan hukum konstruksi Indonesia yang membuat Berita Acara Serah Terima (BAST) proyek.
 
 Jenis Proyek: ${jenisProyek}
@@ -24084,7 +24084,7 @@ Buat dokumen yang formal dan profesional menggunakan bahasa hukum Indonesia yang
       const { klasifikasi, kualifikasi, kondisi } = req.body;
       if (!klasifikasi) return res.status(400).json({ error: "Klasifikasi wajib diisi." });
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const prompt = `Anda adalah konsultan perizinan konstruksi Indonesia yang ahli dalam proses SBU (Sertifikat Badan Usaha) dan IUJK di OSS-RBA.
 
 Klasifikasi: ${klasifikasi}
@@ -24127,7 +24127,7 @@ Berikan langkah-langkah yang realistis dan spesifik sesuai kondisi ${kondisi}. R
       const { jenisProyek, namaProyek, peran, durasi, nilaiKontrak } = req.body;
       if (!jenisProyek || !namaProyek) return res.status(400).json({ error: "Jenis dan nama proyek wajib diisi." });
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const prompt = `Anda adalah konsultan manajemen mutu konstruksi Indonesia yang membuat Rencana Mutu Kontrak (RMK).
 
 Jenis Proyek: ${jenisProyek}
@@ -24199,7 +24199,7 @@ Isi setiap sub-bab dengan konten spesifik untuk ${jenisProyek} oleh ${peran}. Ko
       const { jenisEvaluasi, profilPerusahaan } = req.body;
       if (!jenisEvaluasi) return res.status(400).json({ error: "Jenis evaluasi wajib dipilih." });
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const prompt = `Anda adalah auditor K3 senior yang melakukan ${jenisEvaluasi} terhadap ${profilPerusahaan}.
 
 Mulai sesi dengan memperkenalkan diri secara singkat sebagai auditor, lalu langsung ajukan pertanyaan pertama yang KRITIS dan spesifik tentang sistem manajemen K3 perusahaan.
@@ -24957,7 +24957,7 @@ Respond JSON:
       const { tipeSPK, namaProyek, namaPemberiKerja, namaPenerima, lingkupPekerjaan, nilaiKontrak, durasiPekerjaan, tanggalMulai, metodeBayar, retensi } = req.body;
       if (!namaProyek || !lingkupPekerjaan) return res.status(400).json({ error: "Nama proyek dan lingkup pekerjaan wajib diisi." });
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const tahun = new Date().getFullYear();
       const bulan = String(new Date().getMonth() + 1).padStart(2, "0");
       const nomorRand = Math.floor(Math.random() * 900) + 100;
@@ -25000,7 +25000,7 @@ Balas hanya dengan JSON valid, tidak ada teks lain.`;
     try {
       const { jenisPermohonan, lokasiPeruntukan, luasBangunan, jumlahLantai, kondisiSite } = req.body;
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const prompt = `Kamu adalah konsultan perizinan bangunan gedung Indonesia berpengalaman, ahli PP 16/2021 dan Permen PUPR 12/2021. Buat panduan perizinan komprehensif untuk:
 
 Jenis Permohonan: ${jenisPermohonan}
@@ -25051,7 +25051,7 @@ Buat 6-8 tahapan yang logis dan realistis. Balas hanya JSON valid.`;
       if (!namaProyek) return res.status(400).json({ error: "Nama proyek wajib diisi." });
       const durasi = Math.min(parseInt(durasiTotal) || 12, 24);
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const prompt = `Kamu adalah manajer proyek konstruksi Indonesia berpengalaman. Buat data Kurva S rencana untuk:
 
 Jenis Proyek: ${jenisProyek}
@@ -25114,7 +25114,7 @@ Balas hanya JSON valid.`;
     try {
       const { action, jenisTemuan, standarAcuan, jabatanAuditee, totalSoal, nomorSoal, skenario, pertanyaan, jawaban, riwayat } = req.body;
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
 
       if (action === "start") {
         const prompt = `Kamu adalah lead auditor ISO/CSMS berpengalaman 15 tahun. Buat skenario NCR nyata dan pertanyaan pertama untuk sesi simulasi penanganan NCR.
@@ -26587,7 +26587,7 @@ Sertakan min 5 langkah klaim dan 8 dokumen wajib.`;
     try {
       const { jenisEvaluasi, profilPerusahaan, riwayat, pertanyaanKe, totalPertanyaan } = req.body;
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const selesai = pertanyaanKe >= totalPertanyaan;
       const riwayatText = riwayat.map((m: any) => `${m.role === "user" ? "KONTRAKTOR" : "AUDITOR"}: ${m.content}`).join("\n\n");
       const prompt = `Anda adalah auditor K3 senior yang melakukan ${jenisEvaluasi}.
@@ -26619,7 +26619,7 @@ Kembalikan JSON:
       const { jabatanAsal, jabatanTujuan } = req.body;
       if (!jabatanAsal || !jabatanTujuan) return res.status(400).json({ error: "Jabatan asal dan tujuan wajib diisi." });
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const prompt = `Anda adalah konsultan sertifikasi BNSP Indonesia yang ahli analisis gap kompetensi SKK.
 
 Jabatan asal: ${jabatanAsal}
@@ -26663,7 +26663,7 @@ Berikan analisis yang realistis. Jika jabatan sangat berbeda, tingkat kesulitan 
       const { jabatan, nilaiKontrak } = req.body;
       if (!jabatan) return res.status(400).json({ error: "Jabatan wajib diisi." });
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const prompt = `Anda adalah konsultan hukum pengadaan dan jasa konstruksi Indonesia yang ahli tentang persyaratan kompetensi aparatur pengadaan.
 
 Jabatan: ${jabatan}
@@ -26703,7 +26703,7 @@ Fokus pada regulasi Indonesia terbaru: UU 2/2017, PP 14/2021, Perpres 12/2021, P
       const { jurusan, ipk, pengalaman } = req.body;
       if (!jurusan) return res.status(400).json({ error: "Jurusan wajib diisi." });
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const prompt = `Anda adalah konsultan karir konstruksi Indonesia yang ahli membantu fresh graduate meraih SKK pertama.
 
 Profil: Jurusan ${jurusan}, IPK ${ipk}, Pengalaman: ${pengalaman}
@@ -26746,7 +26746,7 @@ Berikan 3 jabatan yang paling realistis dan reachable. Strategi RPL harus konkre
       const { bidang, skala } = req.body;
       if (!bidang) return res.status(400).json({ error: "Bidang wajib diisi." });
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const prompt = `Anda adalah konsultan regulasi konstruksi Indonesia yang ahli tentang persyaratan SKK untuk BUJK jasa konsultansi.
 
 Bidang: ${bidang}
@@ -26797,7 +26797,7 @@ Berikan 2-3 jabatan wajib, 3-4 yang disarankan, 4-5 persyaratan BUJK, dan 3-4 ko
       const { jenisProyek, aktivitas, skala, namaProyek } = req.body;
       if (!jenisProyek || !aktivitas?.length) return res.status(400).json({ error: "Jenis proyek dan aktivitas wajib diisi." });
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const prompt = `Anda adalah Ahli K3 Konstruksi Utama yang membuat SOP K3 profesional untuk proyek konstruksi Indonesia.
 
 Jenis Proyek: ${jenisProyek}
@@ -26848,7 +26848,7 @@ Buat seksi untuk SETIAP aktivitas yang diminta plus 1 seksi umum. Setiap seksi h
       const { jabatan, dokumenDimiliki, dokumenBelumAda } = req.body;
       if (!jabatan) return res.status(400).json({ error: "Jabatan wajib diisi." });
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const prompt = `Anda adalah konsultan sertifikasi SKK BNSP Indonesia. Analisis kesiapan dokumen asesmen untuk jabatan: "${jabatan}".
 
 Dokumen sudah dimiliki: ${JSON.stringify(dokumenDimiliki)}
@@ -26890,7 +26890,7 @@ Fokus pada dokumen yang paling kritis untuk jabatan ${jabatan}. Hanya flag kekur
       const { jabatan, prioritas } = req.body;
       if (!jabatan) return res.status(400).json({ error: "Jabatan wajib diisi." });
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const prompt = `Anda adalah konsultan sertifikasi konstruksi Indonesia yang ahli tentang ekosistem LSP/BNSP.
 
 Jabatan SKK: ${jabatan}
@@ -26942,7 +26942,7 @@ Buat 3 tipologi LSP yang relevan, 4-5 langkah menemukan, 6-7 checklist verifikas
       const { jabatan, namaLengkap, proyekList } = req.body;
       if (!jabatan || !namaLengkap) return res.status(400).json({ error: "Jabatan dan nama wajib diisi." });
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const prompt = `Anda adalah konsultan sertifikasi BNSP yang ahli membuat portofolio SKK profesional.
 
 Jabatan target: ${jabatan}
@@ -26985,7 +26985,7 @@ Kembalikan JSON PERSIS:
       const { jabatan, namaLengkap, perusahaan, proyekList } = req.body;
       if (!jabatan || !namaLengkap) return res.status(400).json({ error: "Jabatan dan nama wajib diisi." });
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const proyekStr = proyekList?.map((p: any) => `${p.namaProyek} (${p.jabatanDiProyek}, ${p.periodeAwal}–${p.periodeAkhir}, nilai: ${p.nilaiKontrak || "N/A"}, pemberi kerja: ${p.pemberiKerja || "N/A"}, lokasi: ${p.lokasiProyek || "N/A"})`).join("; ");
       const prompt = `Anda adalah ahli hukum konstruksi Indonesia yang membuat surat resmi untuk keperluan sertifikasi SKK BNSP.
 
@@ -27033,7 +27033,7 @@ Buat surat yang LENGKAP, FORMAL, dan SIAP PAKAI. Cantumkan semua proyek dari dat
       const { jabatan } = req.body;
       if (!jabatan) return res.status(400).json({ error: "Jabatan wajib diisi." });
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const prompt = `Anda adalah pakar SKKNI dan asesor BNSP Indonesia. Buat peta kompetensi lengkap untuk jabatan SKK: "${jabatan}".
 
 Kembalikan JSON PERSIS:
@@ -27084,7 +27084,7 @@ Buat 5-7 unit kompetensi yang representatif dan realistis sesuai SKKNI. Setiap u
       const { jabatan, unitTidakLulus, alasanPenguji, konteksnya } = req.body;
       if (!jabatan || !unitTidakLulus) return res.status(400).json({ error: "Jabatan dan unit tidak lulus wajib diisi." });
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const prompt = `Anda adalah konsultan sertifikasi BNSP Indonesia yang membantu kandidat yang tidak lulus asesmen SKK.
 
 Data:
@@ -27131,7 +27131,7 @@ Buat 3-4 langkah prosedur, 1 surat banding lengkap dan formal, analisis strategi
       const { jabatan, statusPendaftar } = req.body;
       if (!jabatan) return res.status(400).json({ error: "Jabatan wajib diisi." });
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const prompt = `Anda adalah konsultan sertifikasi konstruksi Indonesia yang ahli sistem digital LPJK/BNSP.
 
 Jabatan SKK: ${jabatan}
@@ -27184,7 +27184,7 @@ Buat 4-6 tahapan sesuai status ${statusPendaftar}, 3-4 sistem digital LPJK/BNSP 
       const { jabatanSekarang, jabatanTarget, timeline, pengalamanTahun, informasiTambahan } = req.body;
       if (!jabatanSekarang || !jabatanTarget) return res.status(400).json({ error: "Posisi sekarang dan target wajib diisi." });
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const prompt = `Anda adalah career coach spesialis konstruksi dan sertifikasi SKK Indonesia. Buat rencana pengembangan karir SKK yang realistis dan terstruktur.
 
 Data:
@@ -27248,7 +27248,7 @@ Buat 4-5 milestones realistis sesuai ${timeline}, 3-4 kategori CPD, 4-5 pelatiha
       const { jabatan, jumlahSoal } = req.body;
       if (!jabatan) return res.status(400).json({ error: "Jabatan wajib diisi." });
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const pgCount = Math.ceil(jumlahSoal * 0.6);
       const esaiCount = jumlahSoal - pgCount;
       const prompt = `Buat ${jumlahSoal} soal uji kompetensi SKK untuk jabatan: "${jabatan}".
@@ -27292,7 +27292,7 @@ Soal harus relevan, kontekstual, dan menguji kompetensi nyata jabatan ${jabatan}
       const { jabatan, soalList, jawaban } = req.body;
       if (!jabatan || !soalList?.length) return res.status(400).json({ error: "Data tidak lengkap." });
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const soalJawaban = soalList.map((s: any) => {
         const j = jawaban.find((j: any) => j.nomor === s.nomor);
         return `Soal ${s.nomor} (${s.tipe}, ${s.bobot}p) — Unit: ${s.unitKompetensi}\nSoal: ${s.pertanyaan}\n${s.tipe === "pilihan_ganda" ? `Opsi: ${s.opsi?.join(", ")}\nKunci: ${s.kunciJawaban}\n` : `Model jawaban: ${s.modelJawaban}\n`}Jawaban kandidat: ${j?.jawaban || "(tidak dijawab)"}`;
@@ -27336,7 +27336,7 @@ Kembalikan JSON PERSIS:
       const { namaProyek, lokasiProyek, nilaiProyek, tahunMulai, tahunSelesai, jenisPekerjaan, jabatanSKK, peranDiProyek, namaPemberiKerja, deskripsiTambahan } = req.body;
       if (!namaProyek || !jabatanSKK || !peranDiProyek) return res.status(400).json({ error: "Nama proyek, jabatan SKK, dan peran wajib diisi." });
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const prompt = `Anda adalah konsultan portofolio BNSP Indonesia. Buat laporan proyek terstruktur format portofolio SKK.
 
 Data proyek:
@@ -27380,7 +27380,7 @@ Buat 4-5 unit kompetensi yang relevan dengan ${jabatanSKK}. Gunakan bahasa profe
       const { jabatanSKK, namaProyek, jenisPekerjaan, nilaiProyek, durasi, peranAnda, deskripsiPekerjaan } = req.body;
       if (!jabatanSKK || !namaProyek || !peranAnda || !deskripsiPekerjaan) return res.status(400).json({ error: "Jabatan, nama proyek, peran, dan deskripsi wajib diisi." });
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const prompt = `Anda adalah asesor BNSP Indonesia. Analisis kesesuaian proyek sebagai bukti portofolio untuk jabatan SKK.
 
 Jabatan SKK target: ${jabatanSKK}
@@ -27426,7 +27426,7 @@ Gunakan pengetahuan unit kompetensi SKKNI untuk jabatan ${jabatanSKK}. Skor ting
       const { jabatanDibutuhkan, levelTarget, jumlahDibutuhkan, urgensi, kualifikasiBUJK, budgetRange } = req.body;
       if (!jabatanDibutuhkan) return res.status(400).json({ error: "Jabatan wajib diisi." });
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const prompt = `Anda adalah konsultan HR konstruksi Indonesia. Buat panduan rekrutmen tenaga SKK untuk BUJK.
 
 Kebutuhan:
@@ -27489,7 +27489,7 @@ Buat 4-5 tahapan, 3-4 kategori seleksi, 5-6 pertanyaan wawancara, 4 langkah veri
       const { jabatan, hasilAsesmen } = req.body;
       if (!jabatan) return res.status(400).json({ error: "Jabatan wajib diisi." });
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const isLulus = hasilAsesmen?.includes("Kompeten —");
       const prompt = `Anda adalah konsultan sertifikasi BNSP Indonesia. Buat panduan lengkap pasca-asesmen untuk jabatan SKK: "${jabatan}". Hasil: ${hasilAsesmen}.
 
@@ -27540,7 +27540,7 @@ Buat 4-5 fase, 3-4 hak, 4-5 cara penggunaan, 3-4 sistem digital, 5-6 FAQ. Gunaka
       const { jabatan, jalur, pertanyaanKhusus } = req.body;
       if (!jabatan) return res.status(400).json({ error: "Jabatan SKK wajib diisi." });
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const prompt = `Anda adalah konsultan asesmen BNSP Indonesia. Buat panduan lengkap pengisian formulir APL-01 untuk jabatan SKK: "${jabatan}", jalur: "${jalur}".
 ${pertanyaanKhusus ? `Pertanyaan/kendala khusus kandidat: ${pertanyaanKhusus}` : ""}
 
@@ -27594,7 +27594,7 @@ Buat 5-7 seksi APL-01 yang umum (identitas, pendidikan, pengalaman kerja, unit k
       const { nama, jabatanTarget, bidang, tahunPengalaman, pendidikan, skkDimiliki, organisasi, proyekList } = req.body;
       if (!nama || !jabatanTarget || !proyekList?.length) return res.status(400).json({ error: "Nama, jabatan target, dan proyek wajib diisi." });
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const proyekText = proyekList.map((p: any, i: number) =>
         `Proyek ${i+1}: ${p.nama} | Klien: ${p.klien || "-"} | Nilai: ${p.nilai || "-"} | Tahun: ${p.tahun || "-"} | Peran: ${p.peran} | Deskripsi: ${p.deskripsi || "-"}`
       ).join("\n");
@@ -27650,7 +27650,7 @@ Kembalikan JSON PERSIS:
       const { namaPerusahaan, subklasifikasi, kualifikasi, skkDimiliki } = req.body;
       if (!subklasifikasi?.length) return res.status(400).json({ error: "Minimal 1 subklasifikasi wajib diisi." });
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const skkText = skkDimiliki?.length > 0
         ? skkDimiliki.map((s: any) => `${s.jabatan} — ${s.level}: ${s.jumlah} orang`).join(", ")
         : "belum ada data";
@@ -27708,7 +27708,7 @@ Analisis berdasarkan Permen PUPR No. 6 Tahun 2021, PP 14/2021, dan regulasi terk
       const { jenisProyek, nilaiProyek, sumberDana, lokasi, kualifikasiBUJK, skkBUJK } = req.body;
       if (!jenisProyek || !nilaiProyek) return res.status(400).json({ error: "Jenis proyek dan nilai wajib diisi." });
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const skkText = skkBUJK?.length > 0
         ? skkBUJK.map((s: any) => `${s.jabatan} — ${s.level}: ${s.jumlah} orang`).join(", ")
         : "tidak disebutkan";
@@ -27764,7 +27764,7 @@ Gunakan: PP 14/2021, Permen PUPR 6/2021, Perpres 12/2021 (pengadaan), dan regula
       const { jabatan, waktu, fokusKhusus } = req.body;
       if (!jabatan) return res.status(400).json({ error: "Jabatan SKK wajib diisi." });
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const prompt = `Anda adalah instruktur sertifikasi BNSP dan pakar pendidikan konstruksi Indonesia. Buat panduan belajar lengkap untuk jabatan SKK: "${jabatan}".
 
 Waktu persiapan: ${waktu}
@@ -27824,7 +27824,7 @@ Buat 5-7 topik belajar (mix wajib/penting/tambahan), 6-8 referensi (mix SNI/Pera
       const { jabatan, jalur, tahunPengalaman, pendidikan, proyekList, dokumenDimiliki } = req.body;
       if (!jabatan || !proyekList?.length) return res.status(400).json({ error: "Jabatan dan pengalaman proyek wajib diisi." });
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
 
       const proyekText = proyekList.map((p: any, i: number) =>
         `Proyek ${i+1}: "${p.namaProjek}" | Peran: ${p.peran} | Nilai: ${p.nilaiKontrak || "tidak disebutkan"} | Tahun: ${p.tahun || "tidak disebutkan"} | Deskripsi: ${p.deskripsiPekerjaan || "tidak disebutkan"}`
@@ -27894,7 +27894,7 @@ Berikan evaluasi yang jujur, konstruktif, dan spesifik berdasarkan regulasi BNSP
       const { profesi, bidang, pengalaman, pendidikan, skkSudahPunya, targetKarir, horizon } = req.body;
       if (!profesi || !bidang || !targetKarir) return res.status(400).json({ error: "Profesi, bidang, dan target karir wajib diisi." });
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
 
       const prompt = `Anda adalah konsultan sertifikasi konstruksi Indonesia berpengalaman. Buat roadmap sertifikasi SKK yang optimal berdasarkan profil berikut:
 
@@ -27956,7 +27956,7 @@ Buat 3-5 langkah sertifikasi yang logis dan berurutan. Sesuaikan dengan regulasi
       const { jabatan } = req.body;
       if (!jabatan) return res.status(400).json({ error: "Jabatan SKK wajib diisi." });
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
 
       const prompt = `Anda adalah ahli sertifikasi BNSP dan SKKNI untuk jasa konstruksi Indonesia. Buat analisis lengkap unit kompetensi untuk jabatan SKK: "${jabatan}".
 
@@ -28011,7 +28011,7 @@ Buat 5-7 unit kompetensi yang paling representatif (mix inti dan pilihan/umum). 
       const { action, jabatan, fokus, pengalaman, rounds = [], currentRoundNum } = req.body;
       if (!jabatan) return res.status(400).json({ error: "Jabatan SKK wajib diisi." });
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
 
       const TOTAL_ROUNDS = 4;
 
@@ -28144,7 +28144,7 @@ Kembalikan JSON: {"pertanyaan": "...", "unitKompetensi": "..."}`;
       const { jabatan, tanggalTerbit, nomorSkk = "" } = req.body;
       if (!jabatan || !tanggalTerbit) return res.status(400).json({ error: "Jabatan dan tanggal terbit wajib diisi." });
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const terbit = new Date(tanggalTerbit);
       const expired = new Date(terbit);
       expired.setFullYear(expired.getFullYear() + 3);
@@ -28231,7 +28231,7 @@ Penting:
       } = req.body;
       if (!namaPemohon || !jabatanSkk) return res.status(400).json({ error: "Nama dan jabatan SKK wajib diisi." });
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const tanggal = kotaTanggal || `Jakarta, ${new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}`;
       let prompt = "";
       if (docType === "pernyataan") {
@@ -28335,7 +28335,7 @@ Tulis langsung isi surat, siap cetak.`;
       const { klasifikasi, kualifikasi, namaPerusahaan = "", mode = "lihat", personelAda = "" } = req.body;
       if (!klasifikasi || !kualifikasi) return res.status(400).json({ error: "Klasifikasi dan kualifikasi wajib diisi." });
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const prompt = `Anda adalah konsultan regulasi konstruksi Indonesia dengan keahlian mendalam Permen PUPR No. 6 Tahun 2025 tentang Sertifikasi Kompetensi Kerja Konstruksi dan PP 14 Tahun 2021 tentang BUJK.
 
 Data BUJK:
@@ -28408,7 +28408,7 @@ Aturan:
         return res.status(400).json({ error: "Semua field wajib diisi." });
       }
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const gajiJuta = Math.round((gaji || 8000000) / 1_000_000);
       const prompt = `Anda adalah konsultan karir dan HR konstruksi Indonesia yang sangat berpengalaman, dengan pengetahuan mendalam tentang standar gaji tenaga ahli bersertifikat SKK di Indonesia.
 
@@ -28500,7 +28500,7 @@ Penting:
       const { jabatan, namaAsesi = "", lembaga = "", pengalaman } = req.body;
       if (!jabatan || !pengalaman) return res.status(400).json({ error: "Jabatan dan pengalaman wajib diisi." });
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const today = new Date().toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" });
       const prompt = `Anda adalah konsultan sertifikasi BNSP Indonesia yang sangat berpengalaman dalam mengisi Formulir APL-02 (Asesmen Mandiri).
 
@@ -28564,7 +28564,7 @@ Aturan penting:
       const { pendidikan, pengalaman, bidang, skk_existing = "" } = req.body;
       if (!pendidikan || !bidang) return res.status(400).json({ error: "Pendidikan dan bidang wajib diisi." });
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const prompt = `Anda adalah konsultan sertifikasi SKK BNSP Indonesia yang ahli dalam regulasi PP 14/2021, Permen PUPR 6/2025, dan SKKNI konstruksi.
 
 Profil pengguna:
@@ -28639,7 +28639,7 @@ Aturan penting:
       const { position, path = "reguler" } = req.body;
       if (!position) return res.status(400).json({ error: "Jabatan tidak boleh kosong." });
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const prompt = `Anda adalah konsultan sertifikasi SKK BNSP Indonesia yang sangat berpengalaman.
 
 Buat PAKET PERSIAPAN LENGKAP untuk asesmen SKK berikut:
@@ -28713,7 +28713,7 @@ Pastikan:
       const { domain } = req.body;
       if (!domain) return res.status(400).json({ error: "Domain tidak boleh kosong." });
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const prompt = `Anda adalah ASES.AI — penguji kompetensi SKK BNSP Indonesia yang ahli.
 
 Buat 5 soal latihan untuk domain: "${domain}"
@@ -28759,7 +28759,7 @@ Pastikan soal relevan dengan SKKNI dan standar BNSP. Options berisi 4 pilihan (i
     try {
       const { jenisKontrak, namaProyek, nilaiKontrak, risikoLevel, jumlahPekerja } = req.body;
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const prompt = `Kamu adalah HSE Manager dan konsultan K3 Konstruksi berpengalaman 20 tahun. Buat Rencana Keselamatan Konstruksi (RKK) sesuai Permen PUPR No. 10/2021 dan Permenaker No. 5/1996.
 
 Jenis Kontrak: ${jenisKontrak}
@@ -28827,7 +28827,7 @@ Buat 6-8 item HIRADC, 5-6 program keselamatan, 8-10 item APD. Balas hanya JSON v
     try {
       const { levelCSMS, jenisPekerjaan, namaPerusahaan, konteksKhusus } = req.body;
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const prompt = `Kamu adalah HSE Auditor CSMS berpengalaman di industri migas dan konstruksi Indonesia. Buat panduan persiapan audit CSMS yang komprehensif.
 
 Level CSMS: ${levelCSMS}
@@ -28897,7 +28897,7 @@ Buat 5-6 elemen CSMS, 3-4 kategori dokumen, 12-15 checklist, 6-8 pertanyaan audi
     try {
       const { action, bidang, jenjang, nomorPertanyaan, pertanyaan, jawaban, totalPertanyaan, riwayat } = req.body;
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
 
       if (action === "start") {
         const prompt = `Kamu adalah asesor BNSP berpengalaman untuk uji kompetensi SKK konstruksi. Mulai sesi wawancara teknis.
@@ -28974,7 +28974,7 @@ Balas hanya JSON valid.`;
     try {
       const { jenisPekerjaan, standar, konteks } = req.body;
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const prompt = `Kamu adalah Ahli K3 Konstruksi bersertifikat (Ahli K3 Utama) dengan pengalaman 15 tahun. Buat HIRADC (Hazard Identification, Risk Assessment, Determining Controls) yang lengkap dan detail.
 
 Jenis Pekerjaan: ${jenisPekerjaan}
@@ -29024,7 +29024,7 @@ Buat minimal 10-14 baris risiko yang realistis dan spesifik. Level: Rendah (1-5)
     try {
       const { jenisPerizinan, bentukBU, kbli, namaPerusahaan } = req.body;
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const prompt = `Kamu adalah konsultan perizinan usaha konstruksi yang ahli di sistem OSS-RBA Indonesia (oss.go.id). Buat panduan lengkap dan praktis untuk perizinan berikut.
 
 Jenis Perizinan: ${jenisPerizinan}
@@ -29074,7 +29074,7 @@ Buat 5-7 tahapan yang realistis dan spesifik untuk ${bentukBU}. Sertakan minimal
     try {
       const { jenisDok, namaProyek, nilaiKontrak, durasiPekerjaan, sumberDana, konteks } = req.body;
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const prompt = `Kamu adalah ahli hukum kontrak konstruksi dan pengadaan pemerintah. Buat template dokumen kontrak/perjanjian konstruksi yang formal dan lengkap sesuai regulasi Indonesia.
 
 Jenis Dokumen: ${jenisDok}
@@ -29117,7 +29117,7 @@ Buat 8-12 pasal yang relevan dengan jenis dokumen. Pasal harus mencakup: ruang l
     try {
       const { action, standar, jenisAudit, nomorPertanyaan, pertanyaan, jawaban, riwayat } = req.body;
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
 
       if (action === "start") {
         const prompt = `Kamu adalah Lead Auditor ${standar.split("—")[0].trim()} bersertifikat internasional, berpengalaman 12 tahun. Mulai sesi ${jenisAudit} untuk perusahaan konstruksi.
@@ -29188,7 +29188,7 @@ Evaluasi dengan objektif. Level: Conformance (jawaban memadai+bukti ada), OFI (b
     try {
       const { jenisPekerjaan, namaProyek, kontraktor, standarAcuan } = req.body;
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const prompt = `Kamu adalah QC Manager konstruksi berpengalaman 20 tahun. Buat Inspection Test Plan (ITP) lengkap dan formal.
 
 Jenis Pekerjaan: ${jenisPekerjaan}
@@ -29241,7 +29241,7 @@ Buat 8-12 item ITP yang relevan dan komprehensif untuk jenis pekerjaan tersebut.
     try {
       const { jenisTender, nilaiPekerjaan, klasifikasiBUJK, kondisiKhusus } = req.body;
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const prompt = `Kamu adalah konsultan pengadaan konstruksi berpengalaman di Indonesia. Buat panduan proses tender BUJK yang komprehensif.
 
 Jenis Tender: ${jenisTender}
@@ -29294,7 +29294,7 @@ Buat 6-8 tahapan lengkap dan 5-6 kesalahan umum. Balas hanya JSON valid.`;
     try {
       const { jenisProyek, namaProyek, tanggalLaporan, kondisiCuaca, kegiatanHariIni, progressKumulatif, masalah } = req.body;
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const prompt = `Kamu adalah Site Manager konstruksi berpengalaman. Buat laporan harian proyek konstruksi yang formal dan lengkap.
 
 Jenis Proyek: ${jenisProyek}
@@ -29356,7 +29356,7 @@ Buat 3-5 item kegiatan, 4-6 jabatan personel, 2-4 peralatan. Balas hanya JSON va
     try {
       const { action, topik, level, totalSoal, nomorSoal, soal, jawaban, opsiJawaban, riwayat } = req.body;
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
 
       if (action === "start") {
         const prompt = `Kamu adalah instruktur K3 Konstruksi bersertifikat AK3 Umum dan ISO 45001 Lead Auditor. Buat soal pertama untuk quiz K3 konstruksi.
@@ -29442,7 +29442,7 @@ Balas hanya JSON valid.`;
     try {
       const { jenisPekerjaan, standar, levelResiko, konteks } = req.body;
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const prompt = `Kamu adalah HSE Manager berpengalaman 20 tahun di konstruksi. Buat SOP pekerjaan konstruksi yang komprehensif dan realistis.
 
 Jenis Pekerjaan: ${jenisPekerjaan}
@@ -29496,7 +29496,7 @@ Balas hanya JSON valid.`;
     try {
       const { jenisProyek, skala, konteks } = req.body;
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const prompt = `Kamu adalah konsultan lingkungan hidup berpengalaman di konstruksi Indonesia. Buat panduan pengelolaan limbah konstruksi yang komprehensif.
 
 Jenis Proyek: ${jenisProyek}
@@ -29548,7 +29548,7 @@ Balas hanya JSON valid.`;
     try {
       const { jenisLaporan, namaProyek, periode, nilaiKontrak, statusProyek, konteks } = req.body;
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const prompt = `Kamu adalah Project Manager konstruksi berpengalaman. Buat laporan kemajuan proyek yang profesional dan realistis.
 
 Jenis Laporan: ${jenisLaporan}
@@ -29605,7 +29605,7 @@ Balas hanya JSON valid.`;
     try {
       const { skala, bidang, target, kondisi } = req.body;
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const prompt = `Kamu adalah konsultan SMK3 dan ISO 45001 berpengalaman 15 tahun. Buat panduan implementasi SMK3 yang komprehensif dan realistis.
 
 Skala Perusahaan: ${skala}
@@ -29660,7 +29660,7 @@ Balas hanya JSON valid.`;
     try {
       const { jenisPengadaan, sumberDana, nilaiPagu, konteks } = req.body;
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const prompt = `Kamu adalah Ahli Pengadaan Barang/Jasa Pemerintah (PBJP) bersertifikat dan konsultan pengadaan konstruksi berpengalaman 20 tahun. Generate panduan pengadaan konstruksi yang komprehensif dan akurat.
 
 Jenis Pengadaan: ${jenisPengadaan}
@@ -29721,7 +29721,7 @@ Hasilkan JSON valid, komprehensif, sesuai regulasi terbaru 2024-2025.`;
     try {
       const { jenisTemuan, standarAcuan, lokasiPekerjaan, deskripsiSingkat } = req.body;
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const tanggalHari = new Date().toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" });
       const prompt = `Kamu adalah Lead Auditor ISO 9001/ISO 45001/CSMS dengan pengalaman 15 tahun dalam audit konstruksi. Generate NCR/CAR Report formal yang profesional dan sesuai standar audit internasional.
 
@@ -29779,7 +29779,7 @@ Hasilkan JSON valid dan profesional.`;
     try {
       const { jabatan, topik, jumlahSoal } = req.body;
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const prompt = `Kamu adalah penyusun soal ujian teori SKK (Sertifikat Kompetensi Kerja) Konstruksi yang berpengalaman. Buat bank soal pilihan ganda yang akurat, relevan, dan bervariasi tingkat kesulitan untuk ujian SKK.
 
 Jabatan: ${jabatan}
@@ -29827,7 +29827,7 @@ Hasilkan JSON valid dengan tepat ${jumlahSoal} soal.`;
     try {
       const { jenisBAST, jenisProyek, namaProyek, nilaiKontrak, sumberAnggaran, keterangan } = req.body;
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const tanggalHari = new Date().toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" });
       const prompt = `Kamu adalah konsultan MK (Manajemen Konstruksi) dan ahli administrasi kontrak konstruksi berpengalaman 20 tahun. Generate Berita Acara Serah Terima (BAST) konstruksi yang formal, lengkap, dan sah secara hukum.
 
@@ -29903,7 +29903,7 @@ Hasilkan JSON valid dan profesional.`;
     try {
       const { jenisProyek, durasiKontrak, metode, namaProyek, catatanKhusus } = req.body;
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const prompt = `Kamu adalah project planner konstruksi berpengalaman 20 tahun. Buat jadwal pelaksanaan proyek yang realistis dan terstruktur.
 
 Jenis Proyek: ${jenisProyek}
@@ -29950,7 +29950,7 @@ Buat 15-25 item pekerjaan yang logis untuk ${jenisProyek}. Bobot semua item haru
     try {
       const { jenisBangunan, statusLahan, wilayah, luasLantai, jumlahLantai } = req.body;
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const prompt = `Kamu adalah konsultan perizinan bangunan berpengalaman 15 tahun, ahli PP 16/2021 tentang Peraturan Pelaksanaan UU Cipta Kerja di bidang bangunan gedung.
 
 Jenis Bangunan: ${jenisBangunan}
@@ -29999,7 +29999,7 @@ Buat 5-8 tahapan, 8-12 dokumen teknis, 4-6 syarat khusus, 5 kesalahan umum, 5 ti
     try {
       const { jenisAudit, jenisProyek, skalaTemuan, namaProyek, periodeAudit } = req.body;
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
       const prompt = `Kamu adalah lead auditor K3 bersertifikat ISO 45001 dan ahli PP 50/2012 dengan pengalaman 20 tahun di proyek konstruksi.
 
 Jenis Audit: ${jenisAudit}
@@ -30125,7 +30125,7 @@ LARANGAN:
     try {
       const { messages = [] } = req.body;
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
 
       const safeMessages = (messages as any[])
         .filter((m: any) => m && typeof m.content === "string" && ["user", "assistant"].includes(m.role))
@@ -30168,7 +30168,7 @@ Gunakan bahasa Indonesia yang hangat dan menyemangati.`;
     try {
       const { messages = [] } = req.body;
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
 
       const safeMessages = (messages as any[])
         .filter((m: any) => m && typeof m.content === "string" && ["user", "assistant"].includes(m.role))
@@ -30224,7 +30224,7 @@ Buat terasa personal dan berdasarkan detail nyata dari dialog. Bahasa Indonesia 
     try {
       const { messages = [] } = req.body;
       const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
 
       const safeMessages = (messages as any[])
         .filter((m: any) => m && typeof m.content === "string" && ["user", "assistant"].includes(m.role))
