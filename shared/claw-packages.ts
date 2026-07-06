@@ -171,6 +171,7 @@ export const CLAW_PACKAGES: ClawPackage[] = [
     icon: "TrendingUp",
     color: "rose",
     routes: [
+      "/market-intelligence-claw",
       "/digital-marketing-claw",
       "/crm-sales-claw",
       "/brand-content-claw",

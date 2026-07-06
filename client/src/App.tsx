@@ -155,6 +155,7 @@ import GeologiClawChat from "@/pages/geologi-claw";
 import OffshoreClawChat from "@/pages/offshore-safety-claw";
 import TransisiEnergiClawChat from "@/pages/transisi-energi-claw";
 import DigitalMarketingClawChat from "@/pages/digital-marketing-claw";
+import MarketIntelligenceClawChat from "@/pages/market-intelligence-claw";
 import CrmSalesClawChat from "@/pages/crm-sales-claw";
 import BrandContentClawChat from "@/pages/brand-content-claw";
 import EcommerceClawChat from "@/pages/ecommerce-claw";
@@ -933,6 +934,15 @@ function Router() {
             highlights={["JETP/NZE 2060 — CIPP Indonesia, coal phase-down, climate finance blended","Green Hydrogen — elektrolizer PEM/alkaline, LCOH, CCUS PP 2/2023","IDXCarbon — NEK Perpres 98/2021, VCM, Artikel 6, SBTi corporate net zero","ETM PLTU — early retirement ADB, stranded asset, just transition"]}
             icon={<span className="text-4xl">🌿</span>}
           ><TransisiEnergiClawChat /></PremiumPageGuard>
+        )} />
+        <Route path="/market-intelligence-claw" component={() => (
+          <PremiumPageGuard
+            feature="claw_bisnis" requiredPlan="bisnis"
+            title="MarketIntelligenceClaw — Ketua Tim Riset Pasar & Intelijen Marketing"
+            description="8 divisi intelijen pasar bekerja paralel (dibagi per FUNGSI, bukan platform): intel kompetitor & bedah iklan, riset audiens & persona, tren pasar & permintaan, angle & pesan jualan, hook & kreatif, struktur penawaran & harga, kanal & distribusi, serta funnel & konversi. Ubah satu subjek riset (profesi/usaha/konten/produk) jadi laporan intelijen + amunisi iklan siap pakai."
+            highlights={["Intel Kompetitor — bedah angle & iklan pesaing, celah positioning","Audiens & Persona — pain/desire, bahasa pelanggan, segmen prioritas","Amunisi Iklan — angle, hook/headline, struktur penawaran siap uji","Aksi 7 Hari — laporan intelijen langsung jadi rencana eksekusi"]}
+            icon={<span className="text-4xl">🎯</span>}
+          ><MarketIntelligenceClawChat /></PremiumPageGuard>
         )} />
         <Route path="/digital-marketing-claw" component={() => (
           <PremiumPageGuard

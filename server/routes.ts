@@ -21497,6 +21497,15 @@ POLA KERJA: ELICIT (pahami tahap & niat) â†’ DISPATCH (agen sesuai kebutuhan) â†
     } catch (err: any) { res.status(500).json({ error: err.message }); }
   });
 
+  // GET /api/market-intelligence-claw/orchestrator
+  app.get("/api/market-intelligence-claw/orchestrator", async (_req, res) => {
+    try {
+      const agent = await storage.getAgentBySlug("market-intelligence-claw-orchestrator");
+      if (!agent) return res.status(404).json({ error: "MarketIntelligenceClaw Orchestrator tidak ditemukan." });
+      res.json({ id: agent.id, name: (agent as any).name, tagline: (agent as any).tagline, avatar: (agent as any).avatar });
+    } catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
+
   // GET /api/digital-marketing-claw/orchestrator
   app.get("/api/digital-marketing-claw/orchestrator", async (_req, res) => {
     try {

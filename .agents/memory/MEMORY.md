@@ -42,3 +42,4 @@
 - [Partner seat license (Model B)](partner-seat-license.md) — seat claim/revoke must be one atomic tx under pg_advisory_xact_lock (race+drift safe); signup provision stays best-effort by design; pooled mode (seatCapacity=0) must 400 on every partner-admin seat MUTATION.
 - [Gustafta AI OS — 5 Pilar direction](gustafta-os-vision.md) — evolve to AI OS via 5 pillars (Coach/Claw/Workroom/Academy/Competency); modular MONOLITH not microservices; map to existing tables (no duplicates); curation-first, Workroom(Tender) next.
 - [Subscription grant audit](subscription-grant-audit.md) — grantedBy must be stamped on EVERY admin-mediated active-sub insert (early-adopter AND trial-approval); keep it immutable in the PATCH.
+- [Sellable claw seed](sellable-claw-seed.md) — Store-listed hands-off product needs isListed+premiumClass:private (createAgent DROPS both → post-create updateAgent); use aiModel not model; seed must RECONCILE not early-return.
