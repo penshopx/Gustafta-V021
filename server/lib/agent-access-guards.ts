@@ -25,7 +25,17 @@ export interface AgentAccessGuardDeps {
 }
 
 function userIdOf(req: any): string {
-  return (req?.user as any)?.claims?.sub || (req?.user as any)?.id || "";
+  // Kenali DUA jalur login: passport OIDC (req.user) DAN email-session
+  // (req.session.emailUser). Route chat (/api/messages*) SENGAJA tanpa middleware
+  // isAuthenticated (agar chat publik/anonim tetap jalan), jadi req.user TIDAK
+  // terisi untuk user login-email — tanpa fallback ini guard salah balas 401.
+  // Cermin pola rate-limiter (server/lib/rate-limiter.ts).
+  return (
+    (req?.user as any)?.claims?.sub ||
+    (req?.user as any)?.id ||
+    (req?.session as any)?.emailUser?.id ||
+    ""
+  );
 }
 
 function adminIdsFromEnv(): string[] {
