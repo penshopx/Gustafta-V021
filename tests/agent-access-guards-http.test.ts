@@ -44,10 +44,15 @@ const guards = makeAgentAccessGuards({
   adminUserIds: () => [], // jangan baca env; admin hanya via getDbRole di atas
 });
 
-// Auth shim: header x-test-user menetapkan req.user.id; tanpa header = anonim.
+// Auth shim: header x-test-user menetapkan req.user.id (jalur passport OIDC).
+// Header x-test-email-user menetapkan req.session.emailUser.id TANPA req.user
+// (jalur login-email; meniru route chat yang tak pakai middleware isAuthenticated).
+// Tanpa header = anonim.
 function authShim(req: any, _res: any, next: any) {
   const uid = req.headers["x-test-user"];
   if (uid) req.user = { id: String(uid) };
+  const emailUid = req.headers["x-test-email-user"];
+  if (emailUid) req.session = { emailUser: { id: String(emailUid) } };
   next();
 }
 
@@ -123,6 +128,11 @@ function req(method: string, path: string, userId?: string) {
   const headers: Record<string, string> = {};
   if (userId) headers["x-test-user"] = userId;
   return fetch(`${baseUrl}${path}`, { method, headers });
+}
+
+// Request sebagai user login-EMAIL (req.session.emailUser, TANPA req.user).
+function reqEmail(method: string, path: string, userId: string) {
+  return fetch(`${baseUrl}${path}`, { method, headers: { "x-test-email-user": userId } });
 }
 
 // ── MUTASI konfigurasi (PATCH /config → assertCanMutateAgent) ──────────────────
@@ -208,6 +218,26 @@ test("HTTP chat: privat & admin 200", async () => {
 });
 test("HTTP chat: agen sistem (tanpa owner) login non-admin boleh 200", async () => {
   const r = await req("GET", `/api/agents/${systemAgentId}/messages`, strangerId);
+  assert.equal(r.status, 200);
+});
+
+// ── LOGIN-EMAIL (req.session.emailUser, TANPA req.user) — regresi "tidak bisa chat"
+// Route chat tak pakai middleware isAuthenticated, jadi req.user tak terisi untuk
+// user login-email; guard WAJIB tetap mengenalinya via session.emailUser.id.
+test("HTTP chat email-session: agen sistem (tanpa owner) boleh 200 (bukan 401)", async () => {
+  const r = await reqEmail("GET", `/api/agents/${systemAgentId}/messages`, strangerId);
+  assert.equal(r.status, 200);
+});
+test("HTTP chat email-session: privat & owner 200", async () => {
+  const r = await reqEmail("GET", `/api/agents/${privateAgentId}/messages`, ownerId);
+  assert.equal(r.status, 200);
+});
+test("HTTP chat email-session: privat & stranger 403 (IDOR tetap ditutup)", async () => {
+  const r = await reqEmail("GET", `/api/agents/${privateAgentId}/messages`, strangerId);
+  assert.equal(r.status, 403);
+});
+test("HTTP chat email-session: privat & viewer kolaborator boleh baca 200", async () => {
+  const r = await reqEmail("GET", `/api/agents/${privateAgentId}/messages`, viewerId);
   assert.equal(r.status, 200);
 });
 
