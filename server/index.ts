@@ -134,6 +134,7 @@ import * as M_offshoreSafetyClaw from "./seed-offshore-safety-claw";
 import * as M_transisiEnergiClaw from "./seed-transisi-energi-claw";
 import * as M_digitalMarketingClaw from "./seed-digital-marketing-claw";
 import * as M_marketIntelligenceClaw from "./seed-market-intelligence-claw";
+import * as M_autopilotJualan from "./seed-autopilot-jualan";
 import * as M_crmSalesClaw from "./seed-crm-sales-claw";
 import * as M_brandContentClaw from "./seed-brand-content-claw";
 import * as M_ecommerceClaw from "./seed-ecommerce-claw";
@@ -1794,6 +1795,14 @@ Data yang belum tersedia akan saya estimasi dengan standar industri dan ditandai
         await seedMarketIntelligenceClaw();
       } catch (err) {
         log("[Seed MarketIntelligenceClaw] Error: " + (err as Error).message);
+      }
+
+      // Seed: Auto-Pilot Jualan — Ketua Tim Kampanye Otomatis (6 divisi, SELLABLE Premium K2)
+      try {
+        const { seedAutopilotJualan } = M_autopilotJualan;
+        await seedAutopilotJualan();
+      } catch (err) {
+        log("[Seed AutopilotJualan] Error: " + (err as Error).message);
       }
 
       // Seed: CrmSalesClaw — AI Konsultan CRM & Sales Indonesia (8 spesialis)

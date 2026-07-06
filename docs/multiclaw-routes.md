@@ -1,8 +1,8 @@
-# MultiClaw Suite — Route Reference (81 halaman)
+# MultiClaw Suite — Route Reference (82 halaman)
 
 Semua halaman pakai `PremiumPageGuard` feature="advanced_ai_tools" requiredPlan="profesional". SSE streaming, sub-agent panel dots, legend strip, 6 sample prompts.
 
-**Paket Bidang (model Kombinasi)**: `shared/claw-packages.ts` = sumber tunggal 10 paket bidang (68 route) + `BASE_CLAW_ROUTES` (13 claw dasar Starter) = 81 claw. Aturan: Profesional pilih 2 paket (`PRO_PACKAGE_SLOTS`), pilihan TERKUNCI setelah simpan (atomic claim, reset via `POST /api/admin/claw-packages/reset/:userId`); Bisnis/Enterprise buka semua; paket terpilih meng-override feature flag lama (claw eks-Bisnis ikut terbuka). Gating di `PremiumPageGuard` via `useLocation()` + `packageForRoute()` — TANPA edit 81 halaman claw. API: `GET /api/claw-packages/my`, `POST /api/claw-packages/select`. Kolom: `users.selected_claw_packages varchar[]`. UI pilih: `client/src/pages/paket-bidang.tsx` (route `/paket-bidang`). Hook: `use-claw-packages.ts`.
+**Paket Bidang (model Kombinasi)**: `shared/claw-packages.ts` = sumber tunggal 10 paket bidang (69 route) + `BASE_CLAW_ROUTES` (13 claw dasar Starter) = 82 claw. Aturan: Profesional pilih 2 paket (`PRO_PACKAGE_SLOTS`), pilihan TERKUNCI setelah simpan (atomic claim, reset via `POST /api/admin/claw-packages/reset/:userId`); Bisnis/Enterprise buka semua; paket terpilih meng-override feature flag lama (claw eks-Bisnis ikut terbuka). Gating di `PremiumPageGuard` via `useLocation()` + `packageForRoute()` — TANPA edit 82 halaman claw. API: `GET /api/claw-packages/my`, `POST /api/claw-packages/select`. Kolom: `users.selected_claw_packages varchar[]`. UI pilih: `client/src/pages/paket-bidang.tsx` (route `/paket-bidang`). Hook: `use-claw-packages.ts`.
 
 Endpoint: `GET /api/{nama}-claw/orchestrator` → `{ id, name, tagline, avatar }`. Semua route pakai `getAgentBySlug` sebagai primary lookup — JANGAN ganti ke hardcoded ID.
 
@@ -60,6 +60,7 @@ Endpoint: `GET /api/{nama}-claw/orchestrator` → `{ id, name, tagline, avatar }
 | `/energi-claw` | EnergiClaw — Konsultan Energi & EBT | 8 | energi-claw-orchestrator | orange |
 | `/pertambangan-claw` | PertambanganClaw — Konsultan Pertambangan | 8 | pertambangan-claw-orchestrator | stone |
 | `/market-intelligence-claw` | MarketIntelligenceClaw — Ketua Tim Riset Pasar & Intelijen Marketing (SELLABLE Premium K2, `premiumClass:private`, `isListed`) | 8 | market-intelligence-claw-orchestrator | emerald |
+| `/autopilot-jualan` | Auto-Pilot Jualan — Ketua Tim Kampanye Otomatis (SELLABLE Premium K2, `premiumClass:private`, `isListed`) | 6 | autopilot-jualan-orchestrator | indigo |
 | `/digital-marketing-claw` | DigitalMarketingClaw — AI Konsultan Digital Marketing | 8 | digital-marketing-claw-orchestrator | violet |
 | `/crm-sales-claw` | CrmSalesClaw — AI Konsultan CRM & Sales | 8 | crm-sales-claw-orchestrator | blue |
 | `/brand-content-claw` | BrandContentClaw — AI Konsultan Brand & Content | 8 | brand-content-claw-orchestrator | rose |
