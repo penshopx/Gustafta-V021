@@ -21515,6 +21515,33 @@ POLA KERJA: ELICIT (pahami tahap & niat) â†’ DISPATCH (agen sesuai kebutuhan) â†
     } catch (err: any) { res.status(500).json({ error: err.message }); }
   });
 
+  // GET /api/riset-audiens/orchestrator
+  app.get("/api/riset-audiens/orchestrator", async (_req, res) => {
+    try {
+      const agent = await storage.getAgentBySlug("riset-audiens-orchestrator");
+      if (!agent) return res.status(404).json({ error: "Riset Audiens Orchestrator tidak ditemukan." });
+      res.json({ id: agent.id, name: (agent as any).name, tagline: (agent as any).tagline, avatar: (agent as any).avatar });
+    } catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
+
+  // GET /api/funnel-otomatis/orchestrator
+  app.get("/api/funnel-otomatis/orchestrator", async (_req, res) => {
+    try {
+      const agent = await storage.getAgentBySlug("funnel-otomatis-orchestrator");
+      if (!agent) return res.status(404).json({ error: "Funnel Otomatis Orchestrator tidak ditemukan." });
+      res.json({ id: agent.id, name: (agent as any).name, tagline: (agent as any).tagline, avatar: (agent as any).avatar });
+    } catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
+
+  // GET /api/agen-keputusan/orchestrator
+  app.get("/api/agen-keputusan/orchestrator", async (_req, res) => {
+    try {
+      const agent = await storage.getAgentBySlug("agen-keputusan-orchestrator");
+      if (!agent) return res.status(404).json({ error: "Agen Keputusan Orchestrator tidak ditemukan." });
+      res.json({ id: agent.id, name: (agent as any).name, tagline: (agent as any).tagline, avatar: (agent as any).avatar });
+    } catch (err: any) { res.status(500).json({ error: err.message }); }
+  });
+
   // GET /api/digital-marketing-claw/orchestrator
   app.get("/api/digital-marketing-claw/orchestrator", async (_req, res) => {
     try {

@@ -135,6 +135,9 @@ import * as M_transisiEnergiClaw from "./seed-transisi-energi-claw";
 import * as M_digitalMarketingClaw from "./seed-digital-marketing-claw";
 import * as M_marketIntelligenceClaw from "./seed-market-intelligence-claw";
 import * as M_autopilotJualan from "./seed-autopilot-jualan";
+import * as M_risetAudiens from "./seed-riset-audiens";
+import * as M_funnelOtomatis from "./seed-funnel-otomatis";
+import * as M_agenKeputusan from "./seed-agen-keputusan";
 import * as M_crmSalesClaw from "./seed-crm-sales-claw";
 import * as M_brandContentClaw from "./seed-brand-content-claw";
 import * as M_ecommerceClaw from "./seed-ecommerce-claw";
@@ -1803,6 +1806,30 @@ Data yang belum tersedia akan saya estimasi dengan standar industri dan ditandai
         await seedAutopilotJualan();
       } catch (err) {
         log("[Seed AutopilotJualan] Error: " + (err as Error).message);
+      }
+
+      // Seed: Riset Audiens — Ketua Tim Riset Audiens Mendalam (6 divisi, SELLABLE Premium K2)
+      try {
+        const { seedRisetAudiens } = M_risetAudiens;
+        await seedRisetAudiens();
+      } catch (err) {
+        log("[Seed RisetAudiens] Error: " + (err as Error).message);
+      }
+
+      // Seed: Funnel Otomatis — Ketua Tim Funnel & Follow-up (6 divisi, SELLABLE Premium K2)
+      try {
+        const { seedFunnelOtomatis } = M_funnelOtomatis;
+        await seedFunnelOtomatis();
+      } catch (err) {
+        log("[Seed FunnelOtomatis] Error: " + (err as Error).message);
+      }
+
+      // Seed: Agen Keputusan — Ketua Tim Analisa Keputusan (6 divisi, SELLABLE Premium K2)
+      try {
+        const { seedAgenKeputusan } = M_agenKeputusan;
+        await seedAgenKeputusan();
+      } catch (err) {
+        log("[Seed AgenKeputusan] Error: " + (err as Error).message);
       }
 
       // Seed: CrmSalesClaw — AI Konsultan CRM & Sales Indonesia (8 spesialis)
