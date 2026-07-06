@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { MessageContent } from "@/lib/format-message";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -186,14 +187,18 @@ export default function DemoChat({ agentId, agentName, avatar, chatUrl, ctaText 
               </div>
             )}
             <div
-              className={`max-w-[80%] rounded-2xl px-3.5 py-2 text-sm whitespace-pre-wrap ${
+              className={`max-w-[80%] rounded-2xl px-3.5 py-2 text-sm ${
                 msg.role === "user"
-                  ? "bg-primary text-primary-foreground rounded-br-sm"
+                  ? "bg-primary text-primary-foreground rounded-br-sm whitespace-pre-wrap"
                   : "bg-muted rounded-bl-sm"
               }`}
               data-testid={`text-demo-message-${i}`}
             >
-              {msg.content || (isStreaming && i === messages.length - 1 ? "…" : "")}
+              {msg.role === "user"
+                ? (msg.content || "")
+                : (msg.content
+                    ? <MessageContent text={msg.content} className="text-sm" />
+                    : (isStreaming && i === messages.length - 1 ? "…" : ""))}
             </div>
             {msg.role === "user" && (
               <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center shrink-0 mt-0.5">

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { parseBrainUpdates, BrainChip } from "@/lib/brain-utils";
+import { MessageContent } from "@/lib/format-message";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -181,10 +182,10 @@ function ChatMessage({ msg }: { msg: Message }) {
           <SubAgentPanel agents={msg.subAgents} />
         )}
         <div
-          className="mt-2 text-sm text-white/90 leading-relaxed whitespace-pre-wrap"
+          className="mt-2 text-sm text-white/90 leading-relaxed"
           style={{ wordBreak: "break-word" }}
         >
-          {cleanContent || (msg.isStreaming ? <span className="animate-pulse">▋</span> : "")}
+          {msg.isStreaming && !cleanContent ? <span className="animate-pulse">▋</span> : <MessageContent text={cleanContent || ""} className="text-sm text-white/90" />}
         </div>
         <BrainChip fields={brainFields} />
         {!isUser && msg.orchestrationMs && msg.subAgents && msg.subAgents.length > 0 && (

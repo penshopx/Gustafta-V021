@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { parseBrainUpdates, BrainChip } from "@/lib/brain-utils";
+import { MessageContent } from "@/lib/format-message";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -229,13 +230,15 @@ function MessageBubble({ msg }: { msg: Message }) {
           <SubAgentPanel agents={msg.subAgents!} sirupFetch={msg.sirupFetch} />
         )}
         <div
-          className={`rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
+          className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
             isUser
-              ? "bg-blue-900/30 text-blue-100 border border-blue-700/40"
+              ? "bg-blue-900/30 text-blue-100 border border-blue-700/40 whitespace-pre-wrap"
               : "bg-white/5 text-white/90 border border-white/10"
           }`}
         >
-          {cleanContent || (msg.isStreaming ? <span className="animate-pulse">▋</span> : "")}
+          {isUser
+            ? (cleanContent || "")
+            : (msg.isStreaming && !cleanContent ? <span className="animate-pulse">▋</span> : <MessageContent text={cleanContent || ""} className="text-sm text-white/90" />)}
         </div>
         {!isUser && <BrainChip fields={brainFields} />}
         {!isUser && msg.orchestrationMs && (
