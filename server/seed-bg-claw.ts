@@ -268,7 +268,7 @@ export async function seedBgClaw() {
     try {
       const existing = await storage.getAgentBySlug(sa.slug);
       if (existing) { log(`${LOG} Exists: ${sa.code} (ID ${existing.id})`); subAgentIds.push(existing.id); continue; }
-      const agent = await (storage as any).createAgent({ name: sa.name, description: sa.tagline, systemPrompt: sa.prompt, model: "gpt-4o-mini", avatar: sa.avatar, tagline: sa.tagline, isPublic: false, isActive: true, userId: null, temperature: 0.2, maxTokens: 2000, welcomeMessage: `Selamat datang! Saya spesialis ${sa.code}.`, slug: sa.slug, agenticSubAgents: null, knowledgeBaseId: null });
+      const agent = await (storage as any).createAgent({ name: sa.name, description: sa.tagline, systemPrompt: sa.prompt, model: "gpt-4o", avatar: sa.avatar, tagline: sa.tagline, isPublic: false, isActive: true, userId: null, temperature: 0.2, maxTokens: 2000, welcomeMessage: `Selamat datang! Saya spesialis ${sa.code}.`, slug: sa.slug, agenticSubAgents: null, knowledgeBaseId: null });
       subAgentIds.push(agent.id);
       log(`${LOG} Created ${sa.code} (ID ${agent.id})`);
     } catch (err) { log(`${LOG} Error ${sa.code}: ${(err as Error).message}`); }

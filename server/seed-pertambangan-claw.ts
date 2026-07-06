@@ -585,7 +585,7 @@ export async function seedPertambanganClaw() {
       } else {
         const agent = await storage.createAgent({
           name: sa.name, slug: sa.slug, description: sa.tagline, tagline: sa.tagline,
-          systemPrompt: sa.prompt, model: "gpt-4o-mini", maxTokens: 2000,
+          systemPrompt: sa.prompt, model: "gpt-4o", maxTokens: 2000,
           temperature: "0.3", isPublic: false, isEnabled: true,
           category: "energy", avatar: sa.avatar,
         } as any);
@@ -618,7 +618,7 @@ export async function seedPertambanganClaw() {
         slug: orchSlug,
         description: "8 spesialis pertambangan paralel: perizinan IUP/IUPK, geologi eksplorasi, teknik penambangan, pengolahan & smelter, K3 tambang, lingkungan & reklamasi, PNBP & CSR, regulasi UU Minerba 3/2020.",
         tagline: "8 Spesialis: IUP · Eksplorasi · Tambang · Pengolahan · K3 · Lingkungan · CSR · Regulasi",
-        systemPrompt: PROMPT_ORCH, model: "gpt-4o-mini", maxTokens: 3000,
+        systemPrompt: PROMPT_ORCH, model: "gpt-4o", maxTokens: 3000,
         temperature: "0.3", isPublic: false, isEnabled: true,
         category: "energy", avatar: "⛏️",
         agenticSubAgents: agenticSubAgents as any,

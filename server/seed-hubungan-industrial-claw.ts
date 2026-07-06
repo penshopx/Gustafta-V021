@@ -583,7 +583,7 @@ export async function seedHubunganIndustrialClaw() {
       } else {
         const agent = await storage.createAgent({
           name: sa.name, slug: sa.slug, description: sa.tagline, tagline: sa.tagline,
-          systemPrompt: sa.prompt, model: "gpt-4o-mini", maxTokens: 2000,
+          systemPrompt: sa.prompt, model: "gpt-4o", maxTokens: 2000,
           temperature: "0.3", isPublic: false, isEnabled: true,
           category: "hr", avatar: sa.avatar,
         } as any);
@@ -616,7 +616,7 @@ export async function seedHubunganIndustrialClaw() {
         slug: orchSlug,
         description: "8 spesialis HR & hubungan industrial paralel: PKB/SP, PHK & pesangon, upah & SSU, BPJS 5 program, PHI, perjanjian kerja & outsourcing, K3 & kesejahteraan, compliance WLKP & TKA.",
         tagline: "8 Spesialis: PKB · PHK · Upah · BPJS · PHI · Perjanjian · K3 · Compliance",
-        systemPrompt: PROMPT_ORCH, model: "gpt-4o-mini", maxTokens: 3000,
+        systemPrompt: PROMPT_ORCH, model: "gpt-4o", maxTokens: 3000,
         temperature: "0.3", isPublic: false, isEnabled: true,
         category: "hr", avatar: "🤝",
         agenticSubAgents: agenticSubAgents as any,

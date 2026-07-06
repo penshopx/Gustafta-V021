@@ -44,3 +44,4 @@
 - [Subscription grant audit](subscription-grant-audit.md) — grantedBy must be stamped on EVERY admin-mediated active-sub insert (early-adopter AND trial-approval); keep it immutable in the PATCH.
 - [Sellable claw seed](sellable-claw-seed.md) — Store-listed hands-off product needs isListed+premiumClass:private (createAgent DROPS both → post-create updateAgent); use aiModel not model; seed must RECONCILE not early-return.
 - [Inter-agent invocation authz](inter-agent-invocation-authz.md) — callAgentInternal gate checks ORCHESTRATOR owner not end-user; allow falsy/public sub-agent owner or same-owner. Tightening the falsy-owner rule silently breaks every sold clone.
+- [Claw agent model & durability](claw-agent-model.md) — claw answers driven by model tier not KB; raw ai_model UPDATE reverts on boot (force-reseed); fix seed literals + storage `model→aiModel` backstop; KB optional, no auto-update for claw.

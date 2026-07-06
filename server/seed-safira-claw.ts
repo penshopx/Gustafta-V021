@@ -154,7 +154,7 @@ export async function seedSafiraClaw() {
       name: sa.name, slug: sa.slug,
       description: `Spesialis SKK K3: ${sa.role}`,
       systemPrompt: sa.systemPrompt,
-      model: "gpt-4o-mini", temperature: "0.3", maxTokens: 2000,
+      model: "gpt-4o", temperature: "0.3", maxTokens: 2000,
       isPublic: false, isActive: true, tagline: sa.role, avatar: "🦺",
       agenticSubAgents: null,
     } as any);

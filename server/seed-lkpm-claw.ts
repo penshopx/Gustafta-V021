@@ -522,7 +522,7 @@ export async function seedLkpmClaw() {
       } else {
         const agent = await storage.createAgent({
           name: sa.name, slug: sa.slug, description: sa.tagline, tagline: sa.tagline,
-          systemPrompt: sa.prompt, model: "gpt-4o-mini", maxTokens: 2000,
+          systemPrompt: sa.prompt, model: "gpt-4o", maxTokens: 2000,
           temperature: "0.3", isPublic: false, isEnabled: true,
           category: "investment", avatar: sa.avatar,
         } as any);
@@ -555,7 +555,7 @@ export async function seedLkpmClaw() {
         slug: orchSlug,
         description: "7 spesialis penanaman modal paralel: OSS-RBA/NIB, LKPM triwulan, PMA & DPI, Tax Holiday/Allowance, realisasi & verifikasi BKPM, izin teknis K/L, KEK/KIK/KB/PLB.",
         tagline: "7 Spesialis: OSS-NIB · LKPM · PMA · Insentif · Realisasi · Izin Teknis · KEK/KIK",
-        systemPrompt: PROMPT_ORCH, model: "gpt-4o-mini", maxTokens: 3000,
+        systemPrompt: PROMPT_ORCH, model: "gpt-4o", maxTokens: 3000,
         temperature: "0.3", isPublic: false, isEnabled: true,
         category: "investment", avatar: "📊",
         agenticSubAgents: agenticSubAgents as any,

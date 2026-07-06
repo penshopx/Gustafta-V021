@@ -247,7 +247,7 @@ export async function seedOffshoreSafetyClaw() {
     }
     const created = await storage.createAgent({
       name: sa.name, slug: sa.slug, description: `Spesialis Offshore: ${sa.role}`,
-      systemPrompt: sa.systemPrompt, model: "gpt-4o-mini", temperature: "0.3", maxTokens: 2000,
+      systemPrompt: sa.systemPrompt, model: "gpt-4o", temperature: "0.3", maxTokens: 2000,
       isPublic: false, isActive: true, tagline: sa.role, avatar: "🛢️", agenticSubAgents: null,
     } as any);
     console.log(`[Seed OffshoreSafetyClaw] Created: ${sa.role} (ID ${created.id})`);

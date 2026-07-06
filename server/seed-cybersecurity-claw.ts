@@ -556,7 +556,7 @@ export async function seedCybersecurityClaw() {
       } else {
         const agent = await storage.createAgent({
           name: sa.name, slug: sa.slug, description: sa.tagline, tagline: sa.tagline,
-          systemPrompt: sa.prompt, model: "gpt-4o-mini", maxTokens: 2000,
+          systemPrompt: sa.prompt, model: "gpt-4o", maxTokens: 2000,
           temperature: "0.3", isPublic: false, isEnabled: true,
           category: "security", avatar: sa.avatar,
         } as any);
@@ -589,7 +589,7 @@ export async function seedCybersecurityClaw() {
         slug: orchSlug,
         description: "8 spesialis cybersecurity paralel: UU PDP, ISO 27001:2022, NIST CSF 2.0 & Zero Trust, Pentest & OWASP, SOC/SIEM/MITRE ATT&CK, Cloud & DevSecOps, Governance & BCMS, Compliance Indonesia (BSSN/PSE/OJK).",
         tagline: "8 Spesialis: PDP · ISO 27001 · NIST · Pentest · SOC · Cloud · Governance · Indonesia",
-        systemPrompt: PROMPT_ORCH, model: "gpt-4o-mini", maxTokens: 3000,
+        systemPrompt: PROMPT_ORCH, model: "gpt-4o", maxTokens: 3000,
         temperature: "0.3", isPublic: false, isEnabled: true,
         category: "security", avatar: "🔐",
         agenticSubAgents: agenticSubAgents as any,

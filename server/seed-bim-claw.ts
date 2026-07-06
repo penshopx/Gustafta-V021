@@ -253,7 +253,7 @@ export async function seedBimClaw() {
       slug: sa.slug,
       description: `Spesialis BIM: ${sa.role}`,
       systemPrompt: sa.systemPrompt,
-      model: "gpt-4o-mini",
+      model: "gpt-4o",
       temperature: "0.3",
       maxTokens: 2000,
       isPublic: false,

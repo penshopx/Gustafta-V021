@@ -599,7 +599,7 @@ export async function seedSkemaClaw() {
       } else {
         const agent = await storage.createAgent({
           name: sa.name, slug: sa.slug, description: sa.tagline, tagline: sa.tagline,
-          systemPrompt: sa.prompt, model: "gpt-4o-mini", maxTokens: 2000,
+          systemPrompt: sa.prompt, model: "gpt-4o", maxTokens: 2000,
           temperature: "0.3", isPublic: false, isEnabled: true,
           category: "construction", avatar: sa.avatar,
         } as any);

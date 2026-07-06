@@ -541,7 +541,7 @@ export async function seedOssClaw() {
       await storage.updateAgent(String(existing.id), {
         name: sa.name,
         systemPrompt: sa.prompt,
-        model: "gpt-4o-mini",
+        model: "gpt-4o",
         maxTokens: 2000,
       } as any);
       log(`${LOG} Updated: ${sa.role} (ID ${existing.id})`);
@@ -551,7 +551,7 @@ export async function seedOssClaw() {
         name: sa.name,
         slug: sa.slug,
         systemPrompt: sa.prompt,
-        model: "gpt-4o-mini",
+        model: "gpt-4o",
         maxTokens: 2000,
         userId: 1,
         tagline: sa.role,
@@ -585,7 +585,7 @@ export async function seedOssClaw() {
       tagline: "8 Spesialis: NIB · KBLI · Risiko · Izin · Sektoral · Perubahan · LKPM · Kendala",
       avatar: "🏛️",
       agenticSubAgents: agenticSubAgents,
-      model: "gpt-4o-mini",
+      model: "gpt-4o",
       maxTokens: 3000,
     } as any);
     log(`${LOG} Updated OSSClaw Orchestrator (ID ${orchExist.id})`);
@@ -598,7 +598,7 @@ export async function seedOssClaw() {
       tagline: "8 Spesialis: NIB · KBLI · Risiko · Izin · Sektoral · Perubahan · LKPM · Kendala",
       avatar: "🏛️",
       agenticSubAgents: agenticSubAgents,
-      model: "gpt-4o-mini",
+      model: "gpt-4o",
       maxTokens: 3000,
       userId: 1,
       isPublic: false,

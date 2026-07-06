@@ -1004,7 +1004,7 @@ export class DatabaseStorage implements IStorage {
       systemPrompt: insertAgent.systemPrompt || "You are a helpful assistant.",
       temperature: insertAgent.temperature || 0.7,
       maxTokens: insertAgent.maxTokens || 1024,
-      aiModel: insertAgent.aiModel || "gpt-4o-mini",
+      aiModel: insertAgent.aiModel || (insertAgent as any).model || "gpt-4o-mini",
       customApiKey: insertAgent.customApiKey || "",
       customBaseUrl: insertAgent.customBaseUrl || "",
       customModelName: insertAgent.customModelName || "",

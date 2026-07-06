@@ -237,7 +237,7 @@ export async function seedRekrutmenClaw() {
   for (const sa of REK_SUB_AGENTS) {
     const existing = await storage.getAgentBySlug(sa.slug);
     if (existing) { console.log(`[Seed RekrutmenClaw] Already exists: ${sa.role} (ID ${existing.id})`); subAgentIds.push(Number(existing.id)); continue; }
-    const created = await storage.createAgent({ name: sa.name, slug: sa.slug, description: `Spesialis Rekrutmen: ${sa.role}`, systemPrompt: sa.systemPrompt, model: "gpt-4o-mini", temperature: "0.3", maxTokens: 2000, isPublic: false, isActive: true, tagline: sa.role, avatar: "👥", agenticSubAgents: null } as any);
+    const created = await storage.createAgent({ name: sa.name, slug: sa.slug, description: `Spesialis Rekrutmen: ${sa.role}`, systemPrompt: sa.systemPrompt, model: "gpt-4o", temperature: "0.3", maxTokens: 2000, isPublic: false, isActive: true, tagline: sa.role, avatar: "👥", agenticSubAgents: null } as any);
     console.log(`[Seed RekrutmenClaw] Created: ${sa.role} (ID ${created.id})`); subAgentIds.push(Number(created.id));
   }
   console.log(`[Seed RekrutmenClaw] ${subAgentIds.length}/${REK_SUB_AGENTS.length} sub-agents berhasil.`);
