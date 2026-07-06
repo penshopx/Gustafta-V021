@@ -587,7 +587,7 @@ export async function seedEnergiClaw() {
       } else {
         const agent = await storage.createAgent({
           name: sa.name, slug: sa.slug, description: sa.tagline, tagline: sa.tagline,
-          systemPrompt: sa.prompt, model: "gpt-4o-mini", maxTokens: 2000,
+          systemPrompt: sa.prompt, model: "gpt-4o", maxTokens: 2000,
           temperature: "0.3", isPublic: false, isEnabled: true,
           category: "energy", avatar: sa.avatar,
         } as any);
@@ -620,7 +620,7 @@ export async function seedEnergiClaw() {
         slug: orchSlug,
         description: "8 spesialis energi paralel: kebijakan RUEN/KEN/NZE/JETP, PLTS skala besar, PLTB, PLTM/PLTMH, bioenergi & cofiring, konservasi energi, audit ISO 50001, perizinan EBT.",
         tagline: "8 Spesialis: Kebijakan · PLTS · PLTB · PLTM · Bioenergi · Konservasi · Audit · Perizinan",
-        systemPrompt: PROMPT_ORCH, model: "gpt-4o-mini", maxTokens: 3000,
+        systemPrompt: PROMPT_ORCH, model: "gpt-4o", maxTokens: 3000,
         temperature: "0.3", isPublic: false, isEnabled: true,
         category: "energy", avatar: "🔆",
         agenticSubAgents: agenticSubAgents as any,

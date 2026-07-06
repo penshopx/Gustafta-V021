@@ -540,7 +540,7 @@ export async function seedIndustri40Claw() {
       } else {
         const agent = await storage.createAgent({
           name: sa.name, slug: sa.slug, description: sa.tagline, tagline: sa.tagline,
-          systemPrompt: sa.prompt, model: "gpt-4o-mini", maxTokens: 2000,
+          systemPrompt: sa.prompt, model: "gpt-4o", maxTokens: 2000,
           temperature: "0.3", isPublic: false, isEnabled: true,
           category: "tech", avatar: sa.avatar,
         } as any);
@@ -573,7 +573,7 @@ export async function seedIndustri40Claw() {
         slug: orchSlug,
         description: "8 spesialis Industri 4.0 paralel: IIoT, AI/ML manufaktur, automation & robotics, digital twin, big data analytics, OT cybersecurity, cloud/ERP, Making Indonesia 4.0.",
         tagline: "8 Spesialis: IoT · AI/ML · Automation · Digital Twin · Data · OT Security · Cloud/ERP · Making Indonesia 4.0",
-        systemPrompt: PROMPT_ORCH, model: "gpt-4o-mini", maxTokens: 3000,
+        systemPrompt: PROMPT_ORCH, model: "gpt-4o", maxTokens: 3000,
         temperature: "0.3", isPublic: false, isEnabled: true,
         category: "tech", avatar: "🤖",
         agenticSubAgents: agenticSubAgents as any,

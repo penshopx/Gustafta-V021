@@ -666,7 +666,7 @@ export async function seedArsitekturClaw() {
       if (existing) {
         await storage.updateAgent(String(existing.id), {
           name: def.name, tagline: def.tagline, description: def.description,
-          systemPrompt: def.systemPrompt, aiModel: "gpt-4o-mini", maxTokens: def.tokens,
+          systemPrompt: def.systemPrompt, aiModel: "gpt-4o", maxTokens: def.tokens,
           avatar: def.avatar,
         } as any);
         subAgentIds.push(existing.id);
@@ -674,7 +674,7 @@ export async function seedArsitekturClaw() {
       } else {
         const created = await storage.createAgent({
           slug: def.slug, name: def.name, tagline: def.tagline, description: def.description,
-          systemPrompt: def.systemPrompt, aiModel: "gpt-4o-mini", maxTokens: def.tokens,
+          systemPrompt: def.systemPrompt, aiModel: "gpt-4o", maxTokens: def.tokens,
           avatar: def.avatar, category: "Arsitektur",
           isOrchestrator: false, isPublic: false, isActive: true, isEnabled: true,
           agenticMode: false, ragEnabled: false,

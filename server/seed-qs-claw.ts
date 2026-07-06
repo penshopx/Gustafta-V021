@@ -492,7 +492,7 @@ export async function seedQSClaw() {
       const slug = sa.code.toLowerCase().replace(/[^a-z0-9]/g, "-") + "-qsclaw";
       const existing = await storage.getAgentBySlug(slug);
       if (existing) { log(`${LOG} Already exists: ${sa.code} (ID ${existing.id})`); subAgentIds.push(existing.id); continue; }
-      const agent = await (storage as any).createAgent({ name: sa.name, description: sa.description, systemPrompt: sa.prompt, model: "gpt-4o-mini", avatar: sa.avatar, tagline: sa.tagline, isPublic: false, isActive: true, userId: null, temperature: 0.3, maxTokens: 2000, welcomeMessage: `Selamat datang di ${sa.name}.`, slug, agenticSubAgents: null, knowledgeBaseId: null });
+      const agent = await (storage as any).createAgent({ name: sa.name, description: sa.description, systemPrompt: sa.prompt, model: "gpt-4o", avatar: sa.avatar, tagline: sa.tagline, isPublic: false, isActive: true, userId: null, temperature: 0.3, maxTokens: 2000, welcomeMessage: `Selamat datang di ${sa.name}.`, slug, agenticSubAgents: null, knowledgeBaseId: null });
       subAgentIds.push(agent.id);
       log(`${LOG} Created: ${sa.code} (ID ${agent.id})`);
     } catch (err) { log(`${LOG} Error ${sa.code}: ${(err as Error).message}`); }

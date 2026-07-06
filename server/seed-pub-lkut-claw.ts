@@ -600,7 +600,7 @@ export async function seedPubLkutClaw() {
       } else {
         const agent = await storage.createAgent({
           name: sa.name, slug: sa.slug, description: sa.tagline, tagline: sa.tagline,
-          systemPrompt: sa.prompt, model: "gpt-4o-mini", maxTokens: 2000,
+          systemPrompt: sa.prompt, model: "gpt-4o", maxTokens: 2000,
           temperature: "0.3", isPublic: false, isEnabled: true,
           category: "construction", avatar: sa.avatar,
         } as any);
@@ -633,7 +633,7 @@ export async function seedPubLkutClaw() {
         slug: orchSlug,
         description: "8 spesialis bekerja paralel: PUB Umum, PUB Khusus, format LKUT, penilaian kinerja & grading, peran ABU, modul & instruktur, sanksi & compliance, serta strategi peningkatan grade BUJK.",
         tagline: "8 spesialis bekerja paralel: PUB Umum, PUB Khusus, format LKUT, penilaian kinerja & grading, peran ABU, modul & instruktur, sanksi & compliance, serta strategi peningkatan grade BUJK.",
-        systemPrompt: PROMPT_ORCH, model: "gpt-4o-mini", maxTokens: 3000,
+        systemPrompt: PROMPT_ORCH, model: "gpt-4o", maxTokens: 3000,
         temperature: "0.3", isPublic: false, isEnabled: true,
         category: "construction", avatar: "📋",
         agenticSubAgents: agenticSubAgents as any,

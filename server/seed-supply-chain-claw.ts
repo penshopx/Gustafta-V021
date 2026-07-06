@@ -558,7 +558,7 @@ export async function seedSupplyChainClaw() {
       } else {
         const agent = await storage.createAgent({
           name: sa.name, slug: sa.slug, description: sa.tagline, tagline: sa.tagline,
-          systemPrompt: sa.prompt, model: "gpt-4o-mini", maxTokens: 2000,
+          systemPrompt: sa.prompt, model: "gpt-4o", maxTokens: 2000,
           temperature: "0.3", isPublic: false, isEnabled: true,
           category: "supply-chain", avatar: sa.avatar,
         } as any);
@@ -591,7 +591,7 @@ export async function seedSupplyChainClaw() {
         slug: orchSlug,
         description: "8 spesialis SCM paralel: Procurement, Inventory, Warehouse, Logistics, SCOR KPI, Demand Planning S&OP, Risk Management, Digital SC (ERP/IoT/AI).",
         tagline: "8 Spesialis: Procurement · Inventory · Warehouse · Logistics · SCOR · Demand · Risk · Digital",
-        systemPrompt: PROMPT_ORCH, model: "gpt-4o-mini", maxTokens: 3000,
+        systemPrompt: PROMPT_ORCH, model: "gpt-4o", maxTokens: 3000,
         temperature: "0.3", isPublic: false, isEnabled: true,
         category: "supply-chain", avatar: "🚚",
         agenticSubAgents: agenticSubAgents as any,

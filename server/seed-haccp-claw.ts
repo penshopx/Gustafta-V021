@@ -577,7 +577,7 @@ export async function seedHaccpClaw() {
       } else {
         const agent = await storage.createAgent({
           name: sa.name, slug: sa.slug, description: sa.tagline, tagline: sa.tagline,
-          systemPrompt: sa.prompt, model: "gpt-4o-mini", maxTokens: 2000,
+          systemPrompt: sa.prompt, model: "gpt-4o", maxTokens: 2000,
           temperature: "0.3", isPublic: false, isEnabled: true,
           category: "food", avatar: sa.avatar,
         } as any);
@@ -610,7 +610,7 @@ export async function seedHaccpClaw() {
         slug: orchSlug,
         description: "8 spesialis keamanan & perizinan pangan paralel: HACCP Codex, ISO 22000/FSSC, BPOM MD/ML/SP, CPPOB/GMP, Halal BPJPH, Label & Klaim, Cemaran Mikroba/Kimia, Ekspor Internasional.",
         tagline: "8 Spesialis: HACCP · ISO 22000 · BPOM · CPPOB · Halal · Label · Cemaran · Ekspor",
-        systemPrompt: PROMPT_ORCH, model: "gpt-4o-mini", maxTokens: 3000,
+        systemPrompt: PROMPT_ORCH, model: "gpt-4o", maxTokens: 3000,
         temperature: "0.3", isPublic: false, isEnabled: true,
         category: "food", avatar: "🍱",
         agenticSubAgents: agenticSubAgents as any,

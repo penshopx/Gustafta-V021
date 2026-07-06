@@ -561,7 +561,7 @@ export async function seedLeanOpExClaw() {
       } else {
         const agent = await storage.createAgent({
           name: sa.name, slug: sa.slug, description: sa.tagline, tagline: sa.tagline,
-          systemPrompt: sa.prompt, model: "gpt-4o-mini", maxTokens: 2000,
+          systemPrompt: sa.prompt, model: "gpt-4o", maxTokens: 2000,
           temperature: "0.3", isPublic: false, isEnabled: true,
           category: "manufacturing", avatar: sa.avatar,
         } as any);
@@ -594,7 +594,7 @@ export async function seedLeanOpExClaw() {
         slug: orchSlug,
         description: "8 spesialis Lean & OpEx paralel: Lean/TPS, Six Sigma, 5S/Visual, TPM/OEE, QC ISO 9001, Continuous Improvement A3, Productivity, OpEx Strategy Shingo/EFQM/Hoshin.",
         tagline: "8 Spesialis: Lean · Six Sigma · 5S · TPM · QC · CI · Productivity · OpEx Strategy",
-        systemPrompt: PROMPT_ORCH, model: "gpt-4o-mini", maxTokens: 3000,
+        systemPrompt: PROMPT_ORCH, model: "gpt-4o", maxTokens: 3000,
         temperature: "0.3", isPublic: false, isEnabled: true,
         category: "manufacturing", avatar: "⚙️",
         agenticSubAgents: agenticSubAgents as any,

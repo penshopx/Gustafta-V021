@@ -588,7 +588,7 @@ export async function seedEsgClaw() {
       } else {
         const agent = await storage.createAgent({
           name: sa.name, slug: sa.slug, description: sa.tagline, tagline: sa.tagline,
-          systemPrompt: sa.prompt, model: "gpt-4o-mini", maxTokens: 2000,
+          systemPrompt: sa.prompt, model: "gpt-4o", maxTokens: 2000,
           temperature: "0.3", isPublic: false, isEnabled: true,
           category: "esg", avatar: sa.avatar,
         } as any);
@@ -621,7 +621,7 @@ export async function seedEsgClaw() {
         slug: orchSlug,
         description: "8 spesialis ESG paralel: Sustainability Report POJK 51, GHG/karbon, green finance, energi, social, governance, green building, ESG rating.",
         tagline: "8 Spesialis: Laporan · Karbon · Green Finance · Energi · Social · Governance · Greenship · Rating",
-        systemPrompt: PROMPT_ORCH, model: "gpt-4o-mini", maxTokens: 3000,
+        systemPrompt: PROMPT_ORCH, model: "gpt-4o", maxTokens: 3000,
         temperature: "0.3", isPublic: false, isEnabled: true,
         category: "esg", avatar: "🌱",
         agenticSubAgents: agenticSubAgents as any,

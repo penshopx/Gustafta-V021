@@ -551,7 +551,7 @@ export async function seedTransmisiClaw() {
       } else {
         const agent = await storage.createAgent({
           name: sa.name, slug: sa.slug, description: sa.tagline, tagline: sa.tagline,
-          systemPrompt: sa.prompt, model: "gpt-4o-mini", maxTokens: 2000,
+          systemPrompt: sa.prompt, model: "gpt-4o", maxTokens: 2000,
           temperature: "0.3", isPublic: false, isEnabled: true,
           category: "energy", avatar: sa.avatar,
         } as any);
@@ -584,7 +584,7 @@ export async function seedTransmisiClaw() {
         slug: orchSlug,
         description: "7 spesialis transmisi paralel: SUTT 70/150 kV, SUTET 500 kV, GI AIS/GIS SF6, proteksi sistem (distance/differential/IEC 61850), SKTT XLPE/HVDC, ROW & perizinan AMDAL.",
         tagline: "7 Spesialis: SUTT · SUTET · GI AIS · GI GIS · Proteksi · SKTT · ROW",
-        systemPrompt: PROMPT_ORCH, model: "gpt-4o-mini", maxTokens: 3000,
+        systemPrompt: PROMPT_ORCH, model: "gpt-4o", maxTokens: 3000,
         temperature: "0.3", isPublic: false, isEnabled: true,
         category: "energy", avatar: "🏗️",
         agenticSubAgents: agenticSubAgents as any,

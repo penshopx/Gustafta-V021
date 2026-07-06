@@ -549,7 +549,7 @@ export async function seedPajakClaw() {
       } else {
         const agent = await storage.createAgent({
           name: sa.name, slug: sa.slug, description: sa.tagline, tagline: sa.tagline,
-          systemPrompt: sa.prompt, model: "gpt-4o-mini", maxTokens: 2000,
+          systemPrompt: sa.prompt, model: "gpt-4o", maxTokens: 2000,
           temperature: "0.3", isPublic: false, isEnabled: true,
           category: "tax", avatar: sa.avatar,
         } as any);
@@ -582,7 +582,7 @@ export async function seedPajakClaw() {
         slug: orchSlug,
         description: "8 spesialis pajak Indonesia paralel: PPh, PPN, Coretax DJP 2025, Transfer Pricing, P3B, Insentif, Dispute, Compliance.",
         tagline: "8 Spesialis: PPh · PPN · Coretax · TP · International · Insentif · Dispute · Compliance",
-        systemPrompt: PROMPT_ORCH, model: "gpt-4o-mini", maxTokens: 3000,
+        systemPrompt: PROMPT_ORCH, model: "gpt-4o", maxTokens: 3000,
         temperature: "0.3", isPublic: false, isEnabled: true,
         category: "tax", avatar: "💰",
         agenticSubAgents: agenticSubAgents as any,

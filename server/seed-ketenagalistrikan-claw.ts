@@ -559,7 +559,7 @@ export async function seedKetenagalistrikanClaw() {
       } else {
         const agent = await storage.createAgent({
           name: sa.name, slug: sa.slug, description: sa.tagline, tagline: sa.tagline,
-          systemPrompt: sa.prompt, model: "gpt-4o-mini", maxTokens: 2000,
+          systemPrompt: sa.prompt, model: "gpt-4o", maxTokens: 2000,
           temperature: "0.3", isPublic: false, isEnabled: true,
           category: "energy", avatar: sa.avatar,
         } as any);
@@ -592,7 +592,7 @@ export async function seedKetenagalistrikanClaw() {
         slug: orchSlug,
         description: "8 spesialis ketenagalistrikan paralel: IUPTL/IO, instalasi & SLO, distribusi TM/TR, transmisi TT/TET, PLTS, K3 listrik, tarif PLN & RUPTL, regulasi UU 30/2009.",
         tagline: "8 Spesialis: IUPTL · Instalasi · Distribusi · Transmisi · PLTS · K3 · Tarif · Regulasi",
-        systemPrompt: PROMPT_ORCH, model: "gpt-4o-mini", maxTokens: 3000,
+        systemPrompt: PROMPT_ORCH, model: "gpt-4o", maxTokens: 3000,
         temperature: "0.3", isPublic: false, isEnabled: true,
         category: "energy", avatar: "⚡",
         agenticSubAgents: agenticSubAgents as any,

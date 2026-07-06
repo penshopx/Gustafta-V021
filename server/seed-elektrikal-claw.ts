@@ -586,7 +586,7 @@ export async function seedElektrikalClaw() {
         name: sa.name,
         description: sa.description,
         systemPrompt: sa.prompt,
-        model: "gpt-4o-mini",
+        model: "gpt-4o",
         avatar: sa.avatar,
         tagline: sa.tagline,
         isPublic: false,

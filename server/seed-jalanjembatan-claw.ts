@@ -561,11 +561,11 @@ export async function seedJalanJembatanClaw() {
     try {
       const existing = await storage.getAgentBySlug(def.slug);
       if (existing) {
-        await storage.updateAgent(String(existing.id), { name: def.name, tagline: def.tagline, description: def.description, systemPrompt: def.systemPrompt, aiModel: "gpt-4o-mini", maxTokens: def.tokens, avatar: def.avatar } as any);
+        await storage.updateAgent(String(existing.id), { name: def.name, tagline: def.tagline, description: def.description, systemPrompt: def.systemPrompt, aiModel: "gpt-4o", maxTokens: def.tokens, avatar: def.avatar } as any);
         subAgentIds.push(existing.id);
         log(`${LOG} Updated: ${def.name} (ID ${existing.id})`);
       } else {
-        const created = await storage.createAgent({ slug: def.slug, name: def.name, tagline: def.tagline, description: def.description, systemPrompt: def.systemPrompt, aiModel: "gpt-4o-mini", maxTokens: def.tokens, avatar: def.avatar, category: "Teknik Jalan & Jembatan", isOrchestrator: false, isPublic: false, isActive: true, isEnabled: true, agenticMode: false, ragEnabled: false } as any);
+        const created = await storage.createAgent({ slug: def.slug, name: def.name, tagline: def.tagline, description: def.description, systemPrompt: def.systemPrompt, aiModel: "gpt-4o", maxTokens: def.tokens, avatar: def.avatar, category: "Teknik Jalan & Jembatan", isOrchestrator: false, isPublic: false, isActive: true, isEnabled: true, agenticMode: false, ragEnabled: false } as any);
         subAgentIds.push(created.id);
         log(`${LOG} Created: ${def.name} (ID ${created.id})`);
       }

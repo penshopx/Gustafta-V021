@@ -386,13 +386,13 @@ TINDAKAN SEGERA: [numbered list dengan deadline]
 REFERENSI: [dokumen IBO spesifik]`;
 
 const SUB_AGENTS = [
-  { slug: "tu-registrar-ibtuclaw", name: "TU-REGISTRAR", tagline: "Registrasi & Eligibilitas Siswa IB DP/MYP/PYP — IBIS · Candidate Number · Fee", description: "Sub-agen IBTUClaw: pendaftaran kandidat IB, eligibilitas program, entry IBIS, session registration, special needs accommodation.", systemPrompt: PROMPT_REGISTRAR, avatar: "👥", model: "gpt-4o-mini", tokens: 2500 },
-  { slug: "tu-sentinel-ibtuclaw", name: "TU-SENTINEL", tagline: "Jadwal Ujian, Mock Exam & Deadline TOK/EE/CAS/IA — IBO Calendar", description: "Sub-agen IBTUClaw: kalender akademik IB, deadline kritis, mock exam scheduling, exam clash procedure.", systemPrompt: PROMPT_SENTINEL, avatar: "📅", model: "gpt-4o-mini", tokens: 2500 },
-  { slug: "tu-iaa-ibtuclaw", name: "TU-IAA", tagline: "Internal Assessment & Integritas Akademik — Academic Honesty · Malpractice · IA per Subject", description: "Sub-agen IBTUClaw: IA criteria per subject group, moderasi, academic honesty policy, plagiarism, AI usage policy.", systemPrompt: PROMPT_IAA, avatar: "🛡️", model: "gpt-4o-mini", tokens: 2500 },
-  { slug: "tu-pg-ibtuclaw", name: "TU-PG", tagline: "Pengawas Ujian IB — Invigilator SOP · Irregularities · Script Packing", description: "Sub-agen IBTUClaw: prosedur invigilator, security bahan ujian, irregularity report, distribusi dan pengumpulan script.", systemPrompt: PROMPT_PG, avatar: "⭐", model: "gpt-4o-mini", tokens: 2500 },
-  { slug: "tu-exam-ibtuclaw", name: "TU-EXAM", tagline: "Manajemen Hasil IB — Grade Boundaries · EOR · Appeals · IB Diploma", description: "Sub-agen IBTUClaw: interpretasi hasil ujian, grade boundaries, enquiry on results, diploma qualification.", systemPrompt: PROMPT_EXAM, avatar: "📋", model: "gpt-4o-mini", tokens: 2500 },
-  { slug: "tu-comms-ibtuclaw", name: "TU-COMMS", tagline: "Komunikasi Resmi IB — Orang Tua · IBO · Surat Resmi · Notifikasi Hasil", description: "Sub-agen IBTUClaw: template komunikasi ke IBO, orang tua, siswa; notifikasi hasil; koordinasi antarpihak.", systemPrompt: PROMPT_COMMS, avatar: "✉️", model: "gpt-4o-mini", tokens: 2500 },
-  { slug: "tu-audit-ibtuclaw", name: "TU-AUDIT", tagline: "Audit Dokumen & Kepatuhan IBO — Authorization · Programme Evaluation · Compliance", description: "Sub-agen IBTUClaw: audit dokumen wajib IB, IBO authorization review, programme evaluation preparation, compliance checklist.", systemPrompt: PROMPT_AUDIT, avatar: "📖", model: "gpt-4o-mini", tokens: 2500 },
+  { slug: "tu-registrar-ibtuclaw", name: "TU-REGISTRAR", tagline: "Registrasi & Eligibilitas Siswa IB DP/MYP/PYP — IBIS · Candidate Number · Fee", description: "Sub-agen IBTUClaw: pendaftaran kandidat IB, eligibilitas program, entry IBIS, session registration, special needs accommodation.", systemPrompt: PROMPT_REGISTRAR, avatar: "👥", model: "gpt-4o", tokens: 2500 },
+  { slug: "tu-sentinel-ibtuclaw", name: "TU-SENTINEL", tagline: "Jadwal Ujian, Mock Exam & Deadline TOK/EE/CAS/IA — IBO Calendar", description: "Sub-agen IBTUClaw: kalender akademik IB, deadline kritis, mock exam scheduling, exam clash procedure.", systemPrompt: PROMPT_SENTINEL, avatar: "📅", model: "gpt-4o", tokens: 2500 },
+  { slug: "tu-iaa-ibtuclaw", name: "TU-IAA", tagline: "Internal Assessment & Integritas Akademik — Academic Honesty · Malpractice · IA per Subject", description: "Sub-agen IBTUClaw: IA criteria per subject group, moderasi, academic honesty policy, plagiarism, AI usage policy.", systemPrompt: PROMPT_IAA, avatar: "🛡️", model: "gpt-4o", tokens: 2500 },
+  { slug: "tu-pg-ibtuclaw", name: "TU-PG", tagline: "Pengawas Ujian IB — Invigilator SOP · Irregularities · Script Packing", description: "Sub-agen IBTUClaw: prosedur invigilator, security bahan ujian, irregularity report, distribusi dan pengumpulan script.", systemPrompt: PROMPT_PG, avatar: "⭐", model: "gpt-4o", tokens: 2500 },
+  { slug: "tu-exam-ibtuclaw", name: "TU-EXAM", tagline: "Manajemen Hasil IB — Grade Boundaries · EOR · Appeals · IB Diploma", description: "Sub-agen IBTUClaw: interpretasi hasil ujian, grade boundaries, enquiry on results, diploma qualification.", systemPrompt: PROMPT_EXAM, avatar: "📋", model: "gpt-4o", tokens: 2500 },
+  { slug: "tu-comms-ibtuclaw", name: "TU-COMMS", tagline: "Komunikasi Resmi IB — Orang Tua · IBO · Surat Resmi · Notifikasi Hasil", description: "Sub-agen IBTUClaw: template komunikasi ke IBO, orang tua, siswa; notifikasi hasil; koordinasi antarpihak.", systemPrompt: PROMPT_COMMS, avatar: "✉️", model: "gpt-4o", tokens: 2500 },
+  { slug: "tu-audit-ibtuclaw", name: "TU-AUDIT", tagline: "Audit Dokumen & Kepatuhan IBO — Authorization · Programme Evaluation · Compliance", description: "Sub-agen IBTUClaw: audit dokumen wajib IB, IBO authorization review, programme evaluation preparation, compliance checklist.", systemPrompt: PROMPT_AUDIT, avatar: "📖", model: "gpt-4o", tokens: 2500 },
 ];
 
 export async function seedIBTUClaw() {
@@ -440,7 +440,7 @@ export async function seedIBTUClaw() {
     description: "MultiClaw AI untuk sekolah IB — 7 spesialis paralel: registrasi kandidat, jadwal & deadline, internal assessment & integritas, pengawas ujian, manajemen hasil & EOR, komunikasi resmi, dan audit kepatuhan IBO.",
     systemPrompt: PROMPT_ORCH,
     avatar: "🎓",
-    model: "gpt-4o-mini",
+    model: "gpt-4o",
     maxTokens: 3000,
     temperature: "0.3",
     isPublic: false,
