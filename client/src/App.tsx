@@ -157,6 +157,10 @@ import TransisiEnergiClawChat from "@/pages/transisi-energi-claw";
 import DigitalMarketingClawChat from "@/pages/digital-marketing-claw";
 import MarketIntelligenceClawChat from "@/pages/market-intelligence-claw";
 import AutopilotJualanChat from "@/pages/autopilot-jualan";
+import RisetAudiensChat from "@/pages/riset-audiens";
+import FunnelOtomatisChat from "@/pages/funnel-otomatis";
+import AgenKeputusanChat from "@/pages/agen-keputusan";
+import AiMarketingLanding from "@/pages/ai-marketing";
 import CrmSalesClawChat from "@/pages/crm-sales-claw";
 import BrandContentClawChat from "@/pages/brand-content-claw";
 import EcommerceClawChat from "@/pages/ecommerce-claw";
@@ -524,6 +528,7 @@ function Router() {
         )} />
       <Route path="/templates" component={TemplatesPage} />
       <Route path="/store" component={StoreFeatured} />
+      <Route path="/ai-marketing" component={AiMarketingLanding} />
       <Route path="/store/katalog" component={StorePage} />
       <Route path="/workshop" component={WorkshopPage} />
       <Route path="/gustafta-store" component={StoreFeatured} />
@@ -953,6 +958,33 @@ function Router() {
             highlights={["Copy Iklan Siap Pakai — 3 variasi (pendek/panjang/story) + teks gambar","Targeting Meta — rekomendasi interest FB/IG konkret + 2 persona","Follow-up WA — sequence closing + jawaban keberatan siap pakai","Kalender Konten 7 Hari — tema, format, hook, caption per hari"]}
             icon={<span className="text-4xl">🚀</span>}
           ><AutopilotJualanChat /></PremiumPageGuard>
+        )} />
+        <Route path="/riset-audiens" component={() => (
+          <PremiumPageGuard
+            feature="claw_bisnis" requiredPlan="bisnis"
+            title="Riset Audiens — Ketua Tim Riset Audiens Mendalam"
+            description="Cukup satu input produk/usaha/jasa, 6 divisi riset bekerja paralel (dibagi per FUNGSI): hidden interest untuk targeting Meta, persona & segmentasi, pain/desire & bahasa pelanggan, audiens pesaing & celah, pemicu beli & momen, serta kanal & rencana uji budget. Hasilnya PETA AUDIENS SIAP TARGETING."
+            highlights={["Hidden Interest — daftar minat konkret siap tempel ke detailed targeting Meta","Persona & Segmentasi — dingin/hangat/panas + segmen prioritas","Pain & Bahasa Pelanggan — frasa asli siap jadi copy iklan","Kanal & Uji Budget — rekomendasi placement + rencana test sebelum scale"]}
+            icon={<span className="text-4xl">🔬</span>}
+          ><RisetAudiensChat /></PremiumPageGuard>
+        )} />
+        <Route path="/funnel-otomatis" component={() => (
+          <PremiumPageGuard
+            feature="claw_bisnis" requiredPlan="bisnis"
+            title="Funnel Otomatis — Ketua Tim Funnel & Follow-up"
+            description="Cukup satu input produk/usaha/jasa, 6 divisi funnel bekerja paralel (dibagi per FUNGSI): peta funnel & titik bocor, lead magnet & penawaran masuk, sequence follow-up WhatsApp, skrip CS bot & auto-reply, penanganan keberatan & closing, serta nurture/upsell/repeat. Hasilnya SISTEM FUNNEL SIAP TEMPEL."
+            highlights={["Sequence Follow-up WA — 5–7 pesan siap kirim, dari tanya sampai closing","Skrip CS Bot — auto-reply, FAQ, kualifikasi, & aturan handover ke manusia","Penanganan Keberatan — jawaban siap pakai + teknik closing etis","Retensi — nurture pasca-beli, upsell, repeat order & minta review"]}
+            icon={<span className="text-4xl">🔄</span>}
+          ><FunnelOtomatisChat /></PremiumPageGuard>
+        )} />
+        <Route path="/agen-keputusan" component={() => (
+          <PremiumPageGuard
+            feature="claw_bisnis" requiredPlan="bisnis"
+            title="Agen Keputusan — Ketua Tim Analisa Keputusan"
+            description="Ceritakan satu dilema bisnis/produk/marketing/pribadi, 6 divisi analisa bekerja paralel (dibagi per FUNGSI): peta opsi, data & asumsi, risiko & konsekuensi, skenario best/base/worst, kriteria & scoring, serta rekomendasi & rencana aksi. Hasilnya ANALISA KEPUTUSAN SIAP DIPUTUSKAN — keputusan final tetap di tangan Anda."
+            highlights={["Peta Opsi — semua pilihan realistis, termasuk yang kreatif & terlewat","Risiko & Skenario — best/base/worst + reversible vs irreversible","Tabel Kriteria & Scoring — peringkat opsi berdasarkan bobot prioritas","Rekomendasi & Aksi — pilihan paling masuk akal + langkah pertama"]}
+            icon={<span className="text-4xl">🧭</span>}
+          ><AgenKeputusanChat /></PremiumPageGuard>
         )} />
         <Route path="/digital-marketing-claw" component={() => (
           <PremiumPageGuard

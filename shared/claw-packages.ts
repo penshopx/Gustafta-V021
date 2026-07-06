@@ -167,12 +167,15 @@ export const CLAW_PACKAGES: ClawPackage[] = [
   {
     id: "marketing-digital",
     name: "Marketing & Digital",
-    description: "6 claw pemasaran: Market Intelligence, Auto-Pilot Jualan, Digital Marketing, CRM & Sales, Brand & Content, E-Commerce.",
+    description: "9 claw pemasaran: Market Intelligence, Auto-Pilot Jualan, Riset Audiens, Funnel Otomatis, Agen Keputusan, Digital Marketing, CRM & Sales, Brand & Content, E-Commerce.",
     icon: "TrendingUp",
     color: "rose",
     routes: [
       "/market-intelligence-claw",
       "/autopilot-jualan",
+      "/riset-audiens",
+      "/funnel-otomatis",
+      "/agen-keputusan",
       "/digital-marketing-claw",
       "/crm-sales-claw",
       "/brand-content-claw",
