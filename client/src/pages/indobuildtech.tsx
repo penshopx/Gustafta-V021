@@ -197,9 +197,9 @@ export default function IndobuildtechPage() {
               <Bot className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
               <h3 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white">Akses AI Chatbot Profesi Konstruksi</h3>
             </div>
-            <Button asChild variant="ghost" size="sm" className="gap-1 text-indigo-600 dark:text-indigo-400" data-testid="link-paket-konstruksi">
-              <Link href="/paket-konstruksi">
-                Lihat semua asisten AI konstruksi <ArrowRight className="h-3.5 w-3.5" />
+            <Button asChild variant="ghost" size="sm" className="gap-1 text-indigo-600 dark:text-indigo-400" data-testid="link-bundling-konstruksi">
+              <Link href="/bundling-konstruksi">
+                Lihat bundling chatbot per profesi <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </Button>
           </div>
