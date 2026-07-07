@@ -152,7 +152,7 @@ const storeCatalogInflight = new Map<string, Promise<any[]>>();
 async function buildStoreCatalogItems(category: string, search: string): Promise<any[]> {
   const { db } = await import("./db");
   const { agents: agentsTable, storeProducts } = await import("@shared/schema");
-  const { and, eq, or, ilike, inArray } = await import("drizzle-orm");
+  const { and, eq, or, ilike, inArray, isNull, sql: sqlOp } = await import("drizzle-orm");
 
   // 1. Fetch from store_products table (primary source)
   const spConditions: any[] = [eq(storeProducts.isActive, true)];
@@ -206,6 +206,16 @@ async function buildStoreCatalogItems(category: string, search: string): Promise
   // 2. Fetch ALL active agents (secondary, no duplicate with store_products)
   const spAgentIds = new Set(spRows.map(p => p.agentId).filter(Boolean));
   const agentConditions: any[] = [eq(agentsTable.isActive, true)];
+  // Only top-level agents are sold as bundles — exclude child agents in SQL so we
+  // never pull the (potentially large) child rows into memory just to drop them.
+  agentConditions.push(isNull(agentsTable.parentAgentId));
+  // Creator publish gate: independent-creator agents (real user_id) show ONLY when
+  // the owner listed them; official/seeded agents (user_id = "") always show.
+  // Pushed to SQL so unlisted creator agents are filtered by the DB, not JS.
+  agentConditions.push(or(
+    sqlOp`trim(${agentsTable.userId}) = ''`,
+    eq(agentsTable.isListed, true),
+  )!);
   if (category && category !== "Semua") agentConditions.push(eq(agentsTable.category, category));
   if (search) {
     agentConditions.push(or(

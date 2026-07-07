@@ -289,6 +289,11 @@ export const agents = pgTable("agents", {
   uniqueIndex("agents_clone_owner_unique")
     .on(table.clonedFromAgentId, table.userId)
     .where(sql`${table.clonedFromAgentId} IS NOT NULL`),
+  // Store catalog builder filters active agents by category, excludes child
+  // agents (parent_agent_id NOT NULL) and counts children by parent. These
+  // indexes keep the catalog rebuild cheap regardless of catalog size.
+  index("agents_active_category_idx").on(table.isActive, table.category),
+  index("agents_parent_agent_id_idx").on(table.parentAgentId),
 ]);
 
 // Knowledge Taxonomy Table
@@ -2152,7 +2157,10 @@ export const storeProducts = pgTable("store_products", {
   isGustafta: boolean("is_gustafta").default(false),
   sortOrder: integer("sort_order").default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  // Store catalog builder filters active products by category.
+  activeCategoryIdx: index("store_products_active_category_idx").on(table.isActive, table.category),
+}));
 
 export const insertStoreProductSchema = createInsertSchema(storeProducts).omit({ id: true, createdAt: true });
 export type InsertStoreProduct = z.infer<typeof insertStoreProductSchema>;
