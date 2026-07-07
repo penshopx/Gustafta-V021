@@ -5,3 +5,6 @@ vite.config.ts.*
 *.tar.gz.env
 *.key
 secrets.env
+
+# Database backup dumps (contain full user data — never commit)
+backups/

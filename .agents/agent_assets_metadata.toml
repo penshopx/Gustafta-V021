@@ -173,3 +173,9 @@ id = "-ynuz4e2XKfw1raHzpwS6"
 uri = "file://backups/gustafta-db-backup.sql.gz"
 type = "unspecified"
 title = "Cadangan Database Gustafta (SQL, terkompres)"
+
+[[outputs]]
+id = "K6d863wlL-3awNnmJ0MiK"
+uri = "file://backups/gustafta-db-backup-20260707-0023.sql.gz"
+type = "unspecified"
+title = "Cadangan Database Gustafta (lengkap — 7 Juli 2026)"

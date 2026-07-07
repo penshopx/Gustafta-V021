@@ -5,6 +5,13 @@ export type SendEmailResult =
   | { sent: true }
   | { sent: false; reason: "not_configured" | "api_error" | "network_error"; detail?: string };
 
+interface EmailAttachment {
+  /** Base64-encoded file content (no data: prefix). */
+  content: string;
+  /** File name shown in the email, e.g. "backup.sql.gz". */
+  name: string;
+}
+
 interface SendEmailOptions {
   to: string;
   toName?: string;
@@ -12,6 +19,7 @@ interface SendEmailOptions {
   htmlContent: string;
   textContent: string;
   tags?: string[];
+  attachments?: EmailAttachment[];
 }
 
 export async function sendEmail(opts: SendEmailOptions): Promise<SendEmailResult> {
@@ -38,6 +46,9 @@ export async function sendEmail(opts: SendEmailOptions): Promise<SendEmailResult
         htmlContent: opts.htmlContent,
         textContent: opts.textContent,
         tags: opts.tags || ["transactional"],
+        ...(opts.attachments && opts.attachments.length
+          ? { attachment: opts.attachments }
+          : {}),
       }),
     });
     if (!resp.ok) {
