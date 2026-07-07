@@ -304,7 +304,7 @@ function ChatTab({ agentId }: { agentId: number }) {
                         <span className="text-xs">10 agen menganalisis...</span>
                       </div>
                     ) : (
-                      <MessageContent content={m.content} />
+                      <MessageContent text={m.content} />
                     )}
                     {m.isStreaming && m.content && (
                       <span className="inline-block w-1.5 h-4 bg-indigo-400 animate-pulse ml-0.5 align-middle" />
