@@ -18,6 +18,7 @@ import { createServer } from "http";
 import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
 import { registerAudioRoutes } from "./replit_integrations/audio";
 import { storage } from "./storage";
+import { startSchedulerLeaderElection, isSchedulerLeader } from "./lib/scheduler-leader";
 
 import * as M_knowledgeBase from "./seed-knowledge-base";
 import * as M_regulasi from "./seed-regulasi";
@@ -1941,6 +1942,7 @@ Data yang belum tersedia akan saya estimasi dengan standar industri dan ditandai
         log("[SmartModelUpgrade] error: " + (err as Error).message);
       }
 
+      await startSchedulerLeaderElection();
       startScheduler();
     },
   );
@@ -1976,14 +1978,20 @@ function scheduleAtWIB(label: string, hour: number, minute: number, fn: () => Pr
   const mm = String(minute).padStart(2, "0");
   log(`[Scheduler] ${label} dijadwalkan pada ${hh}:${mm} WIB (${Math.round(delay / 60000)} menit lagi)`);
 
-  setTimeout(async () => {
+  const runIfLeader = async () => {
+    // Hanya leader yang menjalankan job — cegah eksekusi ganda di multi-instance.
+    if (!isSchedulerLeader()) {
+      log(`[Scheduler] ${label} — lewati (bukan leader)`);
+      return;
+    }
     log(`[Scheduler] ${label} — mulai (${hh}:${mm} WIB)`);
     try { await fn(); } catch (err) { log(`[Scheduler] ${label} error: ${(err as Error).message}`); }
+  };
+
+  setTimeout(async () => {
+    await runIfLeader();
     // Ulangi setiap 24 jam
-    setInterval(async () => {
-      log(`[Scheduler] ${label} — mulai (${hh}:${mm} WIB)`);
-      try { await fn(); } catch (err) { log(`[Scheduler] ${label} error: ${(err as Error).message}`); }
-    }, 24 * 60 * 60 * 1000);
+    setInterval(runIfLeader, 24 * 60 * 60 * 1000);
   }, delay);
 }
 
@@ -2099,6 +2107,7 @@ function startScheduler() {
 
   // ── Broadcast checker (setiap 2 menit) ──────────────────────────────────────
   setInterval(async () => {
+    if (!isSchedulerLeader()) return; // hanya leader yang memproses broadcast
     try {
       const dueBroadcasts = await storage.getDueBroadcasts();
       for (const broadcast of dueBroadcasts) {

@@ -6,6 +6,7 @@ import session from "express-session";
 import type { Express, RequestHandler } from "express";
 import connectPg from "connect-pg-simple";
 import { authStorage } from "./storage";
+import { pool as appPool } from "../../db";
 
 let _oidcConfig: any = null;
 let _oidcConfigExpiry = 0;
@@ -23,8 +24,10 @@ const getOidcConfig = async () => {
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
   const pgStore = connectPg(session);
+  // Pakai ulang pool aplikasi (server/db.ts) — jangan buat pool pg kedua. Ini
+  // menekan total koneksi per-instance (penting di autoscale, plafon ~112).
   const sessionStore = new pgStore({
-    conString: process.env.DATABASE_URL,
+    pool: appPool,
     createTableIfMissing: false,
     ttl: sessionTtl,
     tableName: "sessions",

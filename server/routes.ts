@@ -60,6 +60,7 @@ import { getDefaultPoliciesForSeries, type AgentPolicySet } from "./lib/agent-po
 import { importDocumentToProposal, mergeProposalIntoAgent, type ApplyMode } from "./lib/document-importer";
 import { buildEbookMarkdown, buildEbookHtml, stripMarkdownToPlainText, buildEbookTables } from "./lib/ebook-generator";
 import { chatIpRateLimiter, chatAgentIdRateLimiter } from "./lib/rate-limiter";
+import { runGuardedDialog, dialogChatCompletion, DialogBusyError, DIALOG_MODEL } from "./lib/dialog-load-guard";
 import * as XLSX from "xlsx";
 import { buildChaesaExport } from "./lib/chaesa-exporter";
 import { buildEcourseHtml } from "./lib/ecourse-generator";
@@ -30379,14 +30380,15 @@ LARANGAN:
         .slice(-20)
         .map((m: any) => ({ role: m.role as "user" | "assistant", content: m.content.slice(0, 2000) }));
 
-      const completion = await openai.chat.completions.create({
-        model: SMART_MODEL,
-        messages: [{ role: "system", content: systemPrompt }, ...safeMessages],
-        max_tokens: 400,
-        temperature: 0.85,
-      });
-
-      let reply = completion.choices[0]?.message?.content || "Maaf, ada gangguan sebentar. Coba lagi ya!";
+      let reply = (await runGuardedDialog(() =>
+        dialogChatCompletion({
+          system: systemPrompt,
+          messages: safeMessages,
+          model: DIALOG_MODEL,
+          maxTokens: 400,
+          temperature: 0.85,
+        }),
+      )) || "Maaf, ada gangguan sebentar. Coba lagi ya!";
 
       // Soft upsell: ditambahkan programatically setiap kelipatan 7 pertanyaan
       const count = typeof userMessageCount === "number" ? userMessageCount : 0;
@@ -30401,6 +30403,10 @@ LARANGAN:
       }
       return res.json({ reply });
     } catch (e: any) {
+      if (e instanceof DialogBusyError) {
+        res.setHeader("Retry-After", "5");
+        return res.status(503).json({ error: "Sistem sedang ramai, coba lagi sebentar ya 🙏", busy: true });
+      }
       console.error("dialog-gustafta error:", e);
       return res.status(500).json({ error: "Gagal memproses dialog." });
     }
@@ -30410,8 +30416,6 @@ LARANGAN:
   app.post("/api/dialog-gustafta/profil", async (req: any, res: any) => {
     try {
       const { messages = [] } = req.body;
-      const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
 
       const safeMessages = (messages as any[])
         .filter((m: any) => m && typeof m.content === "string" && ["user", "assistant"].includes(m.role))
@@ -30433,17 +30437,23 @@ Hasilkan JSON dengan format persis:
 
 Gunakan bahasa Indonesia yang hangat dan menyemangati.`;
 
-      const c = await openai.chat.completions.create({
-        model: SMART_MODEL,
-        messages: [{ role: "user", content: prompt }],
-        response_format: { type: "json_object" },
-        max_tokens: 400,
-        temperature: 0.7,
-      });
+      const raw = await runGuardedDialog(() =>
+        dialogChatCompletion({
+          messages: [{ role: "user", content: prompt }],
+          model: DIALOG_MODEL,
+          jsonMode: true,
+          maxTokens: 400,
+          temperature: 0.7,
+        }),
+      );
 
-      const profil = JSON.parse(c.choices[0]?.message?.content ?? "{}");
+      const profil = JSON.parse(raw ?? "{}");
       return res.json({ profil });
     } catch (e: any) {
+      if (e instanceof DialogBusyError) {
+        res.setHeader("Retry-After", "5");
+        return res.status(503).json({ error: "Sistem sedang ramai, coba lagi sebentar ya 🙏", busy: true });
+      }
       console.error("dialog-gustafta/profil error:", e);
       return res.status(500).json({ error: "Gagal generate profil." });
     }
@@ -30453,8 +30463,6 @@ Gunakan bahasa Indonesia yang hangat dan menyemangati.`;
   app.post("/api/dialog-gustafta/gambaran", async (req: any, res: any) => {
     try {
       const { messages = [] } = req.body;
-      const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
 
       const safeMessages = (messages as any[])
         .filter((m: any) => m && typeof m.content === "string" && ["user", "assistant"].includes(m.role))
@@ -30476,15 +30484,17 @@ Hasilkan JSON:
 
 Buat terasa personal dan berdasarkan detail nyata dari dialog. Bahasa Indonesia yang hangat dan menginspirasi.`;
 
-      const c = await openai.chat.completions.create({
-        model: SMART_MODEL,
-        messages: [{ role: "user", content: prompt }],
-        response_format: { type: "json_object" },
-        max_tokens: 500,
-        temperature: 0.75,
-      });
+      const raw = await runGuardedDialog(() =>
+        dialogChatCompletion({
+          messages: [{ role: "user", content: prompt }],
+          model: DIALOG_MODEL,
+          jsonMode: true,
+          maxTokens: 500,
+          temperature: 0.75,
+        }),
+      );
 
-      const gambaran = JSON.parse(c.choices[0]?.message?.content ?? "{}");
+      const gambaran = JSON.parse(raw ?? "{}");
 
       // Mark dialog as completed when user reaches Eksplorasi stage (gambaran generated)
       if ((req as any).isAuthenticated?.()) {
@@ -30500,6 +30510,10 @@ Buat terasa personal dan berdasarkan detail nyata dari dialog. Bahasa Indonesia 
 
       return res.json({ gambaran });
     } catch (e: any) {
+      if (e instanceof DialogBusyError) {
+        res.setHeader("Retry-After", "5");
+        return res.status(503).json({ error: "Sistem sedang ramai, coba lagi sebentar ya 🙏", busy: true });
+      }
       console.error("dialog-gustafta/gambaran error:", e);
       return res.status(500).json({ error: "Gagal generate gambaran." });
     }
@@ -30509,8 +30523,6 @@ Buat terasa personal dan berdasarkan detail nyata dari dialog. Bahasa Indonesia 
   app.post("/api/dialog-gustafta/blueprint", async (req: any, res: any) => {
     try {
       const { messages = [] } = req.body;
-      const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
 
       const safeMessages = (messages as any[])
         .filter((m: any) => m && typeof m.content === "string" && ["user", "assistant"].includes(m.role))
@@ -30534,15 +30546,17 @@ Hasilkan JSON dengan format persis:
 
 Buat blueprint yang terasa personal, didasarkan pada detail nyata dari dialog. Gunakan bahasa Indonesia.`;
 
-      const c = await openai.chat.completions.create({
-        model: SMART_MODEL,
-        messages: [{ role: "user", content: prompt }],
-        response_format: { type: "json_object" },
-        max_tokens: 600,
-        temperature: 0.75,
-      });
+      const raw = await runGuardedDialog(() =>
+        dialogChatCompletion({
+          messages: [{ role: "user", content: prompt }],
+          model: DIALOG_MODEL,
+          jsonMode: true,
+          maxTokens: 600,
+          temperature: 0.75,
+        }),
+      );
 
-      const blueprint = JSON.parse(c.choices[0]?.message?.content ?? "{}");
+      const blueprint = JSON.parse(raw ?? "{}");
 
       // Mark dialog as completed for logged-in users
       if ((req as any).isAuthenticated?.()) {
@@ -30558,6 +30572,10 @@ Buat blueprint yang terasa personal, didasarkan pada detail nyata dari dialog. G
 
       return res.json({ blueprint });
     } catch (e: any) {
+      if (e instanceof DialogBusyError) {
+        res.setHeader("Retry-After", "5");
+        return res.status(503).json({ error: "Sistem sedang ramai, coba lagi sebentar ya 🙏", busy: true });
+      }
       console.error("dialog-gustafta/blueprint error:", e);
       return res.status(500).json({ error: "Gagal generate blueprint." });
     }
