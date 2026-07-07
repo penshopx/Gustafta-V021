@@ -15,6 +15,7 @@ import IndobuildtechPage from "@/pages/indobuildtech";
 import BonusIndobuildtechPage from "@/pages/bonus-indobuildtech";
 import PaketKonstruksiPage from "@/pages/paket-konstruksi";
 import BundlingKonstruksiPage from "@/pages/bundling-konstruksi";
+import KlinikKonsultasiPage from "@/pages/klinik-konsultasi";
 import KodeAksesPage from "@/pages/kode-akses";
 import AdminAccessCodesPage from "@/pages/admin-access-codes";
 import { usePartnerBranding } from "@/hooks/use-partner-branding";
@@ -481,6 +482,7 @@ function Router() {
       <Route path="/bonus-indobuildtech" component={BonusIndobuildtechPage} />
       <Route path="/paket-konstruksi" component={PaketKonstruksiPage} />
       <Route path="/bundling-konstruksi" component={BundlingKonstruksiPage} />
+      <Route path="/klinik-konsultasi" component={KlinikKonsultasiPage} />
       <Route path="/kode-akses" component={KodeAksesPage} />
       <Route path="/admin/access-codes" component={AdminAccessCodesPage} />
       <Route path="/legal" component={LegalLanding} />

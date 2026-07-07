@@ -238,6 +238,11 @@ export default function BundlingKonstruksiPage() {
             Di <span className="font-semibold text-gray-900 dark:text-white">Klinik</span> Anda berkonsultasi — datang dengan pertanyaan, pulang dengan jawaban.
             Lalu ke <span className="font-semibold text-gray-900 dark:text-white">Lapangan</span> untuk mengerjakannya — alat yang menghasilkan dokumen & output nyata.
           </p>
+          <Button asChild className="bg-teal-600 hover:bg-teal-500 text-white gap-2 mt-1" data-testid="button-masuk-klinik">
+            <Link href="/klinik-konsultasi">
+              <Stethoscope className="h-4 w-4" /> Masuk ke Klinik Konsultasi
+            </Link>
+          </Button>
         </div>
 
         <div className="grid md:grid-cols-2 gap-5">
