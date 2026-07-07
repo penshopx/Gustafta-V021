@@ -87,7 +87,7 @@ export function ChatPopup({ agent }: ChatPopupProps) {
                 {agent.name}
               </h3>
               <p className="text-xs text-primary-foreground/80">
-                {agent.tagline || "AI Assistant"}
+                {agent.tagline || "Asisten AI"}
               </p>
             </div>
           </div>
@@ -173,7 +173,7 @@ export function ChatPopup({ agent }: ChatPopupProps) {
                 e.target.style.height = `${Math.min(e.target.scrollHeight, 100)}px`;
               }}
               onKeyDown={handleKeyDown}
-              placeholder="Type your message..."
+              placeholder="Ketik pesan Anda..."
               className="min-h-[44px] max-h-[100px] resize-none text-sm rounded-xl"
               rows={1}
              
@@ -250,7 +250,7 @@ function ChatBubble({ message, agentName, agentAvatar }: { message: Message; age
       </Avatar>
       <div className="flex flex-col gap-1 max-w-[75%]">
         <span className={cn("text-[10px] text-muted-foreground", isUser && "text-right")}>
-          {isUser ? "You" : agentName}
+          {isUser ? "Anda" : agentName}
         </span>
         <div
           className={cn(
