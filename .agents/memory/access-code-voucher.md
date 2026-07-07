@@ -18,5 +18,15 @@ Voucher codes (e.g. offline-seminar bonuses) let a logged-in user self-redeem a 
 
 - Storage methods (`createAccessCode`/`listAccessCodes`/`setAccessCodeActive`/`redeemAccessCode`) are called via `(storage as any)` — intentionally NOT on IStorage/MemStorage, matching the existing `getSubscriptionById` convention.
 
+## Restore fragility
+
+- These tables and the event code are **fragile across DB restores**. An older backup can lack `access_codes`/`access_code_redemptions` entirely (added to schema after the backup), and the `INDOBUILDTECH2026` code was created via the admin UI, not a code seed — so there is NO seed to recreate it. After any restore, verify both tables exist and re-insert the event code (profesional, 90 days, 500 quota).
+  - **Why:** post-restore the whole voucher flow was silently non-functional (tables missing); nothing in server boot recreates it.
+  - **How to apply:** recreate the two tables with raw SQL matching `shared/schema.ts` (safer than `drizzle-kit push` against the other 80+ tables), then `INSERT ... ON CONFLICT (code) DO NOTHING`.
+
+## Admin roster / CSV export
+
+- Admin can view *who* redeemed each code via `GET /api/admin/access-codes/:id/redemptions` (`listAccessCodeRedemptions` left-joins `users` for name/email; row survives even if the user account doesn't exist yet). CSV export of the roster **must sanitize formula-injection** (prefix a cell starting with `= + - @ \t \r` with `'`) — claimant names/emails are attacker-controlled and land in an admin's spreadsheet.
+
 ## How to apply
 When adding new unique constraints inside `redeemAccessCode`'s transaction, narrow the `.catch` match to the specific constraint name so unrelated conflicts aren't silently remapped to "already".

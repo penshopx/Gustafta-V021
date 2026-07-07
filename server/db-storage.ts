@@ -2435,6 +2435,31 @@ export class DatabaseStorage implements IStorage {
   }
 
   /**
+   * Daftar peserta yang menukarkan sebuah kode (roster panitia acara).
+   * Join ke users untuk nama/email bila akun sudah ada; user_id tetap
+   * dikembalikan sebagai jejak walau baris user belum tersedia.
+   */
+  async listAccessCodeRedemptions(codeId: number): Promise<Array<{
+    id: number; userId: string; email: string | null; firstName: string | null;
+    lastName: string | null; subscriptionId: string | null; createdAt: Date;
+  }>> {
+    return await db
+      .select({
+        id: accessCodeRedemptions.id,
+        userId: accessCodeRedemptions.userId,
+        email: users.email,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        subscriptionId: accessCodeRedemptions.subscriptionId,
+        createdAt: accessCodeRedemptions.createdAt,
+      })
+      .from(accessCodeRedemptions)
+      .leftJoin(users, eq(users.id, accessCodeRedemptions.userId))
+      .where(eq(accessCodeRedemptions.codeId, codeId))
+      .orderBy(desc(accessCodeRedemptions.createdAt));
+  }
+
+  /**
    * Redeem sebuah kode akses secara ATOMIK (transaksi):
    *  - kode wajib ada & aktif
    *  - user tidak boleh redeem kode yang sama dua kali (unique index)

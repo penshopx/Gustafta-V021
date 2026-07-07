@@ -11,11 +11,16 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Ticket, Lock, ArrowRight, Loader2, Plus, Copy } from "lucide-react";
+import { Ticket, Lock, ArrowRight, Loader2, Plus, Copy, Users, Download, ChevronDown, ChevronRight } from "lucide-react";
 
 type AccessCode = {
   id: number; code: string; plan: string; durationDays: number; label: string | null;
   maxRedemptions: number; redemptionCount: number; active: boolean; createdAt: string;
+};
+
+type Redemption = {
+  id: number; userId: string; email: string | null; firstName: string | null;
+  lastName: string | null; subscriptionId: string | null; createdAt: string;
 };
 
 const PLANS = ["starter", "profesional", "bisnis", "enterprise"];
@@ -65,6 +70,8 @@ export default function AdminAccessCodesPage() {
     navigator.clipboard?.writeText(c);
     toast({ title: "Disalin", description: c });
   };
+
+  const [expanded, setExpanded] = useState<number | null>(null);
 
   if (authLoading) {
     return (
@@ -152,29 +159,37 @@ export default function AdminAccessCodesPage() {
             <div className="space-y-2">
               {codes.map((c) => (
                 <Card key={c.id} data-testid={`row-code-${c.id}`}>
-                  <CardContent className="py-3 flex flex-wrap items-center gap-3 justify-between">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <button onClick={() => copyCode(c.code)} className="font-mono font-bold text-gray-900 dark:text-white flex items-center gap-1.5 hover:text-indigo-600" data-testid={`button-copy-${c.id}`}>
-                        {c.code} <Copy className="h-3.5 w-3.5 opacity-60" />
-                      </button>
-                      <Badge variant="outline" className="capitalize">{c.plan}</Badge>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">{c.durationDays} hari</span>
-                      {c.label && <span className="text-xs text-gray-400 truncate">{c.label}</span>}
+                  <CardContent className="py-3 space-y-3">
+                    <div className="flex flex-wrap items-center gap-3 justify-between">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <button onClick={() => copyCode(c.code)} className="font-mono font-bold text-gray-900 dark:text-white flex items-center gap-1.5 hover:text-indigo-600" data-testid={`button-copy-${c.id}`}>
+                          {c.code} <Copy className="h-3.5 w-3.5 opacity-60" />
+                        </button>
+                        <Badge variant="outline" className="capitalize">{c.plan}</Badge>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">{c.durationDays} hari</span>
+                        {c.label && <span className="text-xs text-gray-400 truncate">{c.label}</span>}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => setExpanded(expanded === c.id ? null : c.id)}
+                          className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 hover:text-indigo-600"
+                          data-testid={`button-expand-${c.id}`}
+                        >
+                          {expanded === c.id ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                          <span data-testid={`text-usage-${c.id}`}>{c.redemptionCount}/{c.maxRedemptions} terpakai</span>
+                        </button>
+                        <Button
+                          size="sm"
+                          variant={c.active ? "outline" : "secondary"}
+                          onClick={() => toggleMut.mutate({ id: c.id, active: !c.active })}
+                          disabled={toggleMut.isPending}
+                          data-testid={`button-toggle-${c.id}`}
+                        >
+                          {c.active ? "Aktif" : "Nonaktif"}
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs text-gray-500 dark:text-gray-400" data-testid={`text-usage-${c.id}`}>
-                        {c.redemptionCount}/{c.maxRedemptions} terpakai
-                      </span>
-                      <Button
-                        size="sm"
-                        variant={c.active ? "outline" : "secondary"}
-                        onClick={() => toggleMut.mutate({ id: c.id, active: !c.active })}
-                        disabled={toggleMut.isPending}
-                        data-testid={`button-toggle-${c.id}`}
-                      >
-                        {c.active ? "Aktif" : "Nonaktif"}
-                      </Button>
-                    </div>
+                    {expanded === c.id && <RedemptionList code={c} />}
                   </CardContent>
                 </Card>
               ))}
@@ -182,6 +197,73 @@ export default function AdminAccessCodesPage() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function RedemptionList({ code }: { code: AccessCode }) {
+  const { toast } = useToast();
+  const { data: rows = [], isLoading } = useQuery<Redemption[]>({
+    queryKey: ["/api/admin/access-codes", code.id, "redemptions"],
+  });
+
+  const fullName = (r: Redemption) =>
+    [r.firstName, r.lastName].filter(Boolean).join(" ") || "—";
+
+  const exportCsv = () => {
+    if (rows.length === 0) {
+      toast({ title: "Belum ada penukaran", description: "Kode ini belum ditukarkan siapa pun." });
+      return;
+    }
+    const esc = (v: string) => {
+      let s = String(v ?? "");
+      if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+      return `"${s.replace(/"/g, '""')}"`;
+    };
+    const header = ["Nama", "Email", "User ID", "Waktu Tukar"];
+    const lines = rows.map((r) => [
+      fullName(r),
+      r.email || "",
+      r.userId,
+      new Date(r.createdAt).toLocaleString("id-ID"),
+    ].map(esc).join(","));
+    const csv = [header.map(esc).join(","), ...lines].join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `peserta-${code.code}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="border-t border-gray-100 dark:border-gray-800 pt-3" data-testid={`roster-${code.id}`}>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+          <Users className="h-3.5 w-3.5" /> Peserta yang menukarkan ({rows.length})
+        </span>
+        <Button size="sm" variant="outline" className="h-7 gap-1.5 text-xs" onClick={exportCsv} data-testid={`button-export-${code.id}`}>
+          <Download className="h-3.5 w-3.5" /> Ekspor CSV
+        </Button>
+      </div>
+      {isLoading ? (
+        <div className="flex justify-center py-4"><Loader2 className="h-4 w-4 animate-spin text-indigo-600" /></div>
+      ) : rows.length === 0 ? (
+        <p className="text-xs text-gray-400 dark:text-gray-500 py-2">Belum ada yang menukarkan kode ini.</p>
+      ) : (
+        <div className="space-y-1">
+          {rows.map((r) => (
+            <div key={r.id} className="flex flex-wrap items-center justify-between gap-2 text-xs py-1.5 px-2 rounded bg-gray-50 dark:bg-gray-800/50" data-testid={`redemption-${r.id}`}>
+              <div className="min-w-0">
+                <span className="font-medium text-gray-900 dark:text-white">{fullName(r)}</span>
+                {r.email && <span className="text-gray-500 dark:text-gray-400"> · {r.email}</span>}
+              </div>
+              <span className="text-gray-400 dark:text-gray-500">{new Date(r.createdAt).toLocaleString("id-ID")}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

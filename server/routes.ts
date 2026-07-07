@@ -17626,6 +17626,18 @@ Return HANYA JSON berikut (tanpa penjelasan lain):
     }
   });
 
+  app.get("/api/admin/access-codes/:id/redemptions", isAuthenticated, requireAdmin, async (req: any, res: any) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (!Number.isFinite(id)) return res.status(400).json({ error: "ID tidak valid." });
+      const rows = await (storage as any).listAccessCodeRedemptions(id);
+      res.json(rows);
+    } catch (error: any) {
+      console.error("List access code redemptions error:", error);
+      res.status(500).json({ error: "Gagal mengambil daftar penukaran." });
+    }
+  });
+
   app.patch("/api/admin/access-codes/:id", isAuthenticated, requireAdmin, async (req: any, res: any) => {
     try {
       const id = parseInt(req.params.id, 10);
