@@ -9,7 +9,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@/hooks/use-auth";
 import { useFeatureAccess } from "@/hooks/use-feature-access";
 import { usePartnerBranding, toDirectImageUrl, type PartnerBranding } from "@/hooks/use-partner-branding";
-import { Bot, BookOpen, BarChart3, LogIn, LogOut, Menu, CreditCard, LayoutDashboard, ShoppingBag, Smartphone, Package, Shield, Crown, User, Store, Rocket, TrendingUp, MessageCircle, GraduationCap, Sparkles, Brain, Zap, FileDown } from "lucide-react";
+import { Bot, BookOpen, BarChart3, LogIn, LogOut, Menu, CreditCard, LayoutDashboard, ShoppingBag, Smartphone, Package, Shield, Crown, User, Store, Rocket, TrendingUp, MessageCircle, GraduationCap, Sparkles, Brain, Zap, FileDown, Stethoscope, CalendarDays } from "lucide-react";
 
 const WA_NUMBERS = [
   { display: "081287941900", link: "6281287941900" },
@@ -245,6 +245,8 @@ export function SharedHeader({ transparent }: SharedHeaderProps) {
         { href: "/store", label: "Menggunakan AI", icon: Zap },
         { href: "/affiliate", label: "Menghasilkan Nilai", icon: TrendingUp },
         { href: "/packs", label: "Berkembang", icon: Sparkles },
+        { href: "/klinik-konsultasi", label: "Klinik Konsultasi", icon: Stethoscope },
+        { href: "/indobuildtech", label: "Indobuildtech", icon: CalendarDays, badge: "Event" },
       ];
 
   const premiumNavItems = [
