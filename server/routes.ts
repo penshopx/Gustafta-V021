@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { parseSubAgentsValue } from "./db-storage";
-import { db } from "./db";
+import { db, pool } from "./db";
 import { customDomains, partners, insertPartnerSchema, partnerTopupRequests, trialRequests, subscriptionsTable, vouchers, series as seriesTable, bigIdeas as bigIdeasTable, toolboxes as toolboxesTable, agents as agentsTable, cores as coresTable, systemConfig, clientSubscriptions } from "@shared/schema";
 import { users } from "@shared/models/auth";
 import { eq, and, desc, sql as sqlExpr, inArray, isNull, or } from "drizzle-orm";
@@ -60,7 +60,8 @@ import { getDefaultPoliciesForSeries, type AgentPolicySet } from "./lib/agent-po
 import { importDocumentToProposal, mergeProposalIntoAgent, type ApplyMode } from "./lib/document-importer";
 import { buildEbookMarkdown, buildEbookHtml, stripMarkdownToPlainText, buildEbookTables } from "./lib/ebook-generator";
 import { chatIpRateLimiter, chatAgentIdRateLimiter } from "./lib/rate-limiter";
-import { runGuardedDialog, dialogChatCompletion, DialogBusyError, DIALOG_MODEL } from "./lib/dialog-load-guard";
+import { runGuardedDialog, dialogChatCompletion, DialogBusyError, DIALOG_MODEL, dialogLoadStats } from "./lib/dialog-load-guard";
+import { isSchedulerLeader, schedulerInstanceId } from "./lib/scheduler-leader";
 import * as XLSX from "xlsx";
 import { buildChaesaExport } from "./lib/chaesa-exporter";
 import { buildEcourseHtml } from "./lib/ecourse-generator";
@@ -17171,6 +17172,43 @@ Return HANYA JSON berikut (tanpa penjelasan lain):
     }
     next();
   }
+
+  // ==================== ADMIN: LIVE SYSTEM LOAD ====================
+  // Observasi beban langsung saat acara (soft-launch). Menyatukan tiga sinyal
+  // yang sudah ada namun belum terlihat: gerbang konkurensi dialog, status
+  // leader scheduler, dan pemakaian pool koneksi DB. Admin-only, read-only.
+  app.get("/api/admin/system-load", requireAdmin, async (_req: any, res: any) => {
+    try {
+      const dialog = dialogLoadStats();
+      const capacity = dialog.maxConcurrency + dialog.maxQueue;
+      const inFlight = dialog.active + dialog.pending;
+      res.json({
+        timestamp: new Date().toISOString(),
+        dialog: {
+          active: dialog.active,
+          pending: dialog.pending,
+          inFlight,
+          maxConcurrency: dialog.maxConcurrency,
+          maxQueue: dialog.maxQueue,
+          capacity,
+          utilization: capacity > 0 ? Math.round((inFlight / capacity) * 100) : 0,
+        },
+        scheduler: {
+          isLeader: isSchedulerLeader(),
+          instanceId: schedulerInstanceId(),
+        },
+        dbPool: {
+          total: pool.totalCount,
+          idle: pool.idleCount,
+          active: pool.totalCount - pool.idleCount,
+          waiting: pool.waitingCount,
+          max: (pool as any).options?.max ?? null,
+        },
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Gagal membaca beban sistem." });
+    }
+  });
 
   // ==================== USER: MY ACCOUNT ====================
   app.get("/api/my/account", isAuthenticated, async (req: any, res: any) => {
