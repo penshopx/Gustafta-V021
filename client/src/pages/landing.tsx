@@ -15,7 +15,7 @@ import {
   MessageCircle, ShieldCheck, Store, Bot, FileText,
   GraduationCap, Smartphone, Users, Building2, Briefcase, User,
   Send, Loader2, Sparkles, X, ChevronDown, Lock, ShoppingBag, FileDown,
-  Mic, MicOff, Paperclip, Bell, Clock, Target, Mail,
+  Mic, MicOff, Paperclip, Bell, Clock, Target, Mail, Stethoscope, CalendarDays,
 } from "lucide-react";
 
 const GUSTAFTA_AGENT_ID = "1";
@@ -1163,8 +1163,96 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* ── KLINIK KONSULTASI ── */}
+      <section className="py-16 px-4 bg-white dark:bg-background" data-testid="section-klinik-konsultasi">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-10">
+            <p className="text-xs font-bold text-teal-600 dark:text-teal-400 uppercase tracking-widest mb-2 flex items-center justify-center gap-1.5">
+              <Stethoscope className="w-3.5 h-3.5" /> Konsultasi AI
+            </p>
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-3">
+              Klinik Konsultasi Konstruksi
+            </h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed">
+              Pilih loket sesuai kebutuhan Anda, lalu tanya ke AI kapan saja — operator manusia hanya untuk kasus khusus. Tersedia loket untuk badan usaha maupun individu profesional.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-5 mb-8">
+            {[
+              {
+                title: "Untuk Badan Usaha & Perizinan",
+                partners: "ASPEKINDO · LSBU · PUB",
+                accent: "text-rose-600 dark:text-rose-400",
+                border: "border-rose-200 dark:border-rose-800",
+                items: ["Loket SBU", "Loket Perizinan (OSS)", "Loket Tender", "Loket Kontraktor", "Loket Konsultan", "Loket PUB (LKUT)"],
+              },
+              {
+                title: "Untuk Individu Profesional",
+                partners: "ASDAMKINDO · LSP · BNSP · KAN",
+                accent: "text-teal-600 dark:text-teal-400",
+                border: "border-teal-200 dark:border-teal-800",
+                items: ["Loket SKK", "Loket SKK K3", "Loket PKB", "Loket ASKOM", "Loket Lisensi BNSP", "Loket Akreditasi KAN"],
+              },
+            ].map((g) => (
+              <div key={g.title} className={`rounded-2xl border ${g.border} bg-gray-50 dark:bg-muted/20 p-6`}>
+                <h3 className="text-base font-bold text-gray-900 dark:text-white">{g.title}</h3>
+                <p className={`text-[11px] font-semibold uppercase tracking-wider mb-4 ${g.accent}`}>{g.partners}</p>
+                <div className="flex flex-wrap gap-2">
+                  {g.items.map((it) => (
+                    <span key={it} className="text-xs font-medium px-2.5 py-1 rounded-full bg-white dark:bg-card border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300" data-testid={`chip-loket-${it}`}>
+                      {it}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="text-center">
+            <Button asChild size="lg" className="gap-2 bg-teal-600 hover:bg-teal-700 text-white" data-testid="btn-klinik-konsultasi">
+              <Link href="/klinik-konsultasi">
+                Masuk Klinik Konsultasi <ArrowRight className="w-4 h-4" />
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* ── EVENT: INDOBUILDTECH 2026 ── */}
+      <section className="py-16 px-4 bg-gray-50 dark:bg-muted/20" data-testid="section-indobuildtech">
+        <div className="max-w-5xl mx-auto">
+          <div className="rounded-3xl border border-orange-200 dark:border-orange-800 bg-gradient-to-br from-orange-50 to-white dark:from-orange-950/30 dark:to-background p-8 md:p-10">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-orange-600 text-white">
+                <CalendarDays className="w-3 h-3" /> Event
+              </span>
+              <span className="text-[10px] font-semibold text-orange-700 dark:text-orange-400 uppercase tracking-wider">
+                ASDAMKINDO × Gustafta
+              </span>
+            </div>
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-2 leading-tight">
+              Seminar Nasional Indobuildtech 2026
+            </h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed mb-4 max-w-2xl">
+              Tema "Perkuatan Bangunan Miring". Kunjungi booth kami dan lihat langsung cara merakit chatbot AI konstruksi — plus bonus eksklusif untuk peserta seminar.
+            </p>
+            <p className="inline-flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 mb-6">
+              <Clock className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400" /> Kamis, 9 Juli 2026 · 13.00–17.30 WIB
+            </p>
+            <div>
+              <Button asChild size="lg" className="gap-2 bg-orange-600 hover:bg-orange-700 text-white" data-testid="btn-indobuildtech">
+                <Link href="/indobuildtech">
+                  Lihat Detail Event <ArrowRight className="w-4 h-4" />
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── APA YANG INGIN DIRAKIT ── */}
-      <section className="py-16 px-4 bg-gray-50 dark:bg-muted/20">
+      <section className="py-16 px-4 bg-white dark:bg-background">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-10">
             <p className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-2">Apa yang Ingin Anda Rakit?</p>
