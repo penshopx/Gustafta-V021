@@ -986,8 +986,21 @@ export class DatabaseStorage implements IStorage {
     return mapped;
   }
 
-  async createAgent(insertAgent: InsertAgent, exec: Executor = db): Promise<Agent> {
-    
+  async createAgent(insertAgent: InsertAgent, execOrUserId: Executor | string = db): Promise<Agent> {
+    // Kompatibilitas argumen kedua:
+    //  - Executor (mis. `tx` transaksi) → dipakai sebagai executor DB.
+    //  - string → PENINGGALAN signature lama `(insert, userId)`. ~40 seed lama
+    //    masih mengirim userId (mis. "49465846") sebagai arg kedua. Kita HANYA
+    //    memakainya untuk cegah crash (pakai `db`), TAPI TIDAK menyetelnya sebagai
+    //    pemilik: agen seed resmi Gustafta harus tetap user_id="" agar tidak salah
+    //    diklasifikasi sebagai produk kreator (gerbang Store + bagi hasil 80/20).
+    const exec: Executor = typeof execOrUserId === "string" ? db : execOrUserId;
+    // Kepemilikan HANYA dari insertAgent.userId (jalur blueprint/kreator), else "".
+    const ownerUserId =
+      (insertAgent as any).userId != null && (insertAgent as any).userId !== ""
+        ? String((insertAgent as any).userId)
+        : "";
+
     // Auto-generate access token if not provided
     const accessToken = insertAgent.accessToken || `gus_${randomUUID().replace(/-/g, "")}`;
 
@@ -997,6 +1010,7 @@ export class DatabaseStorage implements IStorage {
     const filled = applyDefaultPolicies(insertAgent, seriesName);
 
     const result = await exec.insert(agents).values({
+      userId: ownerUserId,
       name: insertAgent.name,
       description: insertAgent.description || "",
       avatar: insertAgent.avatar || "",
