@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { SharedHeader } from "@/components/shared-header";
 import { useAuth } from "@/hooks/use-auth";
@@ -17,7 +17,7 @@ import {
 import {
   Sparkles, ArrowRight, ArrowLeft, Loader2, Lock, Check, AlertTriangle,
   Brain, Target, ClipboardList, Rocket, RotateCcw, Info, Gauge, Download, Copy,
-  FileJson, Share2, FileSignature, Megaphone, BookOpen,
+  FileJson, Share2, FileSignature, Megaphone, BookOpen, Upload,
 } from "lucide-react";
 
 /* ── Types (mirror server/blueprint-engine-routes.ts responses) ───────────── */
@@ -162,6 +162,7 @@ export default function BlueprintBuilderPage() {
   const [certBusy, setCertBusy] = useState(false);
   const [shareBusy, setShareBusy] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
   const [, setLocation] = useLocation();
 
   /* ── Sertifikat pembelajaran reflektif (unduh PDF) ── */
@@ -356,6 +357,63 @@ export default function BlueprintBuilderPage() {
       toast({ title: "Blueprint diunduh", description: "File JSON siap diimpor ke tool lain." });
     } catch {
       toast({ title: "Gagal mengunduh", description: "Coba lagi sebentar.", variant: "destructive" });
+    }
+  };
+
+  /* Muat kembali blueprint dari file JSON hasil unduhan (envelope "gustafta-blueprint"
+     ATAU objek blueprint langsung). Rehidrasi dialog via /state lalu masuk tahap dialog. */
+  const importBlueprintJSON = async (file: File) => {
+    setBusy(true);
+    try {
+      const text = await file.text();
+      let parsed: any;
+      try { parsed = JSON.parse(text); } catch { throw new Error("File bukan JSON yang valid."); }
+      const bp = parsed?.type === "gustafta-blueprint" && parsed?.blueprint ? parsed.blueprint : parsed;
+      if (!bp || typeof bp !== "object" || typeof bp.modules !== "object") {
+        throw new Error("Ini bukan file blueprint Gustafta. Gunakan file JSON hasil unduhan dari Blueprint.");
+      }
+      // Validasi struktur di server (parseBlueprint) sekaligus rehidrasi dialog.
+      // 4xx = file blueprint memang tidak valid → GAGALKAN impor (jangan pura-pura sukses).
+      let partialRestore = false;
+      let dialogueState: DialogueState;
+      try {
+        const st = await apiRequest("POST", "/api/blueprint/state", { blueprint: bp });
+        dialogueState = {
+          ...(st.dialogue ?? {}),
+          nextQuestions: st.nextQuestions ?? st.dialogue?.nextQuestions ?? [],
+        } as DialogueState;
+      } catch (stErr: any) {
+        const msg = String(stErr?.message || "");
+        if (/^40[13]:/.test(msg)) {
+          // Sesi habis / tidak berwenang.
+          throw new Error("Sesi Anda berakhir. Silakan masuk lagi, lalu ulangi impor.");
+        }
+        if (/^4\d\d:/.test(msg)) {
+          // Ditolak server: format blueprint tidak valid.
+          throw new Error("File blueprint tidak dikenali server. Gunakan file JSON hasil unduhan dari Blueprint.");
+        }
+        // Kegagalan sementara (jaringan) — muat blueprint apa adanya, dialog dipulihkan sebagian.
+        partialRestore = true;
+        dialogueState = {
+          totalEssential: 0, answeredEssential: 0, remainingEssential: 0,
+          essentialComplete: true, nextQuestions: [],
+        };
+      }
+      setBlueprint(bp);
+      setIntent(typeof bp?.meta?.intent === "string" ? bp.meta.intent : "");
+      setAnswers({}); setAnalysis(null); setPreview(null); setCreated(null); setConfidence(null);
+      setDialogue(dialogueState);
+      setStep("dialogue");
+      toast(
+        partialRestore
+          ? { title: "Blueprint dimuat (sebagian)", description: "Koneksi bermasalah — progres dialog belum pulih penuh, tapi Anda bisa lanjut ke Analisis." }
+          : { title: "Blueprint dimuat", description: "Lanjutkan tanya-jawab atau langsung ke Analisis." },
+      );
+    } catch (e: any) {
+      toast({ title: "Gagal memuat", description: e?.message || "File tidak dikenali.", variant: "destructive" });
+    } finally {
+      setBusy(false);
+      if (importInputRef.current) importInputRef.current.value = "";
     }
   };
 
@@ -628,9 +686,32 @@ export default function BlueprintBuilderPage() {
               className="min-h-28"
               data-testid="input-intent"
             />
-            <Button onClick={start} disabled={busy} className="bg-indigo-600 hover:bg-indigo-500 text-white gap-2" data-testid="btn-start">
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Mulai Merancang
-            </Button>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button onClick={start} disabled={busy} className="bg-indigo-600 hover:bg-indigo-500 text-white gap-2" data-testid="btn-start">
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Mulai Merancang
+              </Button>
+              <input
+                ref={importInputRef}
+                type="file"
+                accept="application/json,.json"
+                className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) importBlueprintJSON(f); }}
+                data-testid="input-import-blueprint"
+              />
+              <Button
+                type="button"
+                onClick={() => importInputRef.current?.click()}
+                disabled={busy}
+                variant="outline"
+                className="gap-2"
+                data-testid="btn-import-blueprint"
+              >
+                <Upload className="h-4 w-4" /> Impor Blueprint (.json)
+              </Button>
+            </div>
+            <p className="text-xs text-gray-400 dark:text-gray-500">
+              Punya file blueprint yang pernah diunduh? Impor di sini untuk melanjutkan atau membuat agennya kembali — tanpa mengulang tanya-jawab.
+            </p>
           </div>
         )}
 

@@ -44,3 +44,9 @@ The Tahap 1–9 engines (`server/services/blueprint-engine/*`) are pure/stateles
 
 **Why:** an architect review caught the wizard sending `false` for every untouched boolean, corrupting elicitation.
 **How to apply:** in any blueprint dialogue UI, build the answers payload from explicitly-touched fields only.
+
+## Client-side blueprint IMPORT must fail on server 4xx, not soft-fallback
+- The wizard exports a blueprint envelope `{type:"gustafta-blueprint",version,exportedAt,blueprint}` and can re-import it. Import rehydrates the dialog by POSTing the blueprint to `/state` (read-only; no DB write) and reusing its `{dialogue,nextQuestions}`.
+- **Rule:** treat a `/state` **4xx** as a real import failure — the file is invalid; keep the user on the intro step and show a destructive toast. Only soft-fallback (minimal DialogueState + "dimuat sebagian" toast) on genuine transient/network errors. Split 401/403 into a "session expired" message.
+- **Why:** an earlier version swallowed every `/state` error into a fake minimal DialogueState and reported "Blueprint dimuat", so malformed/wrong-shape JSON *looked* imported but then failed later at `/analyze` and `/configure`. `apiRequest` throws `"${status}: ${text}"`, so branch on `/^4\d\d:/`.
+- **How to apply:** mutate visible state (`setBlueprint/setStep/...`) only AFTER `/state` succeeds, so a rejected file never partially overwrites the user's context. Client-side `typeof bp.modules === "object"` is a cheap pre-check; the server `parseBlueprint` is the real validator.
