@@ -1,22 +1,8 @@
-import { drizzle } from "drizzle-orm/node-postgres";
-import pg from "pg";
+// NOTE: Modul ini SENGAJA tidak lagi membuat pool pg sendiri. Sebelumnya ia
+// mendefinisikan Pool kedua (max 10) yang, bila terimpor, menggandakan koneksi
+// per-instance dan berisiko menembus plafon Postgres di autoscale. Sekarang ia
+// hanya me-re-export satu pool/db kanonik dari server/db.ts.
 import * as schema from "./schema";
 
-const { Pool } = pg;
-
-const isProduction = process.env.NODE_ENV === "production";
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: isProduction ? { rejectUnauthorized: false } : false,
-  connectionTimeoutMillis: 10000,
-  idleTimeoutMillis: 30000,
-  max: 10,
-});
-
-pool.on("error", (err) => {
-  console.error("[DB/index] Pool connection error:", err.message);
-});
-
-export const db = drizzle(pool, { schema });
+export { db, pool } from "../db";
 export { schema };

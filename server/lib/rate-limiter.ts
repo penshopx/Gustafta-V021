@@ -24,6 +24,43 @@ function isAdminUser(req: Request): boolean {
   return ADMIN_USER_IDS.includes(String(userId));
 }
 
+/**
+ * Mode Event — dipakai saat soft-launch / acara dengan lonjakan peserta serempak
+ * (mis. Indobuildtech 2026). Saat aktif, batas per-akun & per-IP dinaikkan supaya
+ * ratusan peserta yang sah tidak saling mengunci.
+ *
+ * Aktivasi (env, tanpa perlu deploy ulang kode):
+ *  - EVENT_MODE = "on" / "1" / "true"  → paksa aktif
+ *  - EVENT_MODE = "off"                → paksa nonaktif
+ *  - atau rentang tanggal: EVENT_MODE_START & EVENT_MODE_END (ISO, mis. 2026-07-08)
+ *    → aktif otomatis selama sekarang berada di dalam rentang.
+ */
+export function isEventMode(now: Date = new Date()): boolean {
+  const flag = (process.env.EVENT_MODE || "").trim().toLowerCase();
+  if (["on", "1", "true", "yes"].includes(flag)) return true;
+  if (["off", "0", "false", "no"].includes(flag)) return false;
+
+  const startRaw = (process.env.EVENT_MODE_START || "").trim();
+  const endRaw = (process.env.EVENT_MODE_END || "").trim();
+  if (!startRaw && !endRaw) return false;
+
+  const t = now.getTime();
+  const start = startRaw ? Date.parse(startRaw) : Number.NEGATIVE_INFINITY;
+  const end = endRaw ? Date.parse(endRaw) : Number.POSITIVE_INFINITY;
+  if (Number.isNaN(start) || Number.isNaN(end)) return false;
+  return t >= start && t <= end;
+}
+
+// Batas per menit untuk endpoint chat.
+function intEnv(name: string, fallback: number): number {
+  const n = parseInt(process.env[name] ?? "", 10);
+  return Number.isFinite(n) ? n : fallback;
+}
+const AUTH_LIMIT_NORMAL = intEnv("CHAT_LIMIT_AUTH", 120);
+const AUTH_LIMIT_EVENT = intEnv("CHAT_LIMIT_AUTH_EVENT", 240);
+const ANON_LIMIT_NORMAL = intEnv("CHAT_LIMIT_ANON", 30);
+const ANON_LIMIT_EVENT = intEnv("CHAT_LIMIT_ANON_EVENT", 60);
+
 const retryAfterHandler = (
   _req: Request,
   res: Response,
@@ -43,10 +80,18 @@ export const chatIpRateLimiter = rateLimit({
   windowMs: 60 * 1000,
   limit: (req: Request) => {
     if (isAdminUser(req)) return 0;
-    if (isAuthenticatedUser(req)) return 120;
-    return 30;
+    const event = isEventMode();
+    if (isAuthenticatedUser(req)) return event ? AUTH_LIMIT_EVENT : AUTH_LIMIT_NORMAL;
+    return event ? ANON_LIMIT_EVENT : ANON_LIMIT_NORMAL;
   },
-  keyGenerator: (req: Request) => ipKeyGenerator(req),
+  // Kunci per-AKUN untuk user login (bukan per-IP): di venue acara ratusan peserta
+  // berbagi satu IP WiFi — keying per-IP membuat mereka saling mengunci. Anonim
+  // tetap dibatasi per-IP.
+  keyGenerator: (req: Request) => {
+    const userId = getUserId(req);
+    if (isAuthenticatedUser(req) && userId) return `user:${userId}`;
+    return ipKeyGenerator(req.ip ?? "");
+  },
   skip: (req: Request) => isAdminUser(req),
   standardHeaders: "draft-7",
   legacyHeaders: false,

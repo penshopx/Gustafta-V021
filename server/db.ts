@@ -12,12 +12,28 @@ if (!process.env.DATABASE_URL) {
 
 const isProduction = process.env.NODE_ENV === "production";
 
+// Prefer a pooled/transaction-pooler connection string when tersedia (mis. PgBouncer /
+// Neon pooler) supaya banyak instance autoscale berbagi backend connection lebih hemat.
+// Fallback ke DATABASE_URL biasa bila tidak diset.
+const connectionString =
+  process.env.DATABASE_URL_POOLED || process.env.DATABASE_URL;
+
+// Batas koneksi per-instance dapat disetel via env. Di autoscale, total koneksi =
+// jumlah_instance × DB_POOL_MAX; jaga di bawah plafon Postgres (~112). Default 12
+// agar aman untuk beberapa instance sekaligus. SATU pool ini dipakai untuk query
+// aplikasi DAN session store (lihat replitAuth.ts) — tidak ada pool kedua.
+function intEnv(name: string, fallback: number): number {
+  const n = parseInt(process.env[name] ?? "", 10);
+  return Number.isFinite(n) ? n : fallback;
+}
+const DB_POOL_MAX = Math.max(2, intEnv("DB_POOL_MAX", 12));
+
 export const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString,
   ssl: isProduction ? { rejectUnauthorized: false } : false,
   connectionTimeoutMillis: 10000,
   idleTimeoutMillis: 30000,
-  max: 10,
+  max: DB_POOL_MAX,
 });
 
 // Prevent unhandled errors from crashing the server
