@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { pgTable, text, boolean, timestamp, real, integer, jsonb, varchar, serial, uniqueIndex, index } from "drizzle-orm/pg-core";
+import { pgTable, text, boolean, timestamp, real, integer, bigint, jsonb, varchar, serial, uniqueIndex, index } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 
@@ -2646,3 +2646,16 @@ export const insertEventTestimonialSchema = createInsertSchema(eventTestimonials
 });
 export type InsertEventTestimonial = z.infer<typeof insertEventTestimonialSchema>;
 export type EventTestimonial = typeof eventTestimonials.$inferSelect;
+
+// ─── Rate-limit buckets (SHARED store, cross-instance) ────────────────────────
+// Penghitung sliding-window bersama untuk rate limiter yang HARUS konsisten di
+// banyak instance autoscale (mis. batas per-agen per jam untuk pemanggil anonim
+// di `chatAgentIdRateLimiter`). Map in-memory hanya melindungi 1 proses; tabel
+// ini menjadikan hitungan tunggal untuk semua instance. resetAt = epoch ms.
+export const rateLimitBuckets = pgTable("rate_limit_buckets", {
+  bucketKey: varchar("bucket_key", { length: 255 }).primaryKey(),
+  count: integer("count").notNull().default(0),
+  resetAt: bigint("reset_at", { mode: "number" }).notNull(),
+});
+
+export type RateLimitBucket = typeof rateLimitBuckets.$inferSelect;
