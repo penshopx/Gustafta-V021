@@ -54,7 +54,7 @@ export default function FlierKlinikKonsultasiPage() {
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.18),transparent_55%)]" />
           <div className="relative">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold tracking-wide text-teal-50">ASDAMKINDO × GUSTAFTA</span>
+              <span className="text-sm font-semibold tracking-wide text-teal-50">ASPEKINDO · ASDAMKINDO · PUB × GUSTAFTA</span>
               <span className="inline-flex items-center gap-1 rounded-full bg-white text-teal-800 text-sm font-black px-3 py-1">GRATIS</span>
             </div>
             <div className="flex items-center gap-3 mt-5">
@@ -68,6 +68,11 @@ export default function FlierKlinikKonsultasiPage() {
             </div>
             <p className="mt-4 text-teal-50 text-lg max-w-xl">
               Tanya <span className="font-bold text-white">AI dulu</span> — operator hanya untuk hal yang tak terjawab. Buka 24 jam.
+            </p>
+            <p className="mt-3 text-xs text-teal-100/85 leading-relaxed max-w-xl" data-testid="text-flier-kemitraan">
+              Kerja sama <span className="font-semibold text-white">ASPEKINDO</span> · ASDAMKINDO · WarneyTech Co.,Ltd —
+              bersama LSBU · LSP · <span className="font-semibold text-white">PUB</span> · PKB.
+              Didukung diklatkerja.com &amp; Gustafta.my.id
             </p>
           </div>
         </div>

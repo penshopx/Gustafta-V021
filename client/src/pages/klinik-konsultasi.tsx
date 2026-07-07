@@ -14,6 +14,7 @@ import {
   Stethoscope, FileCheck2, Gavel, HardHat, Briefcase, Truck, Award, Building2,
   ArrowRight, MessageCircle, Headset, CheckCircle2, Clock, Sparkles, Bot,
   TrendingUp, GraduationCap, ShieldQuestion, Star, Send, Heart,
+  ShieldCheck, Scale, Users,
 } from "lucide-react";
 
 /*
@@ -42,6 +43,9 @@ const LOKET: Loket[] = [
   { name: "Loket SBU", tag: "Sertifikat badan usaha (BUJK)", href: "/sbu-claw", icon: Building2, accent: "text-rose-600 dark:text-rose-400" },
   { name: "Loket PUB (LKUT)", tag: "Pengembangan usaha berkelanjutan & LKUT", href: "/pub-lkut-claw", icon: TrendingUp, accent: "text-sky-600 dark:text-sky-400" },
   { name: "Loket PKB", tag: "Pengembangan keprofesian berkelanjutan", href: "/pkb", icon: GraduationCap, accent: "text-violet-600 dark:text-violet-400" },
+  { name: "Loket Personel Manajerial (PJBU)", tag: "PJBU, PJTBU, PJKBU & PJSKBU BUJK", href: "/pjbu-claw", icon: Users, accent: "text-indigo-600 dark:text-indigo-400" },
+  { name: "Loket SMAP", tag: "ISO 37001 & sistem anti-penyuapan", href: "/smap-claw", icon: ShieldCheck, accent: "text-teal-600 dark:text-teal-400" },
+  { name: "Loket PanCEK", tag: "Integritas & pencegahan korupsi (KPK)", href: "/pancek-claw", icon: Scale, accent: "text-red-600 dark:text-red-400" },
 ];
 
 type WorkroomLink = { domain: string; name: string; tag: string; icon: any };
@@ -239,6 +243,13 @@ export default function KlinikKonsultasiPage() {
               </a>
             </Button>
           </div>
+          <p className="text-teal-100/90 text-xs md:text-sm leading-relaxed pt-4 mt-2 border-t border-white/15" data-testid="text-kemitraan-aspekindo">
+            Klinik Konsultasi <span className="font-semibold text-white">SBU · SKK · PKB · PUB</span> ini terselenggara
+            atas kerja sama <span className="font-semibold text-white">ASPEKINDO</span> · ASDAMKINDO · WarneyTech Co.,Ltd —
+            bersama LSBU · LSP · <span className="font-semibold text-white">PUB</span> · PKB.
+            <br className="hidden sm:block" />
+            Didukung <span className="font-medium text-white">diklatkerja.com</span> &amp; <span className="font-medium text-white">Gustafta.my.id</span>
+          </p>
         </div>
       </section>
 
