@@ -212,15 +212,20 @@ function ChatTab({ agentId }: { agentId: number }) {
     setStreaming(true);
     abortRef.current = new AbortController();
     try {
-      const resp = await fetch(`/api/chat/${agentId}/stream`, {
+      const resp = await fetch(`/api/messages/stream`, {
         method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ message:msg, conversationHistory:messages.map(m=>({role:m.role,content:m.content})) }),
+        body: JSON.stringify({ agentId:String(agentId), content:msg, role:"user" }),
         signal: abortRef.current.signal,
       });
       if (!resp.ok) throw new Error("error");
       const reader = resp.body!.getReader(); const decoder = new TextDecoder();
       let buf=""; let fullContent=""; let subAgents:SubAgentStatus[]=[];
-      const flush = () => setMessages(prev=>{const n=[...prev];n[n.length-1]={role:"assistant",content:fullContent,isStreaming:true,subAgents:[...subAgents]};return n;});
+      const clean = (s:string) => s
+        .replace(/\[SAVE_MEMORY:(memory|note)\][\s\S]*?\[\/SAVE_MEMORY\]/g,"")
+        .replace(/\[DELETE_MEMORY\][\s\S]*?\[\/DELETE_MEMORY\]/g,"")
+        .replace(/\[SAVE_MEMORY:(memory|note)\][\s\S]*$/g,"")
+        .replace(/\[DELETE_MEMORY\][\s\S]*$/g,"");
+      const flush = () => setMessages(prev=>{const n=[...prev];n[n.length-1]={role:"assistant",content:clean(fullContent),isStreaming:true,subAgents:[...subAgents]};return n;});
       while (true) {
         const {done,value} = await reader.read(); if (done) break;
         buf += decoder.decode(value,{stream:true});
@@ -230,14 +235,16 @@ function ChatTab({ agentId }: { agentId: number }) {
           const raw=line.slice(6).trim(); if (raw==="[DONE]") continue;
           try {
             const evt=JSON.parse(raw);
-            if (evt.type==="token"){fullContent+=evt.content;flush();}
+            if (evt.type==="chunk"){fullContent+=evt.content;flush();}
             else if (evt.type==="orchestrating_start"){subAgents=(evt.subAgents??[]).map((a:any)=>({agentId:a.agentId??0,role:a.role,status:"waiting" as const}));flush();}
             else if (evt.type==="sub_agent_start"){subAgents=subAgents.map(a=>a.role===evt.role?{...a,status:"running" as const}:a);flush();}
             else if (evt.type==="sub_agent_done"){subAgents=subAgents.map(a=>a.role===evt.role?{...a,status:"done" as const,elapsed:evt.elapsed}:a);flush();}
-            else if (evt.type==="error"){fullContent+=`\n\n⚠️ ${evt.message}`;flush();}
+            else if (evt.type==="complete"){if(evt.message?.content)fullContent=evt.message.content;flush();}
+            else if (evt.type==="error"){fullContent+=`\n\n⚠️ ${evt.error||evt.message||"Terjadi error."}`;flush();}
           } catch {}
         }
       }
+      fullContent = clean(fullContent);
       setMessages(prev=>{const n=[...prev];n[n.length-1]={role:"assistant",content:fullContent,isStreaming:false,subAgents};return n;});
     } catch(e:any) {
       if (e.name!=="AbortError") setMessages(prev=>{const n=[...prev];n[n.length-1]={role:"assistant",content:"Terjadi error. Coba lagi.",isStreaming:false};return n;});

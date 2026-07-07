@@ -173,13 +173,10 @@ function ChatTab({ agentId }: { agentId: number }) {
     setStreaming(true);
     abortRef.current = new AbortController();
     try {
-      const resp = await fetch(`/api/chat/${agentId}/stream`, {
+      const resp = await fetch(`/api/messages/stream`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: msg,
-          conversationHistory: messages.map(m => ({ role: m.role, content: m.content })),
-        }),
+        body: JSON.stringify({ agentId:String(agentId), content:msg, role:"user" }),
         signal: abortRef.current.signal,
       });
       if (!resp.ok) throw new Error("Streaming error");
@@ -203,7 +200,7 @@ function ChatTab({ agentId }: { agentId: number }) {
           if (raw === "[DONE]") continue;
           try {
             const evt = JSON.parse(raw);
-            if (evt.type==="token") { fullContent += evt.content; flush(); }
+            if (evt.type==="chunk") { fullContent += evt.content; flush(); }
             else if (evt.type==="orchestrating_start") {
               subAgents = (evt.subAgents ?? []).map((a: any) => ({ agentId: a.agentId??0, role: a.role, status:"waiting" as const }));
               flush();
@@ -213,7 +210,7 @@ function ChatTab({ agentId }: { agentId: number }) {
             } else if (evt.type==="sub_agent_done") {
               subAgents = subAgents.map(a => a.role===evt.role ? {...a,status:"done" as const,elapsed:evt.elapsed} : a);
               flush();
-            } else if (evt.type==="error") { fullContent += `\n\n⚠️ ${evt.message}`; flush(); }
+            } else if (evt.type==="error") { fullContent += `\n\n⚠️ ${evt.error||evt.message||"Terjadi error."}`; flush(); }
           } catch {}
         }
       }
