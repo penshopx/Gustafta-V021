@@ -149,6 +149,18 @@ const STORE_CATALOG_MAX_KEYS = 100;
 const storeCatalogCache = new Map<string, { items: any[]; ts: number }>();
 const storeCatalogInflight = new Map<string, Promise<any[]>>();
 
+// Invalidate the whole computed catalog so the next request rebuilds. Call this
+// from any write that can change what GET /api/store/catalog returns (isListed,
+// isActive, price/license/category on agents or store_products, creating or
+// deleting store products, marketplace orders). The cache is keyed by
+// (category, search) and a single mutation can affect many keys, so we clear
+// all of them; the next request cold-builds via single-flight. Public browsing
+// still hits the warm cache after that one rebuild — no load-test regression.
+function invalidateStoreCatalog(): void {
+  storeCatalogCache.clear();
+  storeCatalogInflight.clear();
+}
+
 async function buildStoreCatalogItems(category: string, search: string): Promise<any[]> {
   const { db } = await import("./db");
   const { agents: agentsTable, storeProducts } = await import("@shared/schema");
@@ -2247,6 +2259,7 @@ export async function registerRoutes(
       }
       const agent = await storage.createAgent(parsed.data);
       await storage.setActiveAgent(String(agent.id));
+      invalidateStoreCatalog();
       res.status(201).json(isAdminCreate ? agent : sanitizeAgentForPublic(agent));
     } catch (error) {
       console.error("Agent creation error:", error);
@@ -2296,6 +2309,9 @@ export async function registerRoutes(
       if (!agent) {
         return res.status(404).json({ error: "Agent not found" });
       }
+      // A change to isListed/isActive/category/price/license fields alters what
+      // the Store catalog returns — drop the cache so it reflects immediately.
+      invalidateStoreCatalog();
       res.json(isAdminUpdate ? agent : sanitizeAgentForPublic(agent));
     } catch (error) {
       res.status(500).json({ error: "Failed to update agent" });
@@ -2356,6 +2372,7 @@ export async function registerRoutes(
       }
       const certified = req.body.certified === true;
       const updated = await storage.updateAgent(agentId, { isCertified: certified } as any);
+      invalidateStoreCatalog();
       const adminId = (req.user as any)?.claims?.sub || (req.user as any)?.id || "unknown";
       console.log(`[CERTIFICATION] agent#${agentId} isCertified=${certified} oleh admin=${adminId}`);
       // Bukti historis permanen (tabel), pelengkap console.log yang hilang saat
@@ -2589,6 +2606,7 @@ export async function registerRoutes(
       if (!agent) {
         return res.status(404).json({ error: "Agent not found" });
       }
+      invalidateStoreCatalog();
       res.json(isAdminActivate ? agent : sanitizeAgentForPublic(agent));
     } catch (error) {
       res.status(500).json({ error: "Failed to activate agent" });
@@ -6530,6 +6548,7 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
   app.post("/api/store/admin/products", isAuthenticated, async (req, res) => {
     try {
       const product = await storage.createStoreProduct(req.body);
+      invalidateStoreCatalog();
       res.json(product);
     } catch (error) {
       console.error("Create store product error:", error);
@@ -6541,6 +6560,7 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
     try {
       const product = await storage.updateStoreProduct(Number(req.params.id), req.body);
       if (!product) return res.status(404).json({ error: "Product not found" });
+      invalidateStoreCatalog();
       res.json(product);
     } catch (error) {
       res.status(500).json({ error: "Failed to update product" });
@@ -6550,6 +6570,7 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
   app.delete("/api/store/admin/products/:id", isAuthenticated, async (req, res) => {
     try {
       const ok = await storage.deleteStoreProduct(Number(req.params.id));
+      invalidateStoreCatalog();
       res.json({ success: ok });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete product" });
