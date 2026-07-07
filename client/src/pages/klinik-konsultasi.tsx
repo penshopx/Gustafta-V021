@@ -15,7 +15,7 @@ import {
   ArrowRight, MessageCircle, Headset, CheckCircle2, Clock, Sparkles, Bot,
   TrendingUp, GraduationCap, ShieldQuestion, Star, Send, Heart,
   ShieldCheck, Scale, Users, Landmark,
-  BadgeCheck, Stamp, FileText, UserCheck, ShieldAlert,
+  BadgeCheck, Stamp, FileText, UserCheck, ShieldAlert, Brain,
 } from "lucide-react";
 
 /*
@@ -53,6 +53,7 @@ const LOKET_BADAN_USAHA: Loket[] = [
 const LOKET_PROFESIONAL: Loket[] = [
   { name: "Loket SKK", tag: "Kompetensi & jenjang — semua bidang jasa konstruksi", href: "/skk-coach", icon: Award, accent: "text-teal-600 dark:text-teal-400" },
   { name: "Loket SKK K3", tag: "SKK Ahli K3 Konstruksi, SMK3 & ISO 45001", href: "/safira-claw", icon: ShieldAlert, accent: "text-amber-600 dark:text-amber-400" },
+  { name: "Loket Bimtek Uji Kompetensi", tag: "Latihan & simulasi uji kompetensi SKK", href: "/simulator-uji-kompetensi", icon: Brain, accent: "text-fuchsia-600 dark:text-fuchsia-400" },
   { name: "Loket PKB", tag: "Pengembangan keprofesian berkelanjutan", href: "/pkb", icon: GraduationCap, accent: "text-violet-600 dark:text-violet-400" },
   { name: "Loket ASKOM", tag: "Asesor kompetensi & proses uji kompetensi SKK", href: "/askom", icon: UserCheck, accent: "text-indigo-600 dark:text-indigo-400" },
   { name: "Loket Lisensi BNSP", tag: "Lisensi & manajemen LSP oleh BNSP", href: "/lisensi-lsp-bnsp", icon: BadgeCheck, accent: "text-rose-600 dark:text-rose-400" },
