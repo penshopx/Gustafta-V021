@@ -44,6 +44,7 @@ const LOKET_BADAN_USAHA: Loket[] = [
   { name: "Loket Konsultan", tag: "Perencanaan, pengawasan, desain", href: "/konsultanbot", icon: Briefcase, accent: "text-indigo-600 dark:text-indigo-400" },
   { name: "Loket Suplier", tag: "Rantai pasok & pasok material", href: "/supplierbot", icon: Truck, accent: "text-emerald-600 dark:text-emerald-400" },
   { name: "Loket Pelaksanaan Proyek", tag: "EVM, K3, LHP, klaim, serah terima", href: "/proyekbot", icon: HardHat, accent: "text-orange-600 dark:text-orange-400" },
+  { name: "Loket Brain Project", tag: "Pendamping proyek AI: LHP, EVM, NCR, K3, klaim FIDIC", href: "/brain-project", icon: Brain, accent: "text-indigo-600 dark:text-indigo-400" },
   { name: "Loket Personel Manajerial (PJBU)", tag: "PJBU, PJTBU, PJKBU & PJSKBU BUJK", href: "/pjbu-claw", icon: Users, accent: "text-indigo-600 dark:text-indigo-400" },
   { name: "Loket SMAP", tag: "ISO 37001 & sistem anti-penyuapan", href: "/smap-claw", icon: ShieldCheck, accent: "text-teal-600 dark:text-teal-400" },
   { name: "Loket PanCEK", tag: "Integritas & pencegahan korupsi (KPK)", href: "/pancek-claw", icon: Scale, accent: "text-red-600 dark:text-red-400" },
