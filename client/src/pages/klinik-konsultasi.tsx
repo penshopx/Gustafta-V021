@@ -52,6 +52,7 @@ const LOKET_BADAN_USAHA: Loket[] = [
 
 // Loket individu profesional — mitra ASDAMKINDO · LSP · PKB
 const LOKET_PROFESIONAL: Loket[] = [
+  { name: "Loket Klinik Uji Kompetensi", tag: "Jalur lengkap: dialog → blueprint → chatbot → ruang ujian → skor kesiapan", href: "/klinik-uji-kompetensi", icon: Stethoscope, accent: "text-teal-600 dark:text-teal-400" },
   { name: "Loket SKK", tag: "Kompetensi & jenjang — semua bidang jasa konstruksi", href: "/skk-coach", icon: Award, accent: "text-teal-600 dark:text-teal-400" },
   { name: "Loket SKK K3", tag: "SKK Ahli K3 Konstruksi, SMK3 & ISO 45001", href: "/safira-claw", icon: ShieldAlert, accent: "text-amber-600 dark:text-amber-400" },
   { name: "Loket Bimtek Uji Kompetensi", tag: "Latihan & simulasi uji kompetensi SKK", href: "/simulator-uji-kompetensi", icon: Brain, accent: "text-fuchsia-600 dark:text-fuchsia-400" },

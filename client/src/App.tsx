@@ -16,6 +16,7 @@ import BonusIndobuildtechPage from "@/pages/bonus-indobuildtech";
 import PaketKonstruksiPage from "@/pages/paket-konstruksi";
 import BundlingKonstruksiPage from "@/pages/bundling-konstruksi";
 import KlinikKonsultasiPage from "@/pages/klinik-konsultasi";
+import KlinikUjiKompetensiPage from "@/pages/klinik-uji-kompetensi";
 import FlierKlinikKonsultasiPage from "@/pages/flier-klinik-konsultasi";
 import KodeAksesPage from "@/pages/kode-akses";
 import AdminAccessCodesPage from "@/pages/admin-access-codes";
@@ -485,6 +486,7 @@ function Router() {
       <Route path="/paket-konstruksi" component={PaketKonstruksiPage} />
       <Route path="/bundling-konstruksi" component={BundlingKonstruksiPage} />
       <Route path="/klinik-konsultasi" component={KlinikKonsultasiPage} />
+      <Route path="/klinik-uji-kompetensi" component={KlinikUjiKompetensiPage} />
       <Route path="/flier-klinik-konsultasi" component={FlierKlinikKonsultasiPage} />
       <Route path="/kode-akses" component={KodeAksesPage} />
       <Route path="/admin/access-codes" component={AdminAccessCodesPage} />

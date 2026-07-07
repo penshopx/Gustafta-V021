@@ -51,6 +51,10 @@ Peta ringkas (rute → file → fungsi + endpoint utama). Detail mendalam ada di
 - **Kode Akses (voucher)**: tabel `access_codes` + `access_code_redemptions` (unique `(code_id,user_id)`). Peserta `kode-akses.tsx` (`/kode-akses`) → `POST /api/access-codes/redeem`; admin `admin-access-codes.tsx` (`/admin/access-codes`). Redeem ATOMIK di `db-storage.ts` `redeemAccessCode()`, **TIDAK menyentuh `users.isActive`**. Kode ter-seed idempotent (`server/seed-event-access-codes.ts`): `INDOBUILDTECH-HADIR`/`INDOBUILDTECH-ONLINE`. Detail: `.agents/memory/access-code-voucher.md`.
 - **Paket/Preset Konstruksi**: `paket-konstruksi.tsx` (`/paket-konstruksi`, kurasi claw); preset `?preset=konstruksi` di blueprint-builder (pre-fill saja).
 
+**Klinik Konsultasi**
+- Etalase loket: `klinik-konsultasi.tsx` (`/klinik-konsultasi`).
+- **Loket Klinik Uji Kompetensi (jalur lengkap pertama)**: `klinik-uji-kompetensi.tsx` (`/klinik-uji-kompetensi`) — pipeline Dialog → Blueprint kesiapan (`POST /api/tools/klinik-ujikom/asesmen`, publik) → Chatbot teman belajar (handoff `gustafta_blueprint_prefill_v1` → blueprint-builder) → Ruang Ujian (reuse `/api/tools/simulator-uji-kompetensi/{soal,evaluasi}`) → skor kesiapan gabungan + ◆ keputusan manusia. Progres di localStorage `gustafta_klinik_ujikom_v1` (termasuk jawaban ujian), tanpa tabel baru.
+
 **Tracker**: `test-tracker.tsx` (`/test-tracker`) — 6 tab (Tender/Federation/Pilot/KONSTRA/AI Tutor/SBUClaw)
 
 ## Architecture decisions
