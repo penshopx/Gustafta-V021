@@ -281,7 +281,7 @@ export default function BlueprintBuilderPage() {
       doc.setFontSize(8);
       doc.setTextColor(...soft);
       doc.text(
-        "Dibuat dengan Gustafta Blueprint Builder — mengubah pengetahuan manusia menjadi organisasi AI.",
+        "Dibuat dengan Gustafta Blueprint Agen AI — mengubah pengetahuan manusia menjadi organisasi AI.",
         W / 2, H - M + 1, { align: "center" },
       );
 
@@ -310,7 +310,7 @@ export default function BlueprintBuilderPage() {
     if (mp.strengths.length > 0) { lines.push(""); lines.push(`Sudah diuraikan jelas: ${mp.strengths.join(", ")}`); }
     if (mp.growthAreas.length > 0) { lines.push(""); lines.push(`Masih bisa ditumbuhkan: ${mp.growthAreas.join(", ")}`); }
     lines.push("");
-    lines.push("Dibuat dengan Gustafta Blueprint Builder.");
+    lines.push("Dibuat dengan Gustafta Blueprint Agen AI.");
     try {
       await navigator.clipboard.writeText(lines.join("\n"));
       toast({ title: "Tersalin", description: "Ringkasan sertifikat siap dibagikan." });
@@ -443,7 +443,7 @@ export default function BlueprintBuilderPage() {
       if (val) lines.push(`${label}: ${val}`);
     }
     lines.push("");
-    lines.push("Dibuat dengan Gustafta Blueprint Builder.");
+    lines.push("Dibuat dengan Gustafta Blueprint Agen AI.");
     return lines.join("\n");
   };
 
@@ -640,7 +640,7 @@ export default function BlueprintBuilderPage() {
             <Lock className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
           </div>
           <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Masuk untuk Merancang Agen</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">Blueprint Builder membuat & mengonfigurasi agen di akun Anda, jadi perlu login dulu.</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">Blueprint Agen AI membuat & mengonfigurasi agen di akun Anda, jadi perlu login dulu.</p>
           <Link href="/login">
             <Button className="bg-indigo-600 hover:bg-indigo-500 text-white gap-2" data-testid="btn-login">
               Masuk <ArrowRight className="h-4 w-4" />
@@ -662,10 +662,10 @@ export default function BlueprintBuilderPage() {
       <div className="bg-gradient-to-br from-indigo-700 via-blue-700 to-cyan-700 px-4 py-8">
         <div className="max-w-3xl mx-auto">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 border border-white/30 text-white text-xs font-semibold mb-3">
-            <Sparkles className="h-3.5 w-3.5" /> Blueprint Builder
+            <Sparkles className="h-3.5 w-3.5" /> Blueprint Agen AI
           </div>
           <h1 className="text-2xl md:text-3xl font-bold text-white mb-1">Rancang Agen AI lewat Dialog Terpandu</h1>
-          <p className="text-sm text-blue-100">Jawab beberapa pertanyaan inti — mesin Blueprint menyimpulkan sisanya, menilai keyakinan, lalu menyiapkan konfigurasi agen Anda.</p>
+          <p className="text-sm text-blue-100">Jawab beberapa pertanyaan inti — Blueprint Agen AI menyimpulkan sisanya, menilai keyakinan, lalu menyiapkan konfigurasi agen Anda.</p>
         </div>
       </div>
 
