@@ -2647,6 +2647,26 @@ export const insertEventTestimonialSchema = createInsertSchema(eventTestimonials
 export type InsertEventTestimonial = z.infer<typeof insertEventTestimonialSchema>;
 export type EventTestimonial = typeof eventTestimonials.$inferSelect;
 
+// ─── Klinik Feedback: kesan & harapan pengunjung Klinik Konsultasi (publik) ────
+// Form "pintu keluar" sederhana. Publik (tanpa login) — hanya menampung kesan
+// terhadap platform Gustafta + harapan ke depan. Terpisah dari eventTestimonials
+// (yang auth-gated & terikat jalur bonus acara).
+export const klinikFeedback = pgTable("klinik_feedback", {
+  id: serial("id").primaryKey(),
+  name: text("name").default(""),         // nama (opsional)
+  role: text("role").default(""),         // profesi/peran (opsional)
+  rating: integer("rating").notNull().default(5), // 1–5 bintang
+  kesan: text("kesan").notNull(),         // kesan terhadap platform
+  harapan: text("harapan").default(""),   // harapan ke depan (opsional)
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertKlinikFeedbackSchema = createInsertSchema(klinikFeedback).omit({
+  id: true, createdAt: true,
+});
+export type InsertKlinikFeedback = z.infer<typeof insertKlinikFeedbackSchema>;
+export type KlinikFeedback = typeof klinikFeedback.$inferSelect;
+
 // ─── Rate-limit buckets (SHARED store, cross-instance) ────────────────────────
 // Penghitung sliding-window bersama untuk rate limiter yang HARUS konsisten di
 // banyak instance autoscale (mis. batas per-agen per jam untuk pemanggil anonim

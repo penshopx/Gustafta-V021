@@ -17869,6 +17869,36 @@ Return HANYA JSON berikut (tanpa penjelasan lain):
     }
   });
 
+  // ─── Klinik Feedback: form "pintu keluar" (publik, tanpa login) ──────────────
+  app.post("/api/klinik-feedback", async (req: any, res: any) => {
+    try {
+      const kesan = String(req.body?.kesan || "").trim();
+      const harapan = String(req.body?.harapan || "").trim();
+      const name = String(req.body?.name || "").trim();
+      const role = String(req.body?.role || "").trim();
+      const ratingRaw = Number(req.body?.rating);
+      if (kesan.length < 5) return res.status(400).json({ error: "Tuliskan kesan Anda (minimal 5 karakter)." });
+      if (kesan.length > 2000 || harapan.length > 2000) return res.status(400).json({ error: "Masukan terlalu panjang." });
+      const rating = Number.isFinite(ratingRaw) ? Math.max(1, Math.min(5, Math.round(ratingRaw))) : 5;
+      const saved = await (storage as any).createKlinikFeedback({ name, role, rating, kesan, harapan });
+      res.json({ success: true, feedback: { id: saved.id } });
+    } catch (error: any) {
+      console.error("Create klinik feedback error:", error);
+      res.status(500).json({ error: "Gagal menyimpan masukan. Coba lagi." });
+    }
+  });
+
+  app.get("/api/admin/klinik-feedback", isAuthenticated, requireAdmin, async (req: any, res: any) => {
+    try {
+      const limit = parseInt(String(req.query?.limit || "100"), 10) || 100;
+      const rows = await (storage as any).listKlinikFeedback(limit);
+      res.json(rows);
+    } catch (error: any) {
+      console.error("List klinik feedback error:", error);
+      res.status(500).json({ error: "Gagal mengambil masukan." });
+    }
+  });
+
   app.get("/api/admin/testimonials", isAuthenticated, requireAdmin, async (_req: any, res: any) => {
     try {
       const rows = await (storage as any).listEventTestimonials();

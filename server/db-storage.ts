@@ -16,6 +16,7 @@ import {
   accessCodes,
   accessCodeRedemptions,
   eventTestimonials,
+  klinikFeedback,
   ownerMonthlyUsageTable,
   userProfiles,
   projectBrainTemplates,
@@ -2611,6 +2612,27 @@ export class DatabaseStorage implements IStorage {
     if (typeof flags.approved === "boolean") patch.approved = flags.approved;
     if (Object.keys(patch).length === 0) return;
     await db.update(eventTestimonials).set(patch).where(eq(eventTestimonials.id, id));
+  }
+
+  // ─── Klinik Feedback (kesan & harapan, publik) ───────────────────────────────
+  async createKlinikFeedback(data: {
+    name?: string; role?: string; rating?: number; kesan: string; harapan?: string;
+  }): Promise<typeof klinikFeedback.$inferSelect> {
+    const rating = Math.max(1, Math.min(5, Math.round(Number(data.rating) || 5)));
+    const [row] = await db.insert(klinikFeedback).values({
+      name: (data.name ?? "").slice(0, 200),
+      role: (data.role ?? "").slice(0, 200),
+      rating,
+      kesan: data.kesan.slice(0, 2000),
+      harapan: (data.harapan ?? "").slice(0, 2000),
+    }).returning();
+    return row;
+  }
+
+  async listKlinikFeedback(limit = 100): Promise<Array<typeof klinikFeedback.$inferSelect>> {
+    return await db.select().from(klinikFeedback)
+      .orderBy(desc(klinikFeedback.createdAt))
+      .limit(Math.max(1, Math.min(500, limit)));
   }
 
   // ─── Lisensi Seat Asosiasi (Model B) ─────────────────────────────────────
