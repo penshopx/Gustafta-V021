@@ -138,6 +138,97 @@ const MODULES: Module[] = [
     ]
   },
   {
+    id: "tiga-mode",
+    title: "Dialog, Chatbot & Workroom",
+    icon: Layers,
+    color: "text-indigo-600 dark:text-indigo-400",
+    bgColor: "bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-700",
+    description: "Kenali 3 cara berinteraksi di Gustafta agar tidak tertukar",
+    lessons: [
+      {
+        id: "mode-1",
+        title: "Ringkasan: Kapan Pakai yang Mana?",
+        summary: "Bedakan Tahap Dialog, Chatbot, dan Workroom dalam satu tabel sederhana",
+        duration: "3 menit",
+        tags: ["pemula", "penting"],
+        steps: [
+          {
+            title: "Tiga Cara Berbeda, Tiga Tujuan Berbeda",
+            content: "Di Gustafta ada 3 cara berinteraksi yang sering tertukar. Analoginya seperti mengurus sebuah proyek:\n\n1. DIALOG = tahap 'ngobrol dulu untuk memahami kebutuhan' (seperti wawancara awal dengan konsultan).\n\n2. CHATBOT = tahap 'bertanya sehari-hari' (seperti punya penasihat yang siap ditanya kapan saja).\n\n3. WORKROOM = tahap 'mengerjakan sampai tuntas' (seperti meja kerja proyek dengan checklist dan persetujuan).",
+            tip: "Urutan alaminya: Dialog dulu (paham kebutuhan) → Chatbot (konsultasi harian) → Workroom (eksekusi pekerjaan nyata)."
+          },
+          {
+            title: "Tabel Perbandingan Singkat",
+            content: "DIALOG\n• Tujuan: menggali & memahami kebutuhan Anda\n• Bentuk: percakapan bertahap + gerbang\n• Hasil: Blueprint (rancangan tim AI Anda)\n• Kapan: di awal, saat belum tahu harus mulai dari mana\n\nCHATBOT\n• Tujuan: bertanya & berkonsultasi\n• Bentuk: chat dengan Ketua Tim (orchestrator)\n• Hasil: jawaban/rekomendasi\n• Kapan: kebutuhan harian, tanya-jawab cepat\n\nWORKROOM\n• Tujuan: mengerjakan 1 pekerjaan sampai selesai\n• Bentuk: tahapan + Analisis AI + Gerbang Manusia ◆\n• Hasil: deliverable + keputusan tercatat\n• Kapan: menggarap tender, izin, SBU, SKK, K3, dll.",
+            warning: "Jangan samakan Chatbot dengan Workroom. Chatbot untuk BERTANYA, Workroom untuk MENGERJAKAN sampai tuntas."
+          }
+        ]
+      },
+      {
+        id: "mode-2",
+        title: "Tahap Dialog",
+        summary: "Percakapan awal untuk memahami kebutuhan dan menghasilkan Blueprint",
+        duration: "3 menit",
+        tags: ["dialog"],
+        steps: [
+          {
+            title: "Apa itu Dialog?",
+            content: "Dialog adalah percakapan awal yang memandu Anda menjelaskan kebutuhan, langkah demi langkah. Cocok saat Anda belum tahu harus mulai dari mana.\n\nDialog berjalan BERTAHAP dengan 'gerbang' di antaranya:\n• Tahap 1 — beberapa pertanyaan pembuka untuk profil awal\n• Gerbang 1 — rangkuman Profil Awal\n• Tahap 2 — pertanyaan lebih dalam\n• Gerbang 2 — Gambaran Tajam kebutuhan Anda\n• Tahap 3 — pendalaman (opsional)\n• Hasil akhir — Blueprint lengkap",
+            tip: "Dialog tidak menuntut Anda paham istilah teknis. Cukup jawab apa adanya, sistem yang merangkum."
+          },
+          {
+            title: "Hasil Dialog: Blueprint",
+            content: "Ujung dari Dialog adalah BLUEPRINT — yaitu rancangan 'tim AI' yang sesuai kebutuhan Anda: siapa Ketua Timnya, spesialis apa saja yang diperlukan, dan bagaimana mereka bekerja.\n\nBlueprint ini bisa langsung dilanjutkan untuk membangun chatbot/tim AI Anda. Jadi Dialog adalah PINTU MASUK sebelum punya Chatbot.",
+            action: { label: "Coba Dialog Gustafta", href: "/dialog-gustafta" }
+          }
+        ]
+      },
+      {
+        id: "mode-3",
+        title: "Chatbot: Ketua Tim & Spesialis",
+        summary: "Cara kerja hierarki agen — user hanya bicara dengan Ketua Tim",
+        duration: "3 menit",
+        tags: ["chatbot"],
+        steps: [
+          {
+            title: "Model Tim: 1 Ketua Tim + Beberapa Spesialis",
+            content: "Chatbot di Gustafta bukan 1 robot tunggal, tapi sebuah TIM:\n\n• KETUA TIM (orchestrator) — satu-satunya yang Anda ajak bicara.\n• AGEN SPESIALIS (sub-agen) — bekerja di belakang layar, masing-masing ahli di bidangnya (mis. K3, biaya, regulasi).\n\nSaat Anda bertanya, Ketua Tim otomatis membagi tugas ke spesialis yang relevan, lalu merangkum jawaban mereka menjadi satu jawaban utuh.",
+            tip: "Saat menunggu jawaban, Anda akan melihat indikator 'spesialis sedang bekerja' — itu tanda tim sedang berkoordinasi."
+          },
+          {
+            title: "Aturan Hierarki (Penting)",
+            content: "Gustafta memakai aturan hierarki yang tegas:\n\n• User HANYA bicara dengan Ketua Tim.\n• Spesialis HANYA melapor ke Ketua Tim, tidak langsung ke user.\n\nTujuannya: jawaban selalu terkoordinasi dan konsisten, tidak simpang-siur. Anda cukup fokus ke satu 'pintu' — Ketua Tim.",
+            warning: "Anda tidak perlu (dan tidak bisa) memilih ngobrol langsung dengan satu spesialis. Semua lewat Ketua Tim — ini disengaja."
+          }
+        ]
+      },
+      {
+        id: "mode-4",
+        title: "Workroom: Ruang Kerja Bertahap",
+        summary: "Mengerjakan tender/izin/SBU/SKK/K3 sampai tuntas dengan Gerbang Manusia ◆",
+        duration: "5 menit",
+        tags: ["workroom", "penting"],
+        steps: [
+          {
+            title: "Apa itu Workroom?",
+            content: "Workroom adalah 'meja kerja proyek'. Kalau Chatbot untuk BERTANYA, Workroom untuk MENGERJAKAN satu pekerjaan sampai selesai — lengkap dengan tahapan, analisis AI, dan persetujuan.\n\nAda 7 bidang: Tender, Perizinan (OSS), SKK, K3/SMK3, SBU, PUB (Laporan Tahunan), dan PKB (Angka Kredit). Setiap bidang punya tahapannya sendiri.",
+            action: { label: "Buka Workroom", href: "/workroom" }
+          },
+          {
+            title: "Simulasi Alur (Contoh: Tender)",
+            content: "1. BUAT WORKROOM — pilih bidang 'Tender', beri judul (mis. 'Tender Gedung SDN 03'), isi data seadanya: instansi, nilai pagu, kualifikasi SBU, deadline.\n\n2. PAPAN TAHAPAN muncul otomatis:\n   • Identifikasi Peluang\n   • Analisis Kelayakan\n   • Strategi & Win Probability\n   • Penyusunan Dokumen\n   • Review & Gerbang Manusia ◆\n   • Submit & Arsip\n\n3. JALANKAN ANALISIS — AI menilai kelayakan & memberi skor peluang menang (0–100), plus kekuatan, risiko, dan rekomendasi langkah konkret.",
+            tip: "Data boleh belum lengkap. Kalau kurang, AI TIDAK mengarang — ia menandai [ASUMSI: nilai | basis: ... | verifikasi-ke: ...] agar Anda tahu apa yang harus dicek sendiri."
+          },
+          {
+            title: "Gerbang Manusia ◆ — Anda yang Memutuskan",
+            content: "Di tahap Review muncul GERBANG MANUSIA (◆). AI hanya MENGUSULKAN, Anda yang MEMUTUSKAN:\n\n• Setujui → pekerjaan lanjut ke tahap berikutnya.\n• Tolak → pekerjaan dihentikan, alasannya tercatat.\n\nSemua aktivitas (analisis, keputusan, catatan) tersimpan sebagai log & deliverable — jadi ada jejak lengkap untuk audit atau laporan ke atasan.",
+            warning: "Tidak ada keputusan penting yang dijalankan otomatis. Prinsip Gustafta: AI mengerjakan, manusia memutuskan."
+          }
+        ]
+      }
+    ]
+  },
+  {
     id: "builder",
     title: "Chatbot Builder",
     icon: Bot,
