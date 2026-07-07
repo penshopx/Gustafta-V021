@@ -86,6 +86,7 @@ Endpoint: `GET /api/{nama}-claw/orchestrator` → `{ id, name, tagline, avatar }
 
 ## User preferences
 Preferred communication style: Simple, everyday language.
+Bahasa komunikasi: Bahasa Indonesia (balas ke pengguna dalam Bahasa Indonesia).
 
 ## Gotchas
 - **FEDERATION_MODE v2 marker**: Embedded in DB prompts for upgraded orchestrators. Seed checks this. NEVER remove.
