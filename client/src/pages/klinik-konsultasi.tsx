@@ -14,7 +14,7 @@ import {
   Stethoscope, FileCheck2, Gavel, HardHat, Briefcase, Truck, Award, Building2,
   ArrowRight, MessageCircle, Headset, CheckCircle2, Clock, Sparkles, Bot,
   TrendingUp, GraduationCap, ShieldQuestion, Star, Send, Heart,
-  ShieldCheck, Scale, Users,
+  ShieldCheck, Scale, Users, Landmark,
 } from "lucide-react";
 
 /*
@@ -32,20 +32,31 @@ const OPERATOR_WA =
 
 type Loket = { name: string; tag: string; href: string; icon: any; accent: string };
 
-const LOKET: Loket[] = [
+// Loket badan usaha & perizinan — mitra ASPEKINDO · LSBU · PUB
+const LOKET_BADAN_USAHA: Loket[] = [
+  { name: "Loket SBU", tag: "Sertifikat badan usaha (BUJK)", href: "/sbu-claw", icon: Building2, accent: "text-rose-600 dark:text-rose-400" },
+  { name: "Loket LSBU / ABU", tag: "Asesmen badan usaha & lisensi LSBU", href: "/abu-claw", icon: Landmark, accent: "text-slate-600 dark:text-slate-400" },
+  { name: "Loket PUB (LKUT)", tag: "Pengembangan usaha berkelanjutan & LKUT", href: "/pub-lkut-claw", icon: TrendingUp, accent: "text-sky-600 dark:text-sky-400" },
   { name: "Loket Perizinan (OSS)", tag: "NIB, izin berusaha, OSS-RBA", href: "/perijinanbot", icon: FileCheck2, accent: "text-cyan-600 dark:text-cyan-400" },
   { name: "Loket Tender", tag: "Syarat, dokumen & strategi tender", href: "/tenderbot", icon: Gavel, accent: "text-violet-600 dark:text-violet-400" },
-  { name: "Loket Pelaksanaan Proyek", tag: "EVM, K3, LHP, klaim, serah terima", href: "/proyekbot", icon: HardHat, accent: "text-orange-600 dark:text-orange-400" },
   { name: "Loket Kontraktor", tag: "Operasional BUJK & intelijen", href: "/kontraktorbot", icon: HardHat, accent: "text-amber-600 dark:text-amber-400" },
   { name: "Loket Konsultan", tag: "Perencanaan, pengawasan, desain", href: "/konsultanbot", icon: Briefcase, accent: "text-indigo-600 dark:text-indigo-400" },
   { name: "Loket Suplier", tag: "Rantai pasok & pasok material", href: "/supplierbot", icon: Truck, accent: "text-emerald-600 dark:text-emerald-400" },
-  { name: "Loket SKK", tag: "Kompetensi & jenjang tenaga ahli", href: "/skk-coach", icon: Award, accent: "text-teal-600 dark:text-teal-400" },
-  { name: "Loket SBU", tag: "Sertifikat badan usaha (BUJK)", href: "/sbu-claw", icon: Building2, accent: "text-rose-600 dark:text-rose-400" },
-  { name: "Loket PUB (LKUT)", tag: "Pengembangan usaha berkelanjutan & LKUT", href: "/pub-lkut-claw", icon: TrendingUp, accent: "text-sky-600 dark:text-sky-400" },
-  { name: "Loket PKB", tag: "Pengembangan keprofesian berkelanjutan", href: "/pkb", icon: GraduationCap, accent: "text-violet-600 dark:text-violet-400" },
+  { name: "Loket Pelaksanaan Proyek", tag: "EVM, K3, LHP, klaim, serah terima", href: "/proyekbot", icon: HardHat, accent: "text-orange-600 dark:text-orange-400" },
   { name: "Loket Personel Manajerial (PJBU)", tag: "PJBU, PJTBU, PJKBU & PJSKBU BUJK", href: "/pjbu-claw", icon: Users, accent: "text-indigo-600 dark:text-indigo-400" },
   { name: "Loket SMAP", tag: "ISO 37001 & sistem anti-penyuapan", href: "/smap-claw", icon: ShieldCheck, accent: "text-teal-600 dark:text-teal-400" },
   { name: "Loket PanCEK", tag: "Integritas & pencegahan korupsi (KPK)", href: "/pancek-claw", icon: Scale, accent: "text-red-600 dark:text-red-400" },
+];
+
+// Loket individu profesional — mitra ASDAMKINDO · LSP · PKB
+const LOKET_PROFESIONAL: Loket[] = [
+  { name: "Loket SKK", tag: "Kompetensi & jenjang tenaga ahli", href: "/skk-coach", icon: Award, accent: "text-teal-600 dark:text-teal-400" },
+  { name: "Loket PKB", tag: "Pengembangan keprofesian berkelanjutan", href: "/pkb", icon: GraduationCap, accent: "text-violet-600 dark:text-violet-400" },
+];
+
+const LOKET_GROUPS = [
+  { key: "badan-usaha", title: "Untuk Badan Usaha & Perizinan", partners: "ASPEKINDO · LSBU · PUB", items: LOKET_BADAN_USAHA },
+  { key: "profesional", title: "Untuk Individu Profesional", partners: "ASDAMKINDO · LSP · PKB", items: LOKET_PROFESIONAL },
 ];
 
 type WorkroomLink = { domain: string; name: string; tag: string; icon: any };
@@ -324,30 +335,40 @@ export default function KlinikKonsultasiPage() {
         </div>
       </section>
 
-      {/* Loket */}
-      <section id="loket" className="max-w-5xl mx-auto px-4 py-12 space-y-6">
+      {/* Loket — dikelompokkan per mitra */}
+      <section id="loket" className="max-w-5xl mx-auto px-4 py-12 space-y-10">
         <div className="flex items-center gap-2">
           <Stethoscope className="h-5 w-5 text-teal-600 dark:text-teal-400" />
           <h2 className="text-xl md:text-2xl font-black text-gray-900 dark:text-white">
             Pilih loket konsultasi
           </h2>
         </div>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {LOKET.map((l) => (
-            <Link key={l.name} href={l.href} className="group" data-testid={`link-loket-${l.name.toLowerCase().replace(/[^a-z]+/g, "-")}`}>
-              <Card className="h-full transition-all hover:shadow-lg border-2 border-transparent hover:border-teal-300 dark:hover:border-teal-700">
-                <CardContent className="pt-6 space-y-2">
-                  <l.icon className={`h-7 w-7 ${l.accent}`} />
-                  <h3 className="font-bold text-gray-900 dark:text-white">{l.name}</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">{l.tag}</p>
-                  <span className={`inline-flex items-center gap-1 text-sm font-medium ${l.accent}`}>
-                    Mulai konsultasi <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-                  </span>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
-        </div>
+        {LOKET_GROUPS.map((g) => (
+          <div key={g.key} className="space-y-4" data-testid={`loket-group-${g.key}`}>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-l-4 border-teal-500 pl-3">
+              <h3 className="text-lg font-black text-gray-900 dark:text-white">{g.title}</h3>
+              <Badge variant="outline" className="border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300 font-semibold" data-testid={`badge-mitra-${g.key}`}>
+                {g.partners}
+              </Badge>
+            </div>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {g.items.map((l) => (
+                <Link key={l.name} href={l.href} className="group" data-testid={`link-loket-${l.name.toLowerCase().replace(/[^a-z]+/g, "-")}`}>
+                  <Card className="h-full transition-all hover:shadow-lg border-2 border-transparent hover:border-teal-300 dark:hover:border-teal-700">
+                    <CardContent className="pt-6 space-y-2">
+                      <l.icon className={`h-7 w-7 ${l.accent}`} />
+                      <h3 className="font-bold text-gray-900 dark:text-white">{l.name}</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">{l.tag}</p>
+                      <span className={`inline-flex items-center gap-1 text-sm font-medium ${l.accent}`}>
+                        Mulai konsultasi <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                      </span>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          </div>
+        ))}
       </section>
 
       {/* Jembatan ke Workroom — dari konsultasi ke tindakan bertahap */}
