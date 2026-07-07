@@ -2175,5 +2175,23 @@ function startScheduler() {
     log(`[Owner Usage Cleanup] hapus ${deleted} baris owner_monthly_usage sebelum ${cutoffMonth}`);
   });
 
-  log("[Scheduler] Started — broadcast cek setiap 2 menit | tender scraping 06:00 & 13:00 WIB | alert notifikasi 08:00 WIB | research feed 06:30 WIB | owner usage cleanup 03:15 WIB");
+  // ── Cadangan Database via email — Senin 05:00 WIB (mingguan) ────────────────
+  // scheduleAtWIB berjalan harian; kita batasi ke hari Senin agar efektif
+  // mingguan. File pg_dump ter-gzip dikirim sebagai lampiran ke admin — salinan
+  // off-site otomatis untuk pemulihan bila pindah akun.
+  scheduleAtWIB("Backup DB Email", 5, 0, async () => {
+    if (nowWIB().getUTCDay() !== 1) return; // 1 = Senin
+    const { sendBackupEmail, resolveBackupRecipient } = await import("./lib/db-backup");
+    const recipient = resolveBackupRecipient();
+    if (!recipient) {
+      log("[Backup] penerima email kosong (set BACKUP_RECIPIENT_EMAIL/SUPERADMIN_EMAILS) — skip");
+      return;
+    }
+    const res = await sendBackupEmail(recipient);
+    log(res.sent
+      ? `[Backup] cadangan DB terkirim ke ${recipient}`
+      : `[Backup] gagal kirim cadangan ke ${recipient}: ${res.reason}${res.detail ? " — " + res.detail : ""}`);
+  });
+
+  log("[Scheduler] Started — broadcast cek setiap 2 menit | tender scraping 06:00 & 13:00 WIB | alert notifikasi 08:00 WIB | research feed 06:30 WIB | owner usage cleanup 03:15 WIB | backup DB email Senin 05:00 WIB");
 }
