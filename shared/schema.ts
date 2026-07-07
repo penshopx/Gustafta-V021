@@ -2613,3 +2613,28 @@ export const insertAccessCodeSchema = createInsertSchema(accessCodes).omit({ id:
 export type InsertAccessCode = z.infer<typeof insertAccessCodeSchema>;
 export type AccessCode = typeof accessCodes.$inferSelect;
 export type AccessCodeRedemption = typeof accessCodeRedemptions.$inferSelect;
+
+// ─── Event Testimonials: testimoni peserta setelah membuat chatbot ────────────
+// Dipakai pada Jalur Bonus (mis. Indobuildtech). source dibedakan hadir/online
+// dari label kode akses yang ditukarkan (diturunkan di server, bukan dari klien).
+export const eventTestimonials = pgTable("event_testimonials", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id", { length: 255 }).notNull(),
+  name: text("name").notNull(),                                 // nama tampil
+  role: text("role").default(""),                               // profesi/peran
+  rating: integer("rating").notNull().default(5),               // 1–5 bintang
+  quote: text("quote").notNull(),                               // isi testimoni
+  agentId: integer("agent_id"),                                 // chatbot yang dibuat (opsional)
+  source: varchar("source", { length: 32 }).notNull().default("lainnya"), // hadir/online/lainnya
+  featured: boolean("featured").notNull().default(false),       // tampil sebagai unggulan
+  approved: boolean("approved").notNull().default(false),       // lolos moderasi (publik)
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => ({
+  uniqUserTestimonial: uniqueIndex("uniq_event_testimonial_user").on(t.userId),
+}));
+
+export const insertEventTestimonialSchema = createInsertSchema(eventTestimonials).omit({
+  id: true, createdAt: true, userId: true, source: true, featured: true, approved: true,
+});
+export type InsertEventTestimonial = z.infer<typeof insertEventTestimonialSchema>;
+export type EventTestimonial = typeof eventTestimonials.$inferSelect;

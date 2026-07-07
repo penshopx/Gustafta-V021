@@ -17652,6 +17652,122 @@ Return HANYA JSON berikut (tanpa penjelasan lain):
     }
   });
 
+  // ─── Event Testimonials (Jalur Bonus) ──────────────────────────────────────
+  // Peserta kirim/perbarui testimoni setelah membuat chatbot. source (hadir/online)
+  // diturunkan SERVER dari label kode akses yang ditukarkan (bukan dari klien).
+  app.post("/api/testimonials", isAuthenticated, async (req: any, res: any) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) return res.status(401).json({ error: "Silakan masuk terlebih dahulu." });
+
+      const name = String(req.body?.name || "").trim();
+      const quote = String(req.body?.quote || "").trim();
+      const role = String(req.body?.role || "").trim();
+      const ratingRaw = Number(req.body?.rating);
+      const agentIdRaw = req.body?.agentId;
+      if (name.length < 2) return res.status(400).json({ error: "Tuliskan nama Anda." });
+      if (quote.length < 10) return res.status(400).json({ error: "Testimoni minimal 10 karakter." });
+      const rating = Number.isFinite(ratingRaw) ? Math.max(1, Math.min(5, Math.round(ratingRaw))) : 5;
+      let agentId: number | null = null;
+      if (agentIdRaw !== undefined && agentIdRaw !== null && String(agentIdRaw) !== "") {
+        const n = parseInt(String(agentIdRaw), 10);
+        if (Number.isFinite(n)) {
+          // Hanya lampirkan agen yang benar-benar milik pengguna ini (cegah IDOR).
+          const agent = await storage.getAgent(String(n));
+          if (agent && (agent as any).userId === userId) agentId = n;
+        }
+      }
+
+      const source = await (storage as any).getUserEventSource(userId);
+      const saved = await (storage as any).upsertEventTestimonial({
+        userId, name, role, rating, quote, agentId, source,
+      });
+      res.json({ success: true, testimonial: saved });
+    } catch (error: any) {
+      console.error("Create testimonial error:", error);
+      res.status(500).json({ error: "Gagal menyimpan testimoni. Coba lagi." });
+    }
+  });
+
+  app.get("/api/testimonials/mine", isAuthenticated, async (req: any, res: any) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) return res.status(401).json({ error: "Silakan masuk terlebih dahulu." });
+      const row = await (storage as any).getEventTestimonialByUser(userId);
+      res.json(row ?? null);
+    } catch (error: any) {
+      console.error("Get my testimonial error:", error);
+      res.status(500).json({ error: "Gagal mengambil testimoni." });
+    }
+  });
+
+  // Publik: testimoni yang sudah disetujui (untuk landing/event page).
+  app.get("/api/testimonials/featured", async (req: any, res: any) => {
+    try {
+      const limit = parseInt(String(req.query?.limit || "12"), 10) || 12;
+      const rows = await (storage as any).listPublicEventTestimonials(limit);
+      // Redaksi: hanya field publik (jangan bocorkan userId/agentId).
+      const safe = (rows as any[]).map((r) => ({
+        id: r.id, name: r.name, role: r.role, rating: r.rating,
+        quote: r.quote, source: r.source, createdAt: r.createdAt,
+      }));
+      res.json(safe);
+    } catch (error: any) {
+      console.error("Featured testimonials error:", error);
+      res.status(500).json({ error: "Gagal mengambil testimoni." });
+    }
+  });
+
+  app.get("/api/admin/testimonials", isAuthenticated, requireAdmin, async (_req: any, res: any) => {
+    try {
+      const rows = await (storage as any).listEventTestimonials();
+      res.json(rows);
+    } catch (error: any) {
+      console.error("List testimonials error:", error);
+      res.status(500).json({ error: "Gagal mengambil daftar testimoni." });
+    }
+  });
+
+  app.get("/api/admin/testimonials/export.csv", isAuthenticated, requireAdmin, async (_req: any, res: any) => {
+    try {
+      const rows = await (storage as any).listEventTestimonials();
+      // Sanitasi injeksi formula CSV: awali sel yang dimulai =,+,-,@ dengan kutip tunggal.
+      const esc = (v: any): string => {
+        let s = v === null || v === undefined ? "" : String(v);
+        if (/^[=+\-@]/.test(s)) s = "'" + s;
+        return `"${s.replace(/"/g, '""')}"`;
+      };
+      const header = ["ID", "Nama", "Peran", "Rating", "Testimoni", "AgentId", "Sumber", "Featured", "Approved", "Dibuat"];
+      const lines = [header.map(esc).join(",")];
+      for (const r of rows as any[]) {
+        lines.push([r.id, r.name, r.role, r.rating, r.quote, r.agentId ?? "", r.source, r.featured, r.approved, r.createdAt]
+          .map(esc).join(","));
+      }
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="testimoni_${Date.now()}.csv"`);
+      res.send("\uFEFF" + lines.join("\n"));
+    } catch (error: any) {
+      console.error("Export testimonials error:", error);
+      res.status(500).json({ error: "Gagal mengekspor testimoni." });
+    }
+  });
+
+  app.patch("/api/admin/testimonials/:id", isAuthenticated, requireAdmin, async (req: any, res: any) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (!Number.isFinite(id)) return res.status(400).json({ error: "ID tidak valid." });
+      const { featured, approved } = req.body || {};
+      if (typeof featured !== "boolean" && typeof approved !== "boolean") {
+        return res.status(400).json({ error: "Kirim field featured dan/atau approved (boolean)." });
+      }
+      await (storage as any).setEventTestimonialFlags(id, { featured, approved });
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Update testimonial error:", error);
+      res.status(500).json({ error: "Gagal memperbarui testimoni." });
+    }
+  });
+
   app.patch("/api/admin/users/:userId/role", isAuthenticated, requireSuperAdmin, async (req: any, res: any) => {
     try {
       const { userId } = req.params;
