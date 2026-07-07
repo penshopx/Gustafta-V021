@@ -91,11 +91,41 @@ node scripts/load-test.mjs --url "$REPLIT_DEV_DOMAIN/api/store/agents" -n 1000 -
 **Baseline dev (health, 300 req @ 40 konkurensi):** ~500 req/s, 0% error,
 p95 ≈ 194ms. Produksi (Autoscale) akan menskalakan instance sesuai beban.
 
+### 5a. Dry-run PRODUKSI (Autoscale, domain published) — 07 Jul 2026
+
+Dijalankan ke domain `.replit.app` (build sukses, Autoscale, TLS, cold start
+nyata) memakai jalur GET murah pada konkurensi realistis. Semua **0% error**.
+
+| Jalur (GET)                    | Beban       | Throughput | p50    | p95    | p99    | Error |
+|--------------------------------|-------------|------------|--------|--------|--------|-------|
+| `/health` (warm-up cold start) | 20 @ 5      | 25 req/s   | 86ms   | 455ms  | 523ms  | 0%    |
+| `/health`                      | 500 @ 50    | 381 req/s  | 90ms   | 322ms  | 334ms  | 0%    |
+| `/api/testimonials/featured`   | 300 @ 40    | 248 req/s  | 112ms  | 351ms  | 380ms  | 0%    |
+| `/indobuildtech` (SPA HTML)    | 300 @ 40    | 232 req/s  | 112ms  | 346ms  | 357ms  | 0%    |
+| `/api/store/catalog`           | 300 @ 40    | 28 req/s   | 1672ms | 2467ms | 2621ms | 0%    |
+
+**Kesimpulan:**
+- **Jalur kritis acara** (health, testimoni unggulan halaman event, HTML landing
+  `/indobuildtech`) **SEHAT**: p95 ≈ 320–350ms, 0% error @ konkurensi 40–50.
+  Cold start hanya menambah ±450ms sekali di awal (warm-up), lalu stabil.
+- **`/api/store/catalog` lambat** (p95 ≈ 2,5 s) tetapi **0% error / tanpa
+  timeout** — ini biaya query katalog (banyak agen di-join), BUKAN kehabisan
+  koneksi pool. Katalog Store **tidak berada di jalur peserta acara** (peserta
+  masuk lewat `/indobuildtech` → `/bonus-indobuildtech` → dialog → blueprint),
+  jadi tidak memblokir kesiapan hari-H. Optimasi query katalog dicatat sebagai
+  perbaikan lanjutan, bukan blocker acara.
+
+**Tuning pool/instance:** TIDAK ada perubahan yang diperlukan. Tanpa error koneksi
+maupun timeout pada seluruh uji (termasuk 500 @ 50 pada health), `DB_POOL_MAX=12`
+default sudah memadai; Autoscale menambah instance sesuai beban. Menaikkan pool
+tanpa bukti saturasi justru berisiko melampaui kuota koneksi Postgres
+(instance × DB_POOL_MAX).
+
 ## 6. Checklist hari-H
 
 - [ ] Set `EVENT_MODE=on` (atau jendela `EVENT_MODE_START`/`END`).
 - [ ] Pastikan kunci LLM fallback terisi (minimal OpenAI + 1 cadangan).
 - [ ] Verifikasi `DB_POOL_MAX` × perkiraan instance < kuota koneksi Postgres.
-- [ ] Jalankan `load-test.mjs` ke domain published (jalur murah) sebelum acara.
+- [x] Jalankan `load-test.mjs` ke domain published (jalur murah) sebelum acara. **Selesai 07 Jul 2026 — hasil di §5a; jalur kritis 0% error, p95 ≈ 350ms.**
 - [ ] Konfirmasi hanya satu leader scheduler di log (`[SchedulerLeader] … menjadi LEADER`).
 - [ ] Setelah acara: `EVENT_MODE=off` (atau biarkan jendela lewat).
