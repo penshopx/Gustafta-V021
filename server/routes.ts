@@ -349,9 +349,12 @@ const openai = new OpenAI({
 // In production: uses real GEMINI_API_KEY (direct Google v1 API)
 // ── Smart standard model — kualitas diutamakan (BUKAN hemat biaya) ───────────
 // Semua chatbot & fitur default ke model CERDAS. Bila OpenAI habis token/limit,
-// jalur chat streaming otomatis geser ke DeepSeek → Qwen → Gemini (semua cerdas).
-// Vision selalu gpt-4o.
+// jalur chat streaming otomatis geser ke: OpenRouter → Nvidia → DeepSeek → Qwen
+// → Gemini (semua tier cerdas). Vision selalu gpt-4o.
 const SMART_MODEL = "gpt-4o";
+// Model UTAMA (primary) — hanya provider yang dikenali pemilihan client di jalur
+// chat stream (gpt-4o/deepseek-/qwen-/gemini-). OpenRouter & Nvidia SENGAJA tidak
+// dimasukkan di sini: keduanya murni CADANGAN (fallback) via env, bukan primary.
 function defaultModel(): string {
   if (process.env.OPENAI_API_KEY)   return SMART_MODEL;
   if (process.env.DEEPSEEK_API_KEY) return "deepseek-chat";
@@ -359,6 +362,13 @@ function defaultModel(): string {
   if (process.env.GEMINI_API_KEY)   return "gemini-2.5-pro";
   return SMART_MODEL;
 }
+
+// ── Cadangan lintas-provider (endpoint OpenAI-compatible) ────────────────────
+// Dipakai jalur chat streaming saat provider utama gagal/habis token.
+const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
+const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "openai/gpt-4o";
+const NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1";
+const NVIDIA_MODEL = process.env.NVIDIA_MODEL || "deepseek-ai/deepseek-v4-flash";
 
 // In dev: uses Replit's modelfarm proxy (localhost) if no real key present
 const realGeminiKey = process.env.GEMINI_API_KEY;
@@ -4856,6 +4866,56 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
               const stream = await streamClient.chat.completions.create({
                 model: modelName,
                 messages: chatMessages,
+                max_tokens: maxTokens,
+                temperature: temperature,
+                stream: true,
+              });
+              return (async function* () {
+                for await (const chunk of stream) {
+                  const content = chunk.choices[0]?.delta?.content || "";
+                  if (content) yield { content };
+                }
+              })();
+            },
+          });
+        }
+
+        if (process.env.OPENROUTER_API_KEY) {
+          fallbackAttempts.push({
+            name: "fallback(openrouter)",
+            createStream: async () => {
+              const or = new OpenAI({
+                apiKey: process.env.OPENROUTER_API_KEY!,
+                baseURL: OPENROUTER_BASE_URL,
+              });
+              const stream = await or.chat.completions.create({
+                model: OPENROUTER_MODEL,
+                messages: chatMessages as any,
+                max_tokens: maxTokens,
+                temperature: temperature,
+                stream: true,
+              });
+              return (async function* () {
+                for await (const chunk of stream) {
+                  const content = chunk.choices[0]?.delta?.content || "";
+                  if (content) yield { content };
+                }
+              })();
+            },
+          });
+        }
+
+        if (process.env.NVIDIA_API_KEY) {
+          fallbackAttempts.push({
+            name: "fallback(nvidia)",
+            createStream: async () => {
+              const nv = new OpenAI({
+                apiKey: process.env.NVIDIA_API_KEY!,
+                baseURL: NVIDIA_BASE_URL,
+              });
+              const stream = await nv.chat.completions.create({
+                model: NVIDIA_MODEL,
+                messages: chatMessages as any,
                 max_tokens: maxTokens,
                 temperature: temperature,
                 stream: true,
