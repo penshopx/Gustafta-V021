@@ -50,3 +50,4 @@
 - [drizzle-kit push blocked](drizzle-push-blocked.md) — push hangs on interactive access_codes unique-constraint drift prompt; add NEW tables via direct executeSql DDL, keep schema.ts in sync separately.
 - [Store catalog cache](store-catalog-cache.md) — /api/store/catalog enriches ALL agents per request (p95 2.5s); cache per (category,search) w/ single-flight + stale-while-revalidate + boot warm; ~30s staleness.
 - [createAgent 2nd-arg polymorphism](create-agent-arg2.md) — arg2 is Executor OR legacy userId string; string accepted only to avoid crash, NEVER persisted as owner; ownership only from insertAgent.userId else "" (else Store misclassifies seeds as creator products).
+- [Rate limiter shared store](rate-limit-shared-store.md) — autoscale rate caps must count in a shared store, not per-process Map; new tables need dev DDL + committed migration (push is avoided/blocked); guard silent fallback with a real-DB test.

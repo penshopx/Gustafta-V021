@@ -111,51 +111,172 @@ export const chatIpRateLimiter = rateLimit({
   message: "Terlalu banyak permintaan dari IP ini.",
 });
 
-const agentIdStore = new Map<string, { count: number; resetAt: number }>();
 const AGENT_WINDOW_MS = 60 * 60 * 1000;
 const AGENT_MAX_UNAUTHENTICATED = 100;
 
-export function chatAgentIdRateLimiter(
+/**
+ * Lapisan proteksi KEDUA: batas per-AGEN per jam untuk pemanggil ANONIM.
+ *
+ * Penghitungnya WAJIB dibagi lintas-instance. Di deployment autoscale setiap
+ * proses punya memorinya sendiri, jadi Map in-memory saja membuat bot yang
+ * memutar antar-instance bisa melewati 100/jam per agen sementara tiap instance
+ * masih merasa aman. Karena itu penghitung disimpan di store BERSAMA (PostgreSQL)
+ * lewat abstraksi `RateLimitStore` di bawah.
+ */
+export interface RateLimitHit {
+  count: number;
+  resetAt: number;
+}
+
+export interface RateLimitStore {
+  /**
+   * Catat satu request untuk `key`. Mengembalikan hitungan berjalan di dalam
+   * window aktif dan kapan window itu berakhir (epoch ms). Bila window lama sudah
+   * lewat, hitungan di-reset ke 1 dengan window baru. Operasi ini WAJIB atomik
+   * agar konsisten saat banyak instance menaikkan bucket yang sama serempak.
+   */
+  hit(key: string, windowMs: number, now: number): Promise<RateLimitHit>;
+}
+
+/**
+ * Store in-memory (per-proses). Dipakai sebagai FALLBACK saat store bersama
+ * gagal (mis. DB tak terjangkau) supaya proteksi tetap ada meski hanya
+ * per-instance, dan sebagai store yang mudah disuntik pada unit test.
+ */
+export class InMemoryRateLimitStore implements RateLimitStore {
+  private store = new Map<string, { count: number; resetAt: number }>();
+
+  async hit(key: string, windowMs: number, now: number): Promise<RateLimitHit> {
+    const entry = this.store.get(key);
+    if (!entry || now >= entry.resetAt) {
+      const fresh = { count: 1, resetAt: now + windowMs };
+      this.store.set(key, fresh);
+      return { ...fresh };
+    }
+    entry.count += 1;
+    return { count: entry.count, resetAt: entry.resetAt };
+  }
+
+  cleanup(now: number = Date.now()): void {
+    for (const [key, entry] of this.store) {
+      if (now >= entry.resetAt) this.store.delete(key);
+    }
+  }
+}
+
+type SqlQuery = (
+  text: string,
+  params: any[]
+) => Promise<{ rows: any[] }>;
+
+/**
+ * Store bersama berbasis PostgreSQL. Satu UPSERT atomik menaikkan hitungan
+ * (atau me-reset window bila sudah lewat) dan mengembalikan nilai final.
+ * Karena `INSERT ... ON CONFLICT DO UPDATE` mengunci baris, kenaikan serempak
+ * dari banyak instance ter-serialisasi dengan benar → satu hitungan tunggal.
+ */
+export class PostgresRateLimitStore implements RateLimitStore {
+  constructor(private query: SqlQuery) {}
+
+  async hit(key: string, windowMs: number, now: number): Promise<RateLimitHit> {
+    const resetAt = now + windowMs;
+    const { rows } = await this.query(
+      `INSERT INTO rate_limit_buckets (bucket_key, count, reset_at)
+       VALUES ($1, 1, $2)
+       ON CONFLICT (bucket_key) DO UPDATE SET
+         count = CASE
+           WHEN rate_limit_buckets.reset_at <= $3 THEN 1
+           ELSE rate_limit_buckets.count + 1
+         END,
+         reset_at = CASE
+           WHEN rate_limit_buckets.reset_at <= $3 THEN EXCLUDED.reset_at
+           ELSE rate_limit_buckets.reset_at
+         END
+       RETURNING count, reset_at`,
+      [key, resetAt, now]
+    );
+    const row = rows[0];
+    return { count: Number(row.count), resetAt: Number(row.reset_at) };
+  }
+}
+
+// Store bersama default = PostgreSQL. Import `pool` secara dinamis supaya modul
+// ini tetap bisa di-import di unit test tanpa membuka koneksi DB (test menyuntik
+// store sendiri lewat `__setAgentRateLimitStore`).
+const defaultSharedStore = new PostgresRateLimitStore(async (text, params) => {
+  const { pool } = await import("../db");
+  return pool.query(text, params);
+});
+
+// Fallback per-proses bila store bersama error di runtime.
+const memoryFallbackStore = new InMemoryRateLimitStore();
+
+let agentRateLimitStore: RateLimitStore = defaultSharedStore;
+
+/** Suntik store alternatif (dipakai unit test). */
+export function __setAgentRateLimitStore(store: RateLimitStore): void {
+  agentRateLimitStore = store;
+}
+
+/** Kembalikan ke store bersama default (bersihkan efek test). */
+export function __resetAgentRateLimitStore(): void {
+  agentRateLimitStore = defaultSharedStore;
+}
+
+export async function chatAgentIdRateLimiter(
   req: Request,
   res: Response,
   next: () => void
-) {
+): Promise<void> {
   if (isAuthenticatedUser(req)) return next();
 
   const agentId = req.body?.agentId;
   if (!agentId) return next();
 
   const now = Date.now();
-  const key = String(agentId);
-  const entry = agentIdStore.get(key);
+  const key = `agent:${String(agentId)}`;
 
-  if (!entry || now >= entry.resetAt) {
-    agentIdStore.set(key, { count: 1, resetAt: now + AGENT_WINDOW_MS });
-    return next();
+  let result: RateLimitHit;
+  try {
+    result = await agentRateLimitStore.hit(key, AGENT_WINDOW_MS, now);
+  } catch (err) {
+    // Store bersama gagal (mis. DB down) → jangan matikan chat; jatuh ke
+    // proteksi in-memory per-instance (terdegradasi tapi tetap membatasi).
+    console.error(
+      "[rate-limiter] shared store gagal, fallback in-memory:",
+      (err as Error)?.message ?? err
+    );
+    result = await memoryFallbackStore.hit(key, AGENT_WINDOW_MS, now);
   }
 
-  entry.count += 1;
-  if (entry.count > AGENT_MAX_UNAUTHENTICATED) {
-    const retryAfterSec = Math.ceil((entry.resetAt - now) / 1000);
+  if (result.count > AGENT_MAX_UNAUTHENTICATED) {
+    const retryAfterSec = Math.max(1, Math.ceil((result.resetAt - now) / 1000));
     res.setHeader("Retry-After", String(retryAfterSec));
-    return res.status(429).json({
+    res.status(429).json({
       error: "Too Many Requests",
       message:
         "Agen ini telah mencapai batas permintaan per jam. Silakan coba lagi nanti.",
       retryAfter: retryAfterSec,
     });
+    return;
   }
 
   return next();
 }
 
-// .unref(): timer pembersih tak boleh menahan event loop tetap hidup.
+// Pembersih baris kedaluwarsa di store bersama. Idempoten & aman dijalankan dari
+// banyak instance sekaligus. .unref(): timer tak boleh menahan event loop hidup.
 setInterval(
-  () => {
-    const now = Date.now();
-    for (const [key, entry] of agentIdStore) {
-      if (now >= entry.resetAt) agentIdStore.delete(key);
+  async () => {
+    try {
+      const { pool } = await import("../db");
+      await pool.query("DELETE FROM rate_limit_buckets WHERE reset_at <= $1", [
+        Date.now(),
+      ]);
+    } catch {
+      // Bersih-bersih bersifat best-effort; abaikan error sementara.
     }
+    memoryFallbackStore.cleanup();
   },
   10 * 60 * 1000
 ).unref();
