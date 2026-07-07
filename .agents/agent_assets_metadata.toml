@@ -191,3 +191,15 @@ id = "cDUVmfarQ38CNLWtFFM0S"
 uri = "file://backup/percakapan-gustafta.md"
 type = "text"
 title = "Transkrip Lengkap Percakapan Gustafta (Markdown)"
+
+[[outputs]]
+id = "BvmdtQU_Est44Icq0oGW4"
+uri = "file://backup/gustafta-paket-pindahan-20260707.zip"
+type = "unspecified"
+title = "Paket Pindahan Gustafta (backup DB + panduan)"
+
+[[outputs]]
+id = "kjPCv7HzTltbtZb33-OJz"
+uri = "file://backup/migrasi/PANDUAN-PINDAH-AKUN.md"
+type = "text"
+title = "Panduan Pindah Akun (bisa dibaca langsung)"
