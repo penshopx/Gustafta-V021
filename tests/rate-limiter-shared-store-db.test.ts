@@ -66,6 +66,20 @@ async function scopedExpiredCount(
   return Number(rows[0].n);
 }
 
+// Sumber acak DETERMINISTIK yang meniru laju pemangkasan PRODUKSI: dengan
+// pruneProbability = 0.02 (default produksi), pemangkasan HANYA terpicu bila
+// random() < 0.02. Fungsi ini mengembalikan 0 (memicu) tepat setiap `n` panggilan
+// dan nilai ~1 (tak memicu) selebihnya. Set n = 1/probabilitas (mis. 50 untuk
+// 0.02) sehingga rata-rata 1-dari-50 hit ikut memangkas — laju yang SAMA seperti
+// produksi, tapi tanpa keacakan yang membuat tes flaky.
+function everyNthPruner(n: number): () => number {
+  let i = 0;
+  return () => {
+    i += 1;
+    return i % n === 0 ? 0 : 0.999;
+  };
+}
+
 after(async () => {
   if (!hasDb || !poolPromise) return;
   const pool = await poolPromise;
@@ -383,6 +397,186 @@ test(
         await scopedRowCount(pool, suffix),
         LIVE,
         "hanya baris LIVE yang tersisa — pruneExpired tak menyentuh yang aktif",
+      );
+    } finally {
+      await pool.query(
+        "DELETE FROM rate_limit_buckets WHERE bucket_key LIKE $1",
+        [`%${suffix}`],
+      );
+    }
+  },
+);
+
+// ── churn berkelanjutan pada LAJU PEMANGKASAN PRODUKSI (0.02) tetap terbatas ──
+// Task #23 membuktikan baris kedaluwarsa AKHIRNYA direklamasi, tapi memaksa
+// `pruneProbability:1` (setiap hit memangkas) — tidak realistis. Produksi hanya
+// memangkas ~1 dari 50 hit (default 0.02). Tes ini mensimulasikan churn
+// BERKELANJUTAN pada laju produksi itu: tiap "menit" melahirkan sekumpulan key
+// `minute:*` berbeda (1 baris yatim per IP/akun per menit) yang kedaluwarsa di
+// menit berikutnya, sementara hit baru terus mengalir. Buktinya: jumlah baris
+// STABIL di sekitar himpunan-live (1 menit) alih-alih tumbuh tak terbatas ke
+// MENIT×KEY — artinya pembersihan mengejar laju kelahiran, bukan tertinggal.
+test(
+  "churn berkelanjutan @ pruneProbability produksi (0.02): tabel stabil di himpunan-live, tak tumbuh tak terbatas (SQL nyata)",
+  { skip },
+  async () => {
+    const pool = await getPool();
+    const suffix = uniqueSuffix();
+    const MINUTES = 12;
+    const KEYS_PER_MINUTE = 50; // = 1/0.02 → ~1 pemangkasan per menit pada laju produksi
+    const base = Date.now();
+
+    // Laju pemangkasan PRODUKSI (0.02) + pemicu deterministik setiap 50 hit.
+    // pruneBatchLimit default (1000) ≫ backlog per menit, jadi satu pemangkasan
+    // cukup menguras backlog satu menit.
+    const store = new PostgresRateLimitStore(
+      (text, params) => pool.query(text, params),
+      { pruneProbability: 0.02, random: everyNthPruner(KEYS_PER_MINUTE) },
+    );
+
+    // Berapa banyak baris yang AKAN ada bila TANPA pemangkasan sama sekali —
+    // basis pembanding untuk "tumbuh tak terbatas".
+    const unbounded = MINUTES * KEYS_PER_MINUTE;
+
+    try {
+      const settledPerMinute: number[] = [];
+
+      for (let m = 0; m < MINUTES; m++) {
+        const minuteNow = base + m * MINUTE_MS;
+
+        // Menit m melahirkan KEYS_PER_MINUTE baris `minute:*` BARU (window 1 menit).
+        // Baris menit sebelumnya kini kedaluwarsa (reset_at = minuteNow) → yatim.
+        for (let k = 0; k < KEYS_PER_MINUTE; k++) {
+          const key = `minute:churn-${m}-${k}${suffix}`;
+          await store.hit(key, MINUTE_MS, minuteNow);
+        }
+
+        // Pemangkasan fire-and-forget (tak di-await) → polling sampai baris basi
+        // milik tes terkuras dan hanya himpunan-live (menit ini) tersisa.
+        const deadline = Date.now() + 8_000;
+        let scoped = await scopedRowCount(pool, suffix);
+        while (scoped > KEYS_PER_MINUTE && Date.now() < deadline) {
+          await new Promise((r) => setTimeout(r, 30));
+          scoped = await scopedRowCount(pool, suffix);
+        }
+        settledPerMinute.push(scoped);
+      }
+
+      // INTI: setiap menit, setelah pembersihan mengejar, jumlah baris kembali ke
+      // himpunan-live (KEYS_PER_MINUTE) — TIDAK tumbuh menit demi menit. Bila
+      // pembersihan tertinggal, nilai-nilai ini akan menanjak menuju `unbounded`.
+      for (let m = 0; m < MINUTES; m++) {
+        assert.equal(
+          settledPerMinute[m],
+          KEYS_PER_MINUTE,
+          `menit ${m}: baris stabil di himpunan-live (${KEYS_PER_MINUTE}), bukan menumpuk`,
+        );
+      }
+
+      const maxSettled = Math.max(...settledPerMinute);
+      assert.ok(
+        maxSettled < unbounded,
+        `puncak baris stabil (${maxSettled}) harus jauh di bawah pertumbuhan tak-terbatas (${unbounded})`,
+      );
+
+      // Setelah seluruh run: hanya baris live menit terakhir yang tersisa.
+      assert.equal(
+        await scopedRowCount(pool, suffix),
+        KEYS_PER_MINUTE,
+        "akhir run: tabel terbatas pada himpunan-live menit terakhir",
+      );
+    } finally {
+      await pool.query(
+        "DELETE FROM rate_limit_buckets WHERE bucket_key LIKE $1",
+        [`%${suffix}`],
+      );
+    }
+  },
+);
+
+// ── backstop setInterval: kuras backlog BESAR per-batch tanpa DELETE raksasa ───
+// Jalur utama = delete-on-write (di atas). `setInterval` di rate-limiter.ts hanya
+// jaring pengaman saat lalu-lintas sepi; ia MENGURAS backlog dengan loop batch
+// (`pruneExpired` berulang, dibatasi LIMIT), BUKAN satu DELETE besar yang
+// mengunci tabel. Tes ini meniru bentuk loop itu terhadap Postgres NYATA dengan
+// backlog jauh lebih besar dari batch → membuktikan (a) tiap batch ≤ LIMIT,
+// (b) butuh BANYAK batch (bukan sekali sapu), (c) backlog terkuras habis, dan
+// (d) baris live tak tersentuh.
+test(
+  "backstop drain: backlog besar dikuras banyak batch (≤ LIMIT), tak ada DELETE raksasa, baris live aman (SQL nyata)",
+  { skip },
+  async () => {
+    const pool = await getPool();
+    const suffix = uniqueSuffix();
+    const BACKLOG = 1200;
+    const LIVE = 5;
+    const BATCH = 200; // ≪ BACKLOG → wajib banyak putaran
+    const now = Date.now();
+
+    // pruneBatchLimit = BATCH agar `pruneExpired()` (tanpa arg) memakai batas ini,
+    // persis seperti `defaultSharedStore.pruneExpired(Date.now())` di setInterval.
+    const store = new PostgresRateLimitStore(
+      (text, params) => pool.query(text, params),
+      { pruneBatchLimit: BATCH },
+    );
+
+    try {
+      // reset_at = 1 → baris tes menjadi yang TERTUA secara global sehingga
+      // `ORDER BY reset_at LIMIT` mengambilnya lebih dulu (bukan basi insidental).
+      await pool.query(
+        `INSERT INTO rate_limit_buckets (bucket_key, count, reset_at)
+         SELECT 'minute:backlog-' || g || $1, 1, 1
+         FROM generate_series(1, $2) AS g`,
+        [suffix, BACKLOG],
+      );
+      await pool.query(
+        `INSERT INTO rate_limit_buckets (bucket_key, count, reset_at)
+         SELECT 'minute:live-' || g || $1, 1, $2
+         FROM generate_series(1, $3) AS g`,
+        [suffix, now + HOUR_MS, LIVE],
+      );
+      assert.equal(
+        await scopedExpiredCount(pool, suffix, now),
+        BACKLOG,
+        "prasyarat: backlog kedaluwarsa besar tertanam",
+      );
+
+      // Loop pengurasan MENIRU badan setInterval: batch berulang, berhenti saat
+      // satu batch menghapus < LIMIT (backlog habis). Batasi putaran seperti
+      // backstop asli (i < 50).
+      let batches = 0;
+      let totalDeleted = 0;
+      for (let i = 0; i < 50; i++) {
+        const deleted = await store.pruneExpired(now);
+        batches += 1;
+        assert.ok(
+          deleted <= BATCH,
+          `batch ${batches}: hapus ${deleted} ≤ LIMIT ${BATCH} (tak ada DELETE raksasa)`,
+        );
+        totalDeleted += deleted;
+        if (deleted < BATCH) break;
+      }
+
+      // Butuh BANYAK batch, bukan satu sapuan — inti "tanpa DELETE besar".
+      assert.ok(
+        batches >= Math.ceil(BACKLOG / BATCH),
+        `perlu ≥ ${Math.ceil(BACKLOG / BATCH)} batch untuk menguras ${BACKLOG} (aktual ${batches})`,
+      );
+      assert.ok(
+        totalDeleted >= BACKLOG,
+        `total terhapus (${totalDeleted}) mencakup seluruh backlog (${BACKLOG})`,
+      );
+
+      // Backlog milik tes terkuras habis; LIVE tak tersentuh.
+      assert.equal(
+        await scopedExpiredCount(pool, suffix, now),
+        0,
+        "seluruh backlog kedaluwarsa milik tes terkuras",
+      );
+      assert.equal(
+        await scopedRowCount(pool, suffix),
+        LIVE,
+        "hanya baris LIVE tersisa — drain tak menyentuh yang aktif",
       );
     } finally {
       await pool.query(
