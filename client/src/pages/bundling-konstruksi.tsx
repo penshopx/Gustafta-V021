@@ -8,6 +8,8 @@ import {
   HardHat, Award, Building2, FileSearch, Layers, Mountain, ShieldCheck, Ruler,
   ArrowRight, Sparkles, Gift, Briefcase, Truck, BadgeCheck, Landmark,
   Workflow, Boxes, GitBranch, ClipboardCheck, Users,
+  Stethoscope, Hammer, Calculator, Camera, CalendarClock, FileSignature,
+  Radar, FileCheck2, Gavel,
 } from "lucide-react";
 
 /*
@@ -45,6 +47,31 @@ const GROUPS: Group[] = [
       { name: "SBUClaw", tag: "Sertifikat Badan Usaha (BUJK)", href: "/sbu-claw", icon: Building2 },
       { name: "SkemaClaw", tag: "Skema & subklasifikasi SBU", href: "/skema-claw", icon: Layers },
       { name: "PanduanSBU", tag: "Panduan langkah pengurusan SBU", href: "/panduan-sbu", icon: FileSearch },
+    ],
+  },
+  {
+    key: "oss",
+    title: "Perijinan (OSS)",
+    audience: "Untuk yang mengurus NIB & izin berusaha via OSS-RBA.",
+    icon: FileCheck2,
+    accent: "text-cyan-600 dark:text-cyan-400",
+    claws: [
+      { name: "PerijinanBot", tag: "Asisten izin usaha & OSS", href: "/perijinanbot", icon: FileCheck2 },
+      { name: "OSSClaw", tag: "War-room perizinan OSS-RBA", href: "/oss-claw", icon: Layers },
+      { name: "Panduan OSS", tag: "Langkah pengurusan izin OSS", href: "/panduan-oss-perizinan", icon: FileSearch },
+    ],
+  },
+  {
+    key: "tender",
+    title: "Tender & Pelaksanaan Proyek",
+    audience: "Untuk kejar tender lalu jalankan proyek sampai serah terima.",
+    icon: Gavel,
+    accent: "text-violet-600 dark:text-violet-400",
+    claws: [
+      { name: "TenderBot", tag: "Asisten tender & pengadaan", href: "/tenderbot", icon: Gavel },
+      { name: "KonstraTenderClaw", tag: "Monitor tender SIRUP/LKPP", href: "/konstra-tender-claw", icon: Radar },
+      { name: "ProyekBot", tag: "Pendamping pelaksanaan proyek", href: "/proyekbot", icon: HardHat },
+      { name: "Generator Jadwal", tag: "Susun jadwal pelaksanaan", href: "/generator-jadwal-pelaksanaan", icon: CalendarClock },
     ],
   },
   {
@@ -138,6 +165,23 @@ const CAPABILITIES = [
   },
 ];
 
+/* Peragaan Klinik vs Lapangan — konsultasi (tanya) berdampingan dengan alat kerja (hasilkan). */
+const KLINIK_LOKET = [
+  { name: "Loket Perizinan (OSS)", tag: "Tanya izin usaha, NIB, OSS-RBA", href: "/perijinanbot", icon: FileCheck2 },
+  { name: "Loket Tender", tag: "Tanya syarat & strategi tender", href: "/tenderbot", icon: Gavel },
+  { name: "Loket Pelaksanaan Proyek", tag: "Tanya EVM, K3, klaim, LHP", href: "/proyekbot", icon: HardHat },
+  { name: "Loket Kontraktor", tag: "Tanya operasional BUJK umum", href: "/kontraktorbot", icon: Briefcase },
+];
+
+const LAPANGAN_ALAT = [
+  { name: "RAB Kalkulator", tag: "Susun RAB otomatis + ekspor", href: "/rab-kalkulator", icon: Calculator },
+  { name: "K3 Vision", tag: "Audit K3 dari foto lapangan", href: "/k3-vision", icon: Camera },
+  { name: "Generator Jadwal", tag: "Susun jadwal pelaksanaan proyek", href: "/generator-jadwal-pelaksanaan", icon: CalendarClock },
+  { name: "Generator BAST", tag: "Draf Berita Acara Serah Terima", href: "/generator-bast-proyek", icon: FileSignature },
+  { name: "Tender Monitor", tag: "Pantau tender masuk (SIRUP)", href: "/tender-monitor", icon: Radar },
+  { name: "Proposal Jasa", tag: "Draf proposal penawaran", href: "/proposal-jasa", icon: FileSearch },
+];
+
 export default function BundlingKonstruksiPage() {
   useEffect(() => {
     const prevTitle = document.title;
@@ -178,6 +222,78 @@ export default function BundlingKonstruksiPage() {
               <Link href="/indobuildtech">Kembali ke Halaman Event</Link>
             </Button>
           </div>
+        </div>
+      </section>
+
+      {/* Peragaan — Klinik Konstruksi Virtual & Lapangan */}
+      <section className="max-w-5xl mx-auto px-4 pt-12 -mb-2">
+        <div className="max-w-2xl space-y-2 mb-6">
+          <div className="flex items-center gap-2">
+            <Stethoscope className="h-5 w-5 text-teal-600 dark:text-teal-400" />
+            <h2 className="text-xl md:text-2xl font-black text-gray-900 dark:text-white">
+              Klinik Konstruksi Virtual — di sampingnya ada Lapangan
+            </h2>
+          </div>
+          <p className="text-sm md:text-base text-gray-600 dark:text-gray-400">
+            Di <span className="font-semibold text-gray-900 dark:text-white">Klinik</span> Anda berkonsultasi — datang dengan pertanyaan, pulang dengan jawaban.
+            Lalu ke <span className="font-semibold text-gray-900 dark:text-white">Lapangan</span> untuk mengerjakannya — alat yang menghasilkan dokumen & output nyata.
+          </p>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-5">
+          {/* Klinik */}
+          <Card className="border-2 border-teal-200 dark:border-teal-800/60 bg-teal-50/40 dark:bg-teal-950/20" data-testid="panel-klinik">
+            <CardContent className="pt-6 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg bg-teal-100 dark:bg-teal-900/40 p-2 text-teal-600 dark:text-teal-400">
+                  <Stethoscope className="h-6 w-6" />
+                </div>
+                <div>
+                  <h3 className="font-black text-gray-900 dark:text-white">Klinik Konstruksi Virtual</h3>
+                  <p className="text-sm text-teal-700 dark:text-teal-300">Loket konsultasi — tanya, dapat jawaban</p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                {KLINIK_LOKET.map((k) => (
+                  <Link key={k.name} href={k.href} className="group flex items-center gap-3 rounded-lg border border-teal-200/70 dark:border-teal-800/50 bg-white dark:bg-white/5 px-3 py-2.5 transition-all hover:shadow-md hover:border-teal-400" data-testid={`link-klinik-${k.name.toLowerCase().replace(/[^a-z]+/g, "-")}`}>
+                    <k.icon className="h-5 w-5 shrink-0 text-teal-600 dark:text-teal-400" />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-sm text-gray-900 dark:text-white truncate">{k.name}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{k.tag}</p>
+                    </div>
+                    <ArrowRight className="h-4 w-4 shrink-0 text-teal-600 dark:text-teal-400 transition-transform group-hover:translate-x-0.5" />
+                  </Link>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Lapangan */}
+          <Card className="border-2 border-orange-200 dark:border-orange-800/60 bg-orange-50/40 dark:bg-orange-950/20" data-testid="panel-lapangan">
+            <CardContent className="pt-6 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg bg-orange-100 dark:bg-orange-900/40 p-2 text-orange-600 dark:text-orange-400">
+                  <Hammer className="h-6 w-6" />
+                </div>
+                <div>
+                  <h3 className="font-black text-gray-900 dark:text-white">Lapangan</h3>
+                  <p className="text-sm text-orange-700 dark:text-orange-300">Alat kerja — hasilkan dokumen & output</p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                {LAPANGAN_ALAT.map((a) => (
+                  <Link key={a.name} href={a.href} className="group flex items-center gap-3 rounded-lg border border-orange-200/70 dark:border-orange-800/50 bg-white dark:bg-white/5 px-3 py-2.5 transition-all hover:shadow-md hover:border-orange-400" data-testid={`link-lapangan-${a.name.toLowerCase().replace(/[^a-z]+/g, "-")}`}>
+                    <a.icon className="h-5 w-5 shrink-0 text-orange-600 dark:text-orange-400" />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-sm text-gray-900 dark:text-white truncate">{a.name}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{a.tag}</p>
+                    </div>
+                    <ArrowRight className="h-4 w-4 shrink-0 text-orange-600 dark:text-orange-400 transition-transform group-hover:translate-x-0.5" />
+                  </Link>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </section>
 
