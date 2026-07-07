@@ -167,3 +167,9 @@ id = "jZwL43rttnfugjoKIRovS"
 uri = "file://attached_assets/generated_videos/gustafta_promo_24s.mp4"
 type = "video"
 title = "Gustafta — Animated Promo (24s)"
+
+[[outputs]]
+id = "-ynuz4e2XKfw1raHzpwS6"
+uri = "file://backups/gustafta-db-backup.sql.gz"
+type = "unspecified"
+title = "Cadangan Database Gustafta (SQL, terkompres)"
