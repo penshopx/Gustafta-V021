@@ -50,7 +50,7 @@ async function seedSampleAgentForEmailUser(userId: string, firstName: string | n
       greetingMessage: `Halo Kak! 👋 Selamat datang di CS [Nama Toko Kamu].\n\nSaya siap bantu pertanyaan seputar pesanan, produk, pengiriman, dan promo.\n\nAda yang bisa saya bantu hari ini? 😊`,
       conversationStarters: ["Gimana cara cek status pesanan saya?", "Produk ini masih ada stoknya?", "Promo apa yang aktif?", "Saya mau return barang", "Berapa lama pengirimannya?"],
       language: "id", category: "Customer Service", subcategory: "E-Commerce",
-      aiModel: "gpt-4o-mini", temperature: 0.7, maxTokens: 1024,
+      aiModel: "gpt-4o", temperature: 0.7, maxTokens: 1024,
       accessToken, isPublic: false, isActive: true,
       widgetColor: "#6366f1", widgetPosition: "bottom-right", widgetSize: "medium",
       widgetBorderRadius: "rounded", widgetShowBranding: true,

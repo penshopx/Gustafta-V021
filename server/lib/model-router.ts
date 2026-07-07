@@ -2,23 +2,18 @@ import OpenAI from "openai";
 import { GoogleGenAI } from "@google/genai";
 
 /**
- * MODEL ROUTER — Cost-Optimized Multi-Provider LLM Routing
+ * MODEL ROUTER — Smart-Standard Multi-Provider LLM Routing
  *
- * Priority order per task (cheapest viable first):
- *   general       → Qwen Turbo → DeepSeek Chat → gpt-4o-mini
- *   orchestration → DeepSeek Chat → Qwen Plus → gpt-4o-mini (avoid gpt-4o)
- *   math_rab      → DeepSeek Chat → gpt-4o-mini
- *   data_extract  → Qwen Turbo → gpt-4o-mini
- *   large_doc     → Gemini Flash → Qwen Plus → gpt-4o-mini
- *   vision        → gpt-4o (only reliable multimodal, no alternative)
+ * Kualitas diutamakan: setiap task memilih model CERDAS, dengan diversifikasi
+ * provider agar beban token tersebar (bila OpenAI habis, ada DeepSeek/Qwen/Gemini).
+ *   general       → gpt-4o → DeepSeek Chat → Qwen Plus
+ *   orchestration → DeepSeek Chat → Qwen Plus → gpt-4o
+ *   math_rab      → DeepSeek Chat → Qwen Plus → gpt-4o
+ *   data_extract  → DeepSeek Chat → Qwen Plus → gpt-4o
+ *   large_doc     → Gemini 2.5 Pro → Qwen Plus → gpt-4o
+ *   vision        → gpt-4o
  *
- * Cost benchmark (approx IDR per 1M tokens, input/output):
- *   gpt-4o        Rp 40k / Rp 160k  ← avoid except vision
- *   gpt-4o-mini   Rp 2.4k / Rp 9.6k ← safe fallback
- *   DeepSeek Chat Rp 4.3k / Rp 17.6k ← smart, good for reasoning
- *   Qwen Turbo    Rp 800  / Rp 2.4k  ← cheapest, fine for general
- *   Qwen Plus     Rp 6.4k / Rp 19.2k ← smarter Qwen
- *   Gemini Flash  ~free quota / low   ← large doc window
+ * SEMUA tier "cerdas" — TIDAK ada gpt-4o-mini / qwen-turbo / gemini-flash.
  */
 
 export type TaskType =
@@ -47,39 +42,39 @@ export function chooseModel(task: TaskType): RouterChoice {
 
     case "orchestration":
       if (hasDeepSeek())
-        return { provider: "deepseek", model: "deepseek-chat", reason: "DeepSeek Chat — reasoning kuat untuk orkestrasi, hemat 95% vs gpt-4o" };
+        return { provider: "deepseek", model: "deepseek-chat", reason: "DeepSeek Chat — reasoning kuat untuk orkestrasi" };
       if (hasQwen())
         return { provider: "qwen", model: "qwen-plus", reason: "Qwen Plus — orkestrasi multi-step yang solid" };
-      return { provider: "openai", model: "gpt-4o-mini", reason: "gpt-4o-mini fallback orchestration (set DEEPSEEK_API_KEY untuk hemat)" };
+      return { provider: "openai", model: "gpt-4o", reason: "GPT-4o — orkestrasi cerdas" };
 
     case "math_rab":
       if (hasDeepSeek())
         return { provider: "deepseek", model: "deepseek-chat", reason: "DeepSeek — chain-of-thought terbaik untuk perhitungan RAB & numerik" };
       if (hasQwen())
-        return { provider: "qwen", model: "qwen-plus", reason: "Qwen Plus fallback math" };
-      return { provider: "openai", model: "gpt-4o-mini", reason: "gpt-4o-mini fallback math (set DEEPSEEK_API_KEY untuk akurasi lebih)" };
+        return { provider: "qwen", model: "qwen-plus", reason: "Qwen Plus — perhitungan solid" };
+      return { provider: "openai", model: "gpt-4o", reason: "GPT-4o — perhitungan cerdas" };
 
     case "data_extraction":
-      if (hasQwen())
-        return { provider: "qwen", model: "qwen-turbo", reason: "Qwen Turbo — JSON extraction hemat & cepat" };
       if (hasDeepSeek())
-        return { provider: "deepseek", model: "deepseek-chat", reason: "DeepSeek fallback extraction" };
-      return { provider: "openai", model: "gpt-4o-mini", reason: "gpt-4o-mini fallback extraction (set QWEN_API_KEY untuk hemat 66%)" };
+        return { provider: "deepseek", model: "deepseek-chat", reason: "DeepSeek Chat — ekstraksi terstruktur akurat" };
+      if (hasQwen())
+        return { provider: "qwen", model: "qwen-plus", reason: "Qwen Plus — ekstraksi solid" };
+      return { provider: "openai", model: "gpt-4o", reason: "GPT-4o — ekstraksi cerdas" };
 
     case "large_doc":
       if (hasGemini())
-        return { provider: "gemini", model: "gemini-1.5-flash", reason: "Gemini Flash — context 1M token untuk dokumen besar, murah" };
+        return { provider: "gemini", model: "gemini-2.5-pro", reason: "Gemini 2.5 Pro — context besar & cerdas untuk dokumen panjang" };
       if (hasQwen())
-        return { provider: "qwen", model: "qwen-plus", reason: "Qwen Plus fallback large doc" };
-      return { provider: "openai", model: "gpt-4o-mini", reason: "gpt-4o-mini fallback large doc (set GEMINI_API_KEY untuk dokumen besar)" };
+        return { provider: "qwen", model: "qwen-plus", reason: "Qwen Plus — dokumen panjang" };
+      return { provider: "openai", model: "gpt-4o", reason: "GPT-4o — dokumen panjang cerdas" };
 
     case "general":
     default:
-      if (hasQwen())
-        return { provider: "qwen", model: "qwen-turbo", reason: "Qwen Turbo — general purpose, hemat 66% vs gpt-4o-mini" };
+      if (process.env.OPENAI_API_KEY)
+        return { provider: "openai", model: "gpt-4o", reason: "GPT-4o — general cerdas" };
       if (hasDeepSeek())
-        return { provider: "deepseek", model: "deepseek-chat", reason: "DeepSeek Chat fallback general" };
-      return { provider: "openai", model: "gpt-4o-mini", reason: "gpt-4o-mini fallback general (set QWEN_API_KEY untuk hemat biaya)" };
+        return { provider: "deepseek", model: "deepseek-chat", reason: "DeepSeek Chat — general cerdas" };
+      return { provider: "qwen", model: "qwen-plus", reason: "Qwen Plus — general cerdas" };
   }
 }
 

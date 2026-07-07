@@ -1910,25 +1910,27 @@ Data yang belum tersedia akan saya estimasi dengan standar industri dan ditandai
       try { await M_terasLpjk1.seedTerasLpjk1(); } catch (err) { log("[Seed TerasLPJK1] Error: " + (err as Error).message); }
       try { await M_penulisCerdasPkb.seedPenulisCerdasPKB(); } catch (err) { log("[Seed PenulisCerdasPKB] Error: " + (err as Error).message); }
 
-      // ── CLAW MODEL UPGRADE — pastikan SEMUA agen claw memakai gpt-4o ──────────
-      // Kualitas jawaban claw ditentukan tier model, bukan KB. Seed claw MELEWATI
-      // agen yang sudah ada (tidak memperbarui ai_model), sehingga DB lama (mis.
-      // production) tetap tertinggal di gpt-4o-mini walau seed source sudah gpt-4o.
-      // Migrasi idempoten ini jalan tiap boot SETELAH semua seed (jadi menang atas
-      // seed force-reseed): hanya menyentuh baris claw yang belum gpt-4o.
+      // ── SMART MODEL UPGRADE — SEMUA chatbot/agen wajib model cerdas ──────────
+      // Kualitas jawaban ditentukan tier model, bukan KB. Seed MELEWATI agen yang
+      // sudah ada (tidak memperbarui ai_model), sehingga DB lama (mis. production)
+      // tetap tertinggal di model lemah. Migrasi idempoten ini jalan tiap boot
+      // SETELAH semua seed (jadi menang atas seed force-reseed): menaikkan setiap
+      // agen bermodel LEMAH (mini / 3.5 / qwen-turbo / null) ke gpt-4o. Model cerdas
+      // non-OpenAI (deepseek-chat, qwen-plus, gemini pro) & 'custom' sengaja TIDAK
+      // diutak-atik. Berlaku efektif di prod hanya setelah REDEPLOY.
       try {
         const { db: rawDb } = await import("./db");
         const { sql: rawSql } = await import("drizzle-orm");
         const upgradeRes: any = await rawDb.execute(rawSql`
           UPDATE agents SET ai_model = 'gpt-4o'
-          WHERE slug ILIKE '%claw%'
-            AND (ai_model IS NULL OR ai_model <> 'gpt-4o')
+          WHERE ai_model IS NULL
+             OR ai_model IN ('gpt-4o-mini', 'gpt-3.5-turbo', 'qwen-turbo')
           RETURNING id
         `);
         const n = (upgradeRes?.rowCount ?? upgradeRes?.rows?.length ?? 0);
-        if (n) log(`[ClawModelUpgrade] upgraded ${n} claw agent(s) to gpt-4o`);
+        if (n) log(`[SmartModelUpgrade] upgraded ${n} agent(s) to gpt-4o`);
       } catch (err) {
-        log("[ClawModelUpgrade] error: " + (err as Error).message);
+        log("[SmartModelUpgrade] error: " + (err as Error).message);
       }
 
       startScheduler();
