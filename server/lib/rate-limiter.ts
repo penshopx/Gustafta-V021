@@ -1,4 +1,10 @@
-import { rateLimit, ipKeyGenerator, type Options } from "express-rate-limit";
+import {
+  rateLimit,
+  ipKeyGenerator,
+  type Options,
+  type Store,
+  type ClientRateLimitInfo,
+} from "express-rate-limit";
 import type { Request, Response } from "express";
 
 const ADMIN_USER_IDS = (process.env.ADMIN_USER_IDS || "")
@@ -100,17 +106,6 @@ export function chatRateLimitKey(req: Request): string {
   return ipKeyGenerator(req.ip ?? "");
 }
 
-export const chatIpRateLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  limit: (req: Request) => chatRateLimitValue(req),
-  keyGenerator: (req: Request) => chatRateLimitKey(req),
-  skip: (req: Request) => isAdminUser(req),
-  standardHeaders: "draft-7",
-  legacyHeaders: false,
-  handler: retryAfterHandler as any,
-  message: "Terlalu banyak permintaan dari IP ini.",
-});
-
 const AGENT_WINDOW_MS = 60 * 60 * 1000;
 const AGENT_MAX_UNAUTHENTICATED = 100;
 
@@ -136,6 +131,8 @@ export interface RateLimitStore {
    * agar konsisten saat banyak instance menaikkan bucket yang sama serempak.
    */
   hit(key: string, windowMs: number, now: number): Promise<RateLimitHit>;
+  /** Opsional: hapus/nolkan bucket sebuah key (dipakai express-rate-limit resetKey). */
+  reset?(key: string): Promise<void>;
 }
 
 /**
@@ -155,6 +152,10 @@ export class InMemoryRateLimitStore implements RateLimitStore {
     }
     entry.count += 1;
     return { count: entry.count, resetAt: entry.resetAt };
+  }
+
+  async reset(key: string): Promise<void> {
+    this.store.delete(key);
   }
 
   cleanup(now: number = Date.now()): void {
@@ -198,6 +199,12 @@ export class PostgresRateLimitStore implements RateLimitStore {
     const row = rows[0];
     return { count: Number(row.count), resetAt: Number(row.reset_at) };
   }
+
+  async reset(key: string): Promise<void> {
+    await this.query(`DELETE FROM rate_limit_buckets WHERE bucket_key = $1`, [
+      key,
+    ]);
+  }
 }
 
 // Store bersama default = PostgreSQL. Import `pool` secara dinamis supaya modul
@@ -207,6 +214,65 @@ const defaultSharedStore = new PostgresRateLimitStore(async (text, params) => {
   const { pool } = await import("../db");
   return pool.query(text, params);
 });
+
+/**
+ * Adapter yang membungkus `RateLimitStore` (Postgres bersama) agar bisa dipakai
+ * langsung sebagai `store` oleh express-rate-limit. Dengan ini limiter per-MENIT
+ * (`chatIpRateLimiter`) menghitung di store BERSAMA lintas-instance — sama seperti
+ * batas per-agen per jam — bukan lagi MemoryStore per-proses yang bisa ditembus
+ * klien yang berputar antar-instance autoscale.
+ *
+ * Bila store bersama error saat runtime (mis. DB down), adapter JATUH ke store
+ * in-memory per-proses supaya chat tidak mati — proteksi terdegradasi (per-instance)
+ * tapi tetap ada, konsisten dengan `chatAgentIdRateLimiter`.
+ */
+export class SharedRateLimitStoreAdapter implements Store {
+  localKeys = false;
+  prefix: string;
+  private windowMs = 60 * 1000;
+
+  constructor(
+    private shared: RateLimitStore,
+    prefix = "",
+    private fallback: InMemoryRateLimitStore = new InMemoryRateLimitStore(),
+  ) {
+    this.prefix = prefix;
+  }
+
+  init(options: Options): void {
+    this.windowMs = options.windowMs;
+  }
+
+  async increment(key: string): Promise<ClientRateLimitInfo> {
+    const now = Date.now();
+    const fullKey = `${this.prefix}${key}`;
+    let hit: RateLimitHit;
+    try {
+      hit = await this.shared.hit(fullKey, this.windowMs, now);
+    } catch (err) {
+      console.error(
+        "[rate-limiter] shared store gagal (per-menit), fallback in-memory:",
+        (err as Error)?.message ?? err,
+      );
+      hit = await this.fallback.hit(fullKey, this.windowMs, now);
+    }
+    return { totalHits: hit.count, resetTime: new Date(hit.resetAt) };
+  }
+
+  // decrement hanya dipakai bila skipFailedRequests/skipSuccessfulRequests aktif;
+  // limiter chat tidak memakainya, jadi best-effort no-op sudah aman.
+  async decrement(_key: string): Promise<void> {}
+
+  async resetKey(key: string): Promise<void> {
+    const fullKey = `${this.prefix}${key}`;
+    try {
+      if (this.shared.reset) await this.shared.reset(fullKey);
+    } catch {
+      // best-effort
+    }
+    if (this.fallback.reset) await this.fallback.reset(fullKey);
+  }
+}
 
 // Fallback per-proses bila store bersama error di runtime.
 const memoryFallbackStore = new InMemoryRateLimitStore();
@@ -222,6 +288,26 @@ export function __setAgentRateLimitStore(store: RateLimitStore): void {
 export function __resetAgentRateLimitStore(): void {
   agentRateLimitStore = defaultSharedStore;
 }
+
+// Store bersama untuk limiter per-MENIT. Di-key dengan prefix "minute:" supaya
+// tidak bertabrakan dengan bucket per-agen ("agent:") di tabel yang sama.
+const chatMinuteStore = new SharedRateLimitStoreAdapter(
+  defaultSharedStore,
+  "minute:",
+  memoryFallbackStore,
+);
+
+export const chatIpRateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: (req: Request) => chatRateLimitValue(req),
+  keyGenerator: (req: Request) => chatRateLimitKey(req),
+  skip: (req: Request) => isAdminUser(req),
+  store: chatMinuteStore,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  handler: retryAfterHandler as any,
+  message: "Terlalu banyak permintaan dari IP ini.",
+});
 
 export async function chatAgentIdRateLimiter(
   req: Request,

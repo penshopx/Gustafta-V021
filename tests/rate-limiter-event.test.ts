@@ -6,6 +6,10 @@ import {
   isEventMode,
   chatRateLimitKey,
   chatRateLimitValue,
+  InMemoryRateLimitStore,
+  SharedRateLimitStoreAdapter,
+  type RateLimitStore,
+  type RateLimitHit,
 } from "../server/lib/rate-limiter";
 
 // Regresi — melindungi perbaikan inti untuk hari-H acara (mis. Indobuildtech):
@@ -150,4 +154,87 @@ test("mode event menaikkan batas untuk user login maupun anonim", () => {
     "user login harus punya kuota lebih besar dari anonim",
   );
   resetEventEnv();
+});
+
+// ── 5. Store BERSAMA lintas-instance untuk limiter per-MENIT ──────────────────
+// Bug #16: chatIpRateLimiter dulu memakai MemoryStore per-proses. Di autoscale,
+// tiap instance punya hitungan sendiri, jadi klien yang berputar antar-instance
+// bisa menembus batas per-menit sementara tiap instance masih merasa aman.
+// SharedRateLimitStoreAdapter membungkus RateLimitStore bersama (Postgres di
+// produksi) → satu hitungan tunggal untuk semua instance.
+
+const WINDOW = 60 * 1000;
+
+test("adapter menghitung di store BERSAMA: dua 'instance' menaikkan bucket yang sama", async () => {
+  const shared = new InMemoryRateLimitStore(); // mensimulasikan 1 DB bersama
+  const instanceA = new SharedRateLimitStoreAdapter(shared, "minute:");
+  const instanceB = new SharedRateLimitStoreAdapter(shared, "minute:");
+  instanceA.init({ windowMs: WINDOW } as any);
+  instanceB.init({ windowMs: WINDOW } as any);
+
+  const r1 = await instanceA.increment("user:X");
+  const r2 = await instanceB.increment("user:X"); // instance berbeda, key sama
+  const r3 = await instanceA.increment("user:X");
+
+  assert.equal(r1.totalHits, 1, "hit pertama = 1");
+  assert.equal(r2.totalHits, 2, "instance kedua HARUS lihat hitungan berjalan");
+  assert.equal(r3.totalHits, 3, "hitungan terus bertambah lintas instance");
+  assert.ok(r1.resetTime instanceof Date, "resetTime harus Date untuk express-rate-limit");
+});
+
+test("adapter memakai prefix untuk memisahkan bucket per-menit dari bucket lain", async () => {
+  const shared = new InMemoryRateLimitStore();
+  const minute = new SharedRateLimitStoreAdapter(shared, "minute:");
+  minute.init({ windowMs: WINDOW } as any);
+
+  await minute.increment("agent:1"); // key "minute:agent:1"
+  // Bucket per-agen (tanpa prefix "minute:") harus TERPISAH.
+  const raw = await shared.hit("agent:1", WINDOW, Date.now());
+  assert.equal(raw.count, 1, "bucket per-agen tidak boleh terpengaruh limiter per-menit");
+});
+
+test("adapter jatuh ke in-memory bila store bersama error (chat tidak mati)", async () => {
+  const failing: RateLimitStore = {
+    async hit(): Promise<RateLimitHit> {
+      throw new Error("DB down");
+    },
+  };
+  const fallback = new InMemoryRateLimitStore();
+  const adapter = new SharedRateLimitStoreAdapter(failing, "minute:", fallback);
+  adapter.init({ windowMs: WINDOW } as any);
+
+  const r1 = await adapter.increment("user:Y");
+  const r2 = await adapter.increment("user:Y");
+  assert.equal(r1.totalHits, 1, "fallback tetap menghitung meski store bersama error");
+  assert.equal(r2.totalHits, 2, "fallback per-proses tetap membatasi (terdegradasi)");
+});
+
+test("adapter menghormati reset window setelah waktu habis", async () => {
+  let nowMs = 1_000_000;
+  const realNow = Date.now;
+  (Date as any).now = () => nowMs;
+  try {
+    const shared = new InMemoryRateLimitStore();
+    const adapter = new SharedRateLimitStoreAdapter(shared, "minute:");
+    adapter.init({ windowMs: WINDOW } as any);
+
+    const r1 = await adapter.increment("user:Z");
+    assert.equal(r1.totalHits, 1);
+    nowMs += WINDOW + 1; // window lewat
+    const r2 = await adapter.increment("user:Z");
+    assert.equal(r2.totalHits, 1, "window baru → hitungan reset ke 1");
+  } finally {
+    (Date as any).now = realNow;
+  }
+});
+
+test("resetKey menghapus bucket di store bersama", async () => {
+  const shared = new InMemoryRateLimitStore();
+  const adapter = new SharedRateLimitStoreAdapter(shared, "minute:");
+  adapter.init({ windowMs: WINDOW } as any);
+
+  await adapter.increment("user:R");
+  await adapter.resetKey("user:R");
+  const after = await adapter.increment("user:R");
+  assert.equal(after.totalHits, 1, "setelah resetKey hitungan mulai dari 1 lagi");
 });
