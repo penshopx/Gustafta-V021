@@ -9,6 +9,7 @@ import speakersUrl from "@assets/Indobuildtech_1_1783396237537.jpeg";
 import {
   Sparkles, Calendar, MapPin, Gift, Bot, BookOpen, GraduationCap, Users,
   ArrowRight, CheckCircle2, Ticket, Building2, ShieldCheck, FileSearch, Award, Zap,
+  UserPlus, MessageSquare, Edit3, Stethoscope,
 } from "lucide-react";
 
 const REGISTER_URL = "https://bit.ly/SeminarIndobuildtech2026";
@@ -55,6 +56,16 @@ const REFLECT_STEPS = [
   "Menyusun SOP, checklist, best practice, dan lesson learned",
   "Merakit AI Chatbot pribadi sesuai bidang keahlian",
   "Membangun asisten digital yang siap menjawab pertanyaan teknis kapan saja",
+];
+
+/* Alur membuat chatbot — diperagakan langsung di booth pameran. */
+const FLOW_STEPS = [
+  { icon: UserPlus, title: "Registrasi", desc: "Daftar akun atau tukar kode peserta." },
+  { icon: MessageSquare, title: "Dialog Gustafta", desc: "Konsultasi awal — ceritakan kebutuhan Anda." },
+  { icon: BookOpen, title: "Blueprint", desc: "Sistem menyusun cetak biru agen AI Anda." },
+  { icon: Edit3, title: "Edit", desc: "Sempurnakan persona, pengetahuan & alur." },
+  { icon: CheckCircle2, title: "Approval", desc: "Persetujuan akhir — gerbang manusia." },
+  { icon: Bot, title: "Chatbot Aktif", desc: "Agen siap menjawab & bekerja." },
 ];
 
 export default function IndobuildtechPage() {
@@ -222,6 +233,53 @@ export default function IndobuildtechPage() {
           <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">
             Sebagian asisten AI memerlukan akun & paket aktif — akses penuh terbuka lewat kode bonus peserta menjelang acara.
           </p>
+        </div>
+      </section>
+
+      {/* ── ALUR PROSES (peraga pameran) ── */}
+      <section className="bg-slate-100 dark:bg-slate-900/50 border-y border-gray-200 dark:border-border">
+        <div className="max-w-6xl mx-auto px-4 py-12 md:py-16">
+          <div className="text-center max-w-2xl mx-auto mb-10">
+            <Badge variant="secondary" className="mb-3" data-testid="badge-flow">Peraga Pameran & Seminar</Badge>
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">Alur Membuat Chatbot Anda</h2>
+            <p className="text-gray-600 dark:text-gray-400 mt-2">
+              Dari daftar sampai chatbot siap pakai — inilah alur yang kami peragakan langsung di booth Indobuildtech 2026.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            {FLOW_STEPS.map((s, i) => (
+              <div key={s.title} className="relative" data-testid={`flow-step-${i + 1}`}>
+                <Card className="h-full">
+                  <CardContent className="pt-6 text-center space-y-2">
+                    <span className="mx-auto w-7 h-7 rounded-full bg-indigo-600 text-white text-sm font-bold flex items-center justify-center">{i + 1}</span>
+                    <s.icon className="h-7 w-7 mx-auto text-indigo-600 dark:text-indigo-400" />
+                    <h4 className="font-bold text-sm text-gray-900 dark:text-white">{s.title}</h4>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 leading-snug">{s.desc}</p>
+                  </CardContent>
+                </Card>
+                {i < FLOW_STEPS.length - 1 && (
+                  <ArrowRight className="hidden lg:block absolute top-1/2 -right-2.5 -translate-y-1/2 h-5 w-5 text-indigo-400 z-10" />
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="flex flex-wrap justify-center gap-3 mt-8">
+            <Button asChild className="bg-indigo-600 hover:bg-indigo-500 text-white gap-2" data-testid="button-flow-dialog">
+              <Link href="/dialog-gustafta">
+                <MessageSquare className="h-4 w-4" /> Coba Dialog Gustafta
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="gap-2" data-testid="button-flow-blueprint">
+              <Link href="/blueprint-builder?preset=konstruksi">
+                <BookOpen className="h-4 w-4" /> Rancang Blueprint
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="gap-2" data-testid="button-flow-klinik">
+              <Link href="/klinik-konsultasi">
+                <Stethoscope className="h-4 w-4" /> Klinik Konsultasi
+              </Link>
+            </Button>
+          </div>
         </div>
       </section>
 

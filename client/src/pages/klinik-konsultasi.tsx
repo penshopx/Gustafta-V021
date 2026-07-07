@@ -7,6 +7,7 @@ import { SharedHeader } from "@/components/shared-header";
 import {
   Stethoscope, FileCheck2, Gavel, HardHat, Briefcase, Truck, Award, Building2,
   ArrowRight, MessageCircle, Headset, CheckCircle2, Clock, Sparkles, Bot,
+  TrendingUp, GraduationCap,
 } from "lucide-react";
 
 /*
@@ -33,6 +34,8 @@ const LOKET: Loket[] = [
   { name: "Loket Suplier", tag: "Rantai pasok & pasok material", href: "/supplierbot", icon: Truck, accent: "text-emerald-600 dark:text-emerald-400" },
   { name: "Loket SKK", tag: "Kompetensi & jenjang tenaga ahli", href: "/skk-coach", icon: Award, accent: "text-teal-600 dark:text-teal-400" },
   { name: "Loket SBU", tag: "Sertifikat badan usaha (BUJK)", href: "/sbu-claw", icon: Building2, accent: "text-rose-600 dark:text-rose-400" },
+  { name: "Loket PUB (LKUT)", tag: "Pengembangan usaha berkelanjutan & LKUT", href: "/pub-lkut-claw", icon: TrendingUp, accent: "text-sky-600 dark:text-sky-400" },
+  { name: "Loket PKB", tag: "Pengembangan keprofesian berkelanjutan", href: "/pkb", icon: GraduationCap, accent: "text-violet-600 dark:text-violet-400" },
 ];
 
 const STEPS = [
