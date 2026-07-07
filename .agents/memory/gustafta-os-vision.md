@@ -14,6 +14,17 @@ Sumber: sintesis 3 dokumen (diagnosis kode + roadmap ChatGPT + kurikulum Notion)
 4. **ACADEMY** — kursus berjenjang Starter→Professional→Advanced→Enterprise
 5. **COMPETENCY & MONETIZATION** — badge/sertifikat, portofolio, langganan, afiliasi, voucher, analytics
 
+## Pipeline standar produk: Dialog → Blueprint → Chatbot → Workroom (arah pemilik, Jul 2026)
+Pola generik yang dipakai ulang lintas domain (bukan fitur satu bidang):
+1. **Dialog** — user bercerita (materi, kesulitan, kebutuhan) → Dialog Gustafta.
+2. **Blueprint** — hasil dialog jadi peta tingkat pengetahuan/pengalaman + gap yang harus diperbaiki → Blueprint Engine (perlu mode "asesmen diri").
+3. **Chatbot** — lahir teman berpikir & belajar yang paham gap user → builder eksisting.
+4. **Workroom** — ruang uji/simulasi per domain, keluaran = **tingkat kesiapan** (skor rekomendasi).
+5. **◆ Manusia memutuskan** — lanjut (ikut uji/eksekusi) atau belajar lagi; sistem tak pernah memutus sendiri.
+
+Contoh pertama yang diminati pemilik: **uji kompetensi** (SKK/sertifikasi). Pola sama berlaku utk tender, perizinan, rekrutmen, dan "pipeline-mainframe-workflow bisnis" lain — hanya isinya yang berganti, kerangka tetap.
+**How to apply**: saat membangun jalur baru bergaya klinik/pendampingan, JANGAN bikin alur ad-hoc — susun sebagai 4 tahap ini dan sambungkan ke komponen eksisting (Dialog, Blueprint Engine, builder, Workroom registry `WORKROOM_DOMAINS`).
+
 ## Aturan arsitektur (non-negotiable)
 - **Modular MONOLITH, bukan microservices.** Solo dev tidak boleh punya 8 layanan + 8 DB terpisah. Batas modul = logis (DDD), satu app + satu DB.
 - **Petakan konsep ke tabel yang SUDAH ADA — JANGAN bikin tabel kembar.** Data model Notion (courses/deliverables/affiliates/vouchers) menduplikasi tabel eksisting; itu keliru.
