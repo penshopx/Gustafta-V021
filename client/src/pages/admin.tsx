@@ -14,7 +14,7 @@ import {
   CheckCircle2, XCircle, Shield, ArrowLeft, Copy,
   UserCheck, AlertCircle, RefreshCw, Crown, UserCog, Wrench, Scale, Database,
   ShoppingBag, Plus, ExternalLink, Package, Trash2, Pencil, MessageCircle, Loader2,
-  Link2, Zap, Globe, BookOpen, GraduationCap, Gift
+  Link2, Zap, Globe, BookOpen, GraduationCap, Gift, Activity
 } from "lucide-react";
 
 // ---- Types ----
@@ -731,6 +731,12 @@ export default function AdminPage() {
               <Button variant="outline" size="sm" className="gap-1.5 text-xs hidden sm:flex" data-testid="button-panduan-delivery">
                 <FileText className="h-3.5 w-3.5" />
                 Panduan Delivery
+              </Button>
+            </Link>
+            <Link href="/admin/system-load">
+              <Button variant="outline" size="sm" className="gap-1.5 text-xs hidden sm:flex border-indigo-500/40 text-indigo-500 hover:bg-indigo-500/10" data-testid="button-system-load">
+                <Activity className="h-3.5 w-3.5" />
+                Beban Sistem
               </Button>
             </Link>
             {isSuperAdmin && (

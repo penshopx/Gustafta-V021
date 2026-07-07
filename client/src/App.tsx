@@ -18,6 +18,7 @@ import BundlingKonstruksiPage from "@/pages/bundling-konstruksi";
 import KlinikKonsultasiPage from "@/pages/klinik-konsultasi";
 import KodeAksesPage from "@/pages/kode-akses";
 import AdminAccessCodesPage from "@/pages/admin-access-codes";
+import AdminSystemLoadPage from "@/pages/admin-system-load";
 import { usePartnerBranding } from "@/hooks/use-partner-branding";
 import Profil from "@/pages/profil";
 import BootstrapAdmin from "@/pages/bootstrap-admin";
@@ -485,6 +486,7 @@ function Router() {
       <Route path="/klinik-konsultasi" component={KlinikKonsultasiPage} />
       <Route path="/kode-akses" component={KodeAksesPage} />
       <Route path="/admin/access-codes" component={AdminAccessCodesPage} />
+      <Route path="/admin/system-load" component={AdminSystemLoadPage} />
       <Route path="/legal" component={LegalLanding} />
       <Route path="/trilogi" component={TrilogiLanding} />
       <Route path="/mitra" component={MitraPage} />
