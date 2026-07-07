@@ -36,6 +36,36 @@ function uniqueKey(prefix: string): string {
   return `${prefix}__it_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 }
 
+// Suffix unik untuk MENYARINGKAN baris milik satu tes dari aktivitas lain di
+// tabel yang sama (tes lain / aplikasi). Pemangkasan bersifat GLOBAL, tapi
+// assertion hitungan baris DILINGKUP ke suffix ini agar deterministik.
+function uniqueSuffix(): string {
+  return `__prune_it_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+}
+
+async function scopedRowCount(
+  pool: import("pg").Pool,
+  suffix: string,
+): Promise<number> {
+  const { rows } = await pool.query(
+    "SELECT count(*)::int AS n FROM rate_limit_buckets WHERE bucket_key LIKE $1",
+    [`%${suffix}`],
+  );
+  return Number(rows[0].n);
+}
+
+async function scopedExpiredCount(
+  pool: import("pg").Pool,
+  suffix: string,
+  now: number,
+): Promise<number> {
+  const { rows } = await pool.query(
+    "SELECT count(*)::int AS n FROM rate_limit_buckets WHERE bucket_key LIKE $1 AND reset_at <= $2",
+    [`%${suffix}`, now],
+  );
+  return Number(rows[0].n);
+}
+
 after(async () => {
   if (!hasDb || !poolPromise) return;
   const pool = await poolPromise;
@@ -215,6 +245,149 @@ test(
       await pool.query(
         "DELETE FROM rate_limit_buckets WHERE bucket_key = ANY($1)",
         [[minuteKey, agentKey]],
+      );
+    }
+  },
+);
+
+// ── delete-on-write terhadap Postgres SUNGGUHAN: tabel kembali ke batas kecil ──
+// Task #21 menambah pemangkasan yang DIPICU LALU-LINTAS (delete-on-write). Unit
+// test lain membuktikan LOGIKA pemangkasan pakai SQL palsu; tes ini membuktikan
+// jalur Postgres NYATA: churn tinggi bucket `minute:*` (1 baris yatim per
+// IP/akun per menit) benar-benar dibersihkan oleh `hit()` sehingga jumlah baris
+// (dan indeks PK yang mengikutinya) kembali ke batas kecil — hanya baris live.
+test(
+  "delete-on-write: churn minute:* kedaluwarsa dibersihkan hit() → tabel kembali kecil (SQL nyata)",
+  { skip },
+  async () => {
+    const pool = await getPool();
+    const suffix = uniqueSuffix();
+    const STALE = 200; // banyak baris yatim seolah churn per-menit yang lama
+    const now = Date.now();
+
+    // pruneBatchLimit lebih besar dari STALE agar backlog milik tes ini bisa
+    // terkuras; pruneProbability:1 + random:()=>0 memaksa setiap hit memangkas.
+    const store = new PostgresRateLimitStore(
+      (text, params) => pool.query(text, params),
+      { pruneProbability: 1, pruneBatchLimit: STALE + 50, random: () => 0 },
+    );
+
+    try {
+      // Tabur STALE baris `minute:*` yang SUDAH kedaluwarsa (reset_at jauh di
+      // masa lalu). Satu INSERT massal agar cepat.
+      await pool.query(
+        `INSERT INTO rate_limit_buckets (bucket_key, count, reset_at)
+         SELECT 'minute:stale-' || g || $1, 1, $2
+         FROM generate_series(1, $3) AS g`,
+        [suffix, now - 1, STALE],
+      );
+      assert.equal(
+        await scopedRowCount(pool, suffix),
+        STALE,
+        "prasyarat: STALE baris basi tertanam",
+      );
+
+      // Dorong hit() nyata pada satu baris live. Setiap hit menulis/menaikkan
+      // baris live DAN memicu pemangkasan fire-and-forget. Karena fire-and-forget
+      // tak di-await, kita polling sampai backlog milik tes ini terkuras.
+      const liveKey = `minute:live${suffix}`;
+      const deadline = Date.now() + 15_000;
+      let scoped = STALE + 1;
+      while (Date.now() < deadline) {
+        await store.hit(liveKey, MINUTE_MS, Date.now());
+        await new Promise((r) => setTimeout(r, 50));
+        scoped = await scopedRowCount(pool, suffix);
+        if (scoped <= 1) break;
+      }
+
+      // Hanya baris live yang tersisa — tabel kembali ke batas kecil.
+      assert.equal(
+        scoped,
+        1,
+        "setelah delete-on-write, hanya baris live milik tes yang tersisa",
+      );
+      const { rows: liveRows } = await pool.query(
+        "SELECT count FROM rate_limit_buckets WHERE bucket_key = $1",
+        [liveKey],
+      );
+      assert.equal(liveRows.length, 1, "baris live harus tetap ada");
+    } finally {
+      await pool.query(
+        "DELETE FROM rate_limit_buckets WHERE bucket_key LIKE $1",
+        [`%${suffix}`],
+      );
+    }
+  },
+);
+
+// ── pruneExpired() terhadap Postgres NYATA: LIMIT dihormati, hanya kedaluwarsa ─
+// Membuktikan subquery `LIMIT` + `FOR UPDATE SKIP LOCKED` + cek-ulang
+// `reset_at <= now` benar terhadap Postgres SUNGGUHAN: satu panggilan menghapus
+// PALING BANYAK `limit` baris, dan baris LIVE tak pernah tersentuh.
+test(
+  "pruneExpired(): batch dibatasi LIMIT & hanya baris kedaluwarsa (SQL nyata)",
+  { skip },
+  async () => {
+    const pool = await getPool();
+    const suffix = uniqueSuffix();
+    const EXPIRED = 10;
+    const LIVE = 3;
+    const BATCH = 4;
+    const now = Date.now();
+
+    const store = new PostgresRateLimitStore((text, params) =>
+      pool.query(text, params),
+    );
+
+    try {
+      // Baris kedaluwarsa diberi reset_at = 1 (praktis minimum) agar menjadi yang
+      // TERTUA secara global → `ORDER BY reset_at LIMIT` menjamin batch pertama
+      // mengambil baris MILIK TES ini, bukan baris kedaluwarsa insidental lain.
+      await pool.query(
+        `INSERT INTO rate_limit_buckets (bucket_key, count, reset_at)
+         SELECT 'minute:old-' || g || $1, 1, 1
+         FROM generate_series(1, $2) AS g`,
+        [suffix, EXPIRED],
+      );
+      // Baris live: reset_at jauh di masa depan → tak pernah kedaluwarsa.
+      await pool.query(
+        `INSERT INTO rate_limit_buckets (bucket_key, count, reset_at)
+         SELECT 'minute:live-' || g || $1, 1, $2
+         FROM generate_series(1, $3) AS g`,
+        [suffix, now + HOUR_MS, LIVE],
+      );
+      assert.equal(
+        await scopedRowCount(pool, suffix),
+        EXPIRED + LIVE,
+        "prasyarat: EXPIRED basi + LIVE aktif tertanam",
+      );
+
+      // Batch pertama menghapus TEPAT LIMIT baris (baris tes adalah yang tertua).
+      const first = await store.pruneExpired(now, BATCH);
+      assert.equal(first, BATCH, "batch pertama menghapus tepat LIMIT baris");
+
+      // Kuras sisa backlog milik tes; setiap batch WAJIB ≤ LIMIT.
+      let guard = 0;
+      while ((await scopedExpiredCount(pool, suffix, now)) > 0 && guard++ < 20) {
+        const n = await store.pruneExpired(now, BATCH);
+        assert.ok(n <= BATCH, "setiap batch dibatasi LIMIT");
+        if (n === 0) break;
+      }
+
+      assert.equal(
+        await scopedExpiredCount(pool, suffix, now),
+        0,
+        "seluruh baris kedaluwarsa milik tes akhirnya terpangkas",
+      );
+      assert.equal(
+        await scopedRowCount(pool, suffix),
+        LIVE,
+        "hanya baris LIVE yang tersisa — pruneExpired tak menyentuh yang aktif",
+      );
+    } finally {
+      await pool.query(
+        "DELETE FROM rate_limit_buckets WHERE bucket_key LIKE $1",
+        [`%${suffix}`],
       );
     }
   },
