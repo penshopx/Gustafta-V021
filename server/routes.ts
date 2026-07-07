@@ -17546,6 +17546,100 @@ Return HANYA JSON berikut (tanpa penjelasan lain):
     }
   });
 
+  // ─── Access Codes: voucher akses peserta (mis. bonus seminar offline) ───────
+  // Peserta menukar kode → langganan aktif otomatis (tanpa bayar).
+  app.post("/api/access-codes/redeem", isAuthenticated, async (req: any, res: any) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) return res.status(401).json({ error: "Silakan masuk terlebih dahulu." });
+      const code = String(req.body?.code || "").trim();
+      if (!code) return res.status(400).json({ error: "Masukkan kode akses." });
+
+      const result = await (storage as any).redeemAccessCode(code, userId);
+      if (!result.ok) {
+        const msg: Record<string, string> = {
+          invalid: "Kode tidak ditemukan atau sudah tidak aktif.",
+          already: "Anda sudah pernah menukarkan kode ini.",
+          exhausted: "Kuota kode ini sudah habis.",
+        };
+        return res.status(400).json({ error: msg[result.reason] || "Kode tidak dapat digunakan." });
+      }
+
+      // Catatan: SENGAJA tidak menyentuh users.isActive di sini. Akun baru sudah
+      // isActive=true secara default; isActive=false hanya dari tindakan admin
+      // (suspend/pending), jadi menukar kode TIDAK boleh mengaktifkan ulang akun
+      // yang sengaja dinonaktifkan. Akses tier dibuka oleh langganan, bukan flag ini.
+      const endDate = result.endDate ? new Date(result.endDate) : null;
+      res.json({
+        success: true,
+        message: `Akses ${result.plan} aktif${endDate ? ` s/d ${endDate.toLocaleDateString("id-ID")}` : ""}.`,
+        plan: result.plan,
+        endDate: result.endDate,
+      });
+    } catch (error: any) {
+      console.error("Access code redeem error:", error);
+      res.status(500).json({ error: "Gagal menukarkan kode. Coba lagi." });
+    }
+  });
+
+  app.get("/api/admin/access-codes", isAuthenticated, requireAdmin, async (_req: any, res: any) => {
+    try {
+      const codes = await (storage as any).listAccessCodes();
+      res.json(codes);
+    } catch (error: any) {
+      console.error("List access codes error:", error);
+      res.status(500).json({ error: "Gagal mengambil daftar kode." });
+    }
+  });
+
+  app.post("/api/admin/access-codes", isAuthenticated, requireAdmin, async (req: any, res: any) => {
+    try {
+      const GUSTAFTA_PLAN_KEYS = ["starter", "profesional", "bisnis", "enterprise"];
+      const { code, plan = "profesional", durationDays = 30, label = "", maxRedemptions = 1 } = req.body || {};
+      const normalized = String(code || "").trim().toUpperCase();
+      if (!normalized || normalized.length < 4) {
+        return res.status(400).json({ error: "Kode minimal 4 karakter." });
+      }
+      if (!GUSTAFTA_PLAN_KEYS.includes(plan)) {
+        return res.status(400).json({ error: "Tier tidak valid (starter/profesional/bisnis/enterprise)." });
+      }
+      const dur = Number(durationDays);
+      if (!Number.isFinite(dur) || dur < 1 || dur > 3650) {
+        return res.status(400).json({ error: "Durasi tidak valid (1–3650 hari)." });
+      }
+      const max = Number(maxRedemptions);
+      if (!Number.isFinite(max) || max < 1 || max > 100000) {
+        return res.status(400).json({ error: "Kuota tidak valid (1–100000)." });
+      }
+
+      const created = await (storage as any).createAccessCode({
+        code: normalized, plan, durationDays: dur, label: String(label || "").slice(0, 200),
+        maxRedemptions: max, createdBy: req.user?.claims?.sub || null,
+      });
+      res.json(created);
+    } catch (error: any) {
+      if (String(error?.message || "").includes("unique") || error?.code === "23505") {
+        return res.status(409).json({ error: "Kode sudah ada. Gunakan kode lain." });
+      }
+      console.error("Create access code error:", error);
+      res.status(500).json({ error: "Gagal membuat kode." });
+    }
+  });
+
+  app.patch("/api/admin/access-codes/:id", isAuthenticated, requireAdmin, async (req: any, res: any) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (!Number.isFinite(id)) return res.status(400).json({ error: "ID tidak valid." });
+      const { active } = req.body || {};
+      if (typeof active !== "boolean") return res.status(400).json({ error: "Kirim field active (boolean)." });
+      await (storage as any).setAccessCodeActive(id, active);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Update access code error:", error);
+      res.status(500).json({ error: "Gagal memperbarui kode." });
+    }
+  });
+
   app.patch("/api/admin/users/:userId/role", isAuthenticated, requireSuperAdmin, async (req: any, res: any) => {
     try {
       const { userId } = req.params;

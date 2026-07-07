@@ -11,6 +11,10 @@ import { PremiumPageGuard } from "@/components/premium-page-guard";
 import { Brain, Cpu, GraduationCap, Sparkles, Database, HardHat, Bot, Scale, Shield, Award, Leaf, BarChart3, Users, TrendingUp, ShieldAlert, Search, Building2, Wrench, Zap, BookOpen, Landmark, Settings2, Map as MapIcon } from "lucide-react";
 import Landing from "@/pages/landing";
 import PartnerLanding from "@/pages/partner-landing";
+import IndobuildtechPage from "@/pages/indobuildtech";
+import PaketKonstruksiPage from "@/pages/paket-konstruksi";
+import KodeAksesPage from "@/pages/kode-akses";
+import AdminAccessCodesPage from "@/pages/admin-access-codes";
 import { usePartnerBranding } from "@/hooks/use-partner-branding";
 import Profil from "@/pages/profil";
 import BootstrapAdmin from "@/pages/bootstrap-admin";
@@ -471,6 +475,10 @@ function Router() {
       <Route path="/admin/kb-hub" component={KbHub} />
       <Route path="/account" component={AccountPage} />
       <Route path="/mini-app/:slug" component={MiniAppPublic} />
+      <Route path="/indobuildtech" component={IndobuildtechPage} />
+      <Route path="/paket-konstruksi" component={PaketKonstruksiPage} />
+      <Route path="/kode-akses" component={KodeAksesPage} />
+      <Route path="/admin/access-codes" component={AdminAccessCodesPage} />
       <Route path="/legal" component={LegalLanding} />
       <Route path="/trilogi" component={TrilogiLanding} />
       <Route path="/mitra" component={MitraPage} />

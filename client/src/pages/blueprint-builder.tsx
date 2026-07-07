@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { SharedHeader } from "@/components/shared-header";
 import { useAuth } from "@/hooks/use-auth";
@@ -163,7 +163,22 @@ export default function BlueprintBuilderPage() {
   const [shareBusy, setShareBusy] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
+  const [presetLabel, setPresetLabel] = useState<string | null>(null);
   const [, setLocation] = useLocation();
+
+  /* Preset via ?preset= — mis. tautan bonus event mengarahkan ke mode reflektif konstruksi.
+     Hanya mengisi awal intent (bisa diedit), tidak memaksa mulai. */
+  useEffect(() => {
+    const preset = new URLSearchParams(window.location.search).get("preset");
+    if (preset === "konstruksi") {
+      setIntent(
+        "Saya tenaga ahli konstruksi. Saya ingin mengubah pengalaman lapangan saya menjadi AI asisten profesional " +
+        "yang dapat menjawab pertanyaan teknis, menyusun SOP/checklist/lesson learned, dan mendampingi pekerjaan " +
+        "sesuai bidang keahlian saya (mis. geoteknik, struktur, K3, SKK, SBU, atau tender).",
+      );
+      setPresetLabel("Blueprint Reflektif Konstruksi");
+    }
+  }, []);
 
   /* ── Sertifikat pembelajaran reflektif (unduh PDF) ── */
   const downloadCertificate = async () => {
@@ -674,11 +689,20 @@ export default function BlueprintBuilderPage() {
         {/* ── STEP: INTRO ── */}
         {step === "intro" && (
           <div className="rounded-2xl border bg-white dark:bg-card p-6 space-y-4" data-testid="step-intro">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Brain className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
               <h2 className="text-base font-bold text-gray-900 dark:text-white">Mulai dari Ide Besar</h2>
+              {presetLabel && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 text-xs font-semibold px-2.5 py-0.5" data-testid="badge-preset">
+                  <Sparkles className="h-3 w-3" /> {presetLabel}
+                </span>
+              )}
             </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Tuliskan tujuan utama asisten yang ingin Anda bangun. Boleh dikosongkan — Anda tetap bisa lanjut.</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              {presetLabel
+                ? "Mode reflektif: kolom sudah terisi contoh untuk tenaga ahli konstruksi. Sunting sesuai bidang & pengalaman Anda, lalu mulai."
+                : "Tuliskan tujuan utama asisten yang ingin Anda bangun. Boleh dikosongkan — Anda tetap bisa lanjut."}
+            </p>
             <Textarea
               value={intent}
               onChange={(e) => setIntent(e.target.value)}

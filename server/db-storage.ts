@@ -13,6 +13,8 @@ import {
   agentMessages,
   analyticsTable,
   subscriptionsTable,
+  accessCodes,
+  accessCodeRedemptions,
   ownerMonthlyUsageTable,
   userProfiles,
   projectBrainTemplates,
@@ -2392,6 +2394,108 @@ export class DatabaseStorage implements IStorage {
       .limit(1);
     if (result.length === 0) return undefined;
     return this.mapSubscriptionRow(result[0]);
+  }
+
+  // ─── Access Codes: voucher akses peserta (mis. bonus seminar offline) ─────
+  async createAccessCode(data: {
+    code: string; plan?: string; durationDays?: number; label?: string;
+    maxRedemptions?: number; createdBy?: string | null;
+  }): Promise<typeof accessCodes.$inferSelect> {
+    const [row] = await db.insert(accessCodes).values({
+      code: data.code.trim().toUpperCase(),
+      plan: data.plan || "profesional",
+      durationDays: data.durationDays ?? 30,
+      label: data.label ?? "",
+      maxRedemptions: data.maxRedemptions ?? 1,
+      createdBy: data.createdBy ?? null,
+    }).returning();
+    return row;
+  }
+
+  async listAccessCodes(): Promise<Array<typeof accessCodes.$inferSelect>> {
+    return await db.select().from(accessCodes).orderBy(desc(accessCodes.createdAt));
+  }
+
+  async setAccessCodeActive(id: number, active: boolean): Promise<void> {
+    await db.update(accessCodes).set({ active }).where(eq(accessCodes.id, id));
+  }
+
+  /**
+   * Redeem sebuah kode akses secara ATOMIK (transaksi):
+   *  - kode wajib ada & aktif
+   *  - user tidak boleh redeem kode yang sama dua kali (unique index)
+   *  - increment terkunci `redemption_count < max_redemptions` (cegah race)
+   *  - nonaktifkan langganan aktif lama lalu insert 1 grant baru (1 baris "active")
+   *  - grantedBy diisi pembuat kode (jejak audit)
+   * Return: { ok, reason, plan?, endDate? }
+   */
+  async redeemAccessCode(codeStr: string, userId: string): Promise<{
+    ok: boolean; reason: "ok" | "invalid" | "already" | "exhausted"; plan?: string; endDate?: string;
+  }> {
+    const normalized = (codeStr || "").trim().toUpperCase();
+    if (!normalized || !userId) return { ok: false, reason: "invalid" };
+
+    const { PLAN_CONFIGS } = await import("@shared/feature-plans");
+
+    return await db.transaction(async (tx) => {
+      const [code] = await tx.select().from(accessCodes)
+        .where(and(eq(accessCodes.code, normalized), eq(accessCodes.active, true)))
+        .limit(1);
+      if (!code) return { ok: false, reason: "invalid" as const };
+
+      const [existing] = await tx.select({ id: accessCodeRedemptions.id }).from(accessCodeRedemptions)
+        .where(and(eq(accessCodeRedemptions.codeId, code.id), eq(accessCodeRedemptions.userId, userId)))
+        .limit(1);
+      if (existing) return { ok: false, reason: "already" as const };
+
+      const inc = await tx.update(accessCodes)
+        .set({ redemptionCount: sql`${accessCodes.redemptionCount} + 1` })
+        .where(and(
+          eq(accessCodes.id, code.id),
+          sql`${accessCodes.redemptionCount} < ${accessCodes.maxRedemptions}`,
+        ))
+        .returning({ id: accessCodes.id });
+      if (inc.length === 0) return { ok: false, reason: "exhausted" as const };
+
+      const planConfig = (PLAN_CONFIGS as any)[code.plan];
+      const chatbotLimit = Math.min(planConfig?.maxAgents ?? 3, 200);
+      const now = new Date();
+      const endDate = new Date(now.getTime() + code.durationDays * 24 * 60 * 60 * 1000);
+
+      await tx.update(subscriptionsTable)
+        .set({ status: "expired", updatedAt: new Date() })
+        .where(and(eq(subscriptionsTable.userId, userId), eq(subscriptionsTable.status, "active")));
+
+      const [sub] = await tx.insert(subscriptionsTable).values({
+        userId,
+        plan: code.plan,
+        status: "active",
+        amount: 0,
+        currency: "IDR",
+        chatbotLimit,
+        grantedBy: code.createdBy ?? null,
+        mayarOrderId: `CODE-${normalized}-${userId.slice(0, 8)}-${Date.now()}`,
+        startDate: now,
+        endDate,
+      }).returning();
+
+      await tx.insert(accessCodeRedemptions).values({
+        codeId: code.id,
+        userId,
+        subscriptionId: String(sub.id),
+      });
+
+      return { ok: true, reason: "ok" as const, plan: code.plan, endDate: endDate.toISOString() };
+    }).catch((err: any) => {
+      // Race: dua permintaan user+kode sama lolos pre-check lalu bentrok di unique
+      // index (codeId,userId). Transaksi yang kalah di-rollback → perlakukan sbagai
+      // "sudah pernah ditukarkan", jangan bocor sebagai 500.
+      const msg = String(err?.message || "");
+      if (err?.code === "23505" || msg.includes("uniq_access_code_redemption") || msg.includes("duplicate key")) {
+        return { ok: false, reason: "already" as const };
+      }
+      throw err;
+    });
   }
 
   // ─── Lisensi Seat Asosiasi (Model B) ─────────────────────────────────────

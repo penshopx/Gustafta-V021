@@ -2584,3 +2584,32 @@ export const digitalCertificates = pgTable("digital_certificates", {
 export const insertDigitalCertificateSchema = createInsertSchema(digitalCertificates).omit({ id: true, createdAt: true });
 export type InsertDigitalCertificate = z.infer<typeof insertDigitalCertificateSchema>;
 export type DigitalCertificate = typeof digitalCertificates.$inferSelect;
+
+// ─── Access Codes: voucher akses peserta (mis. bonus seminar offline) ─────────
+export const accessCodes = pgTable("access_codes", {
+  id: serial("id").primaryKey(),
+  code: varchar("code", { length: 64 }).notNull().unique(),
+  plan: text("plan").notNull().default("profesional"),          // tier Gustafta yang diberikan
+  durationDays: integer("duration_days").notNull().default(30),
+  label: text("label").default(""),                              // mis. "Indobuildtech 2026"
+  maxRedemptions: integer("max_redemptions").notNull().default(1),
+  redemptionCount: integer("redemption_count").notNull().default(0),
+  active: boolean("active").notNull().default(true),
+  createdBy: varchar("created_by", { length: 255 }),            // userId admin pembuat
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const accessCodeRedemptions = pgTable("access_code_redemptions", {
+  id: serial("id").primaryKey(),
+  codeId: integer("code_id").notNull(),
+  userId: varchar("user_id", { length: 255 }).notNull(),
+  subscriptionId: varchar("subscription_id", { length: 36 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => ({
+  uniqRedemption: uniqueIndex("uniq_access_code_redemption").on(t.codeId, t.userId),
+}));
+
+export const insertAccessCodeSchema = createInsertSchema(accessCodes).omit({ id: true, createdAt: true, redemptionCount: true });
+export type InsertAccessCode = z.infer<typeof insertAccessCodeSchema>;
+export type AccessCode = typeof accessCodes.$inferSelect;
+export type AccessCodeRedemption = typeof accessCodeRedemptions.$inferSelect;
