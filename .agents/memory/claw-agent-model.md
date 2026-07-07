@@ -19,5 +19,10 @@ Answer QUALITY is driven by the **model tier**, not KB. Historically almost all 
 
 **How to apply:** both storages now have a backstop: `aiModel: insertAgent.aiModel || (insertAgent as any).model || "gpt-4o-mini"`. Keep it — it maps the legacy `model` field so all `model:`-passing seeds create with the right model. Runtime resolution is `agent.aiModel || defaultModel()` (external chat path `~routes.ts:7023` uses `agent.aiModel || "gpt-4o-mini"`).
 
+## Rule: prod is a SEPARATE DB — the durable fix is a boot-time idempotent UPDATE
+**Why:** editing seed source only fixes the CREATE path (fresh DB). Existing rows in an already-populated DB are skipped by "skip if exists" seeds, so a dev-only model upgrade NEVER propagates to production (which has its own DB and only ever ran the original seed). Symptom: dev all `gpt-4o`, prod majority still `gpt-4o-mini` → deployed chatbots feel dumb even though dev is fine. Cannot write prod DB directly (only read-replica for queries); the only write channel into prod is code that runs at boot on deploy.
+
+**How to apply:** there is now a `[ClawModelUpgrade]` block in `server/index.ts` placed AFTER all seed calls and before `startScheduler()` — `UPDATE agents SET ai_model='gpt-4o' WHERE slug ILIKE '%claw%' AND (ai_model IS NULL OR ai_model <> 'gpt-4o')`. Runs every boot (idempotent no-op once converged), and because it runs LAST it wins over the force-reseed claw files. It only takes effect in prod after a REDEPLOY. Keep this block; don't "clean it up" — it is the propagation mechanism, not a one-off.
+
 ## Unrelated pre-existing boot noise (not caused by model work)
 SKK/LSP seeds (seed-manajemen-lsp-extra, seed-skk-sipil-wave*) throw `exec.select/insert is not a function` at boot — they pass a partial transaction executor into `lookupSeriesNameForAgent`/`createAgent`. Non-fatal, seeds catch it. Not a claw/model issue.

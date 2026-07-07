@@ -1910,6 +1910,27 @@ Data yang belum tersedia akan saya estimasi dengan standar industri dan ditandai
       try { await M_terasLpjk1.seedTerasLpjk1(); } catch (err) { log("[Seed TerasLPJK1] Error: " + (err as Error).message); }
       try { await M_penulisCerdasPkb.seedPenulisCerdasPKB(); } catch (err) { log("[Seed PenulisCerdasPKB] Error: " + (err as Error).message); }
 
+      // ── CLAW MODEL UPGRADE — pastikan SEMUA agen claw memakai gpt-4o ──────────
+      // Kualitas jawaban claw ditentukan tier model, bukan KB. Seed claw MELEWATI
+      // agen yang sudah ada (tidak memperbarui ai_model), sehingga DB lama (mis.
+      // production) tetap tertinggal di gpt-4o-mini walau seed source sudah gpt-4o.
+      // Migrasi idempoten ini jalan tiap boot SETELAH semua seed (jadi menang atas
+      // seed force-reseed): hanya menyentuh baris claw yang belum gpt-4o.
+      try {
+        const { db: rawDb } = await import("./db");
+        const { sql: rawSql } = await import("drizzle-orm");
+        const upgradeRes: any = await rawDb.execute(rawSql`
+          UPDATE agents SET ai_model = 'gpt-4o'
+          WHERE slug ILIKE '%claw%'
+            AND (ai_model IS NULL OR ai_model <> 'gpt-4o')
+          RETURNING id
+        `);
+        const n = (upgradeRes?.rowCount ?? upgradeRes?.rows?.length ?? 0);
+        if (n) log(`[ClawModelUpgrade] upgraded ${n} claw agent(s) to gpt-4o`);
+      } catch (err) {
+        log("[ClawModelUpgrade] error: " + (err as Error).message);
+      }
+
       startScheduler();
     },
   );
