@@ -9,7 +9,7 @@ import {
   ArrowRight, Sparkles, Gift, Briefcase, Truck, BadgeCheck, Landmark,
   Workflow, Boxes, GitBranch, ClipboardCheck, Users,
   Stethoscope, Hammer, Calculator, Camera, CalendarClock, FileSignature,
-  Radar, FileCheck2, Gavel,
+  Radar, FileCheck2, Gavel, GraduationCap, TrendingUp,
 } from "lucide-react";
 
 /*
@@ -35,6 +35,7 @@ const GROUPS: Group[] = [
       { name: "GeoteknikClaw", tag: "SKK Sipil — Geoteknik", href: "/geoteknik-claw", icon: Mountain },
       { name: "SafiraClaw", tag: "SKK K3 Konstruksi", href: "/safira-claw", icon: ShieldCheck },
       { name: "ManprojakClaw", tag: "Manajemen proyek konstruksi", href: "/manprojak-claw", icon: ClipboardCheck },
+      { name: "PKB", tag: "Pengembangan Keprofesian Berkelanjutan", href: "/pkb", icon: GraduationCap },
     ],
   },
   {
@@ -47,6 +48,7 @@ const GROUPS: Group[] = [
       { name: "SBUClaw", tag: "Sertifikat Badan Usaha (BUJK)", href: "/sbu-claw", icon: Building2 },
       { name: "SkemaClaw", tag: "Skema & subklasifikasi SBU", href: "/skema-claw", icon: Layers },
       { name: "PanduanSBU", tag: "Panduan langkah pengurusan SBU", href: "/panduan-sbu", icon: FileSearch },
+      { name: "LKUT-PUBclaw", tag: "Pengembangan Usaha Berkelanjutan & LKUT", href: "/pub-lkut-claw", icon: TrendingUp },
     ],
   },
   {
