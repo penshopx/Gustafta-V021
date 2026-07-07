@@ -119,7 +119,7 @@ export async function importDocumentToProposal(
     };
   }
 
-  const model = modelOverride || "gpt-4o-mini";
+  const model = modelOverride || "gpt-4o";
 
   let parsed: any;
   try {

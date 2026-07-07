@@ -95,7 +95,7 @@ Bahasa: Indonesia (bisa campur Inggris jika diperlukan)
       language: "id",
       category: "Customer Service",
       subcategory: "E-Commerce",
-      aiModel: "gpt-4o-mini",
+      aiModel: "gpt-4o",
       temperature: 0.7,
       maxTokens: 1024,
       accessToken,

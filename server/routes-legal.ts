@@ -1004,7 +1004,7 @@ Sertakan header: "DRAFT — UNTUK REVIEW ADVOKAT" di awal dokumen.`;
       let fullResponse = "";
       try {
         const stream = await openai.chat.completions.create({
-          model: "gpt-4o-mini",
+          model: "gpt-4o",
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: userPrompt },

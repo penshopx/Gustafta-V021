@@ -347,13 +347,17 @@ const openai = new OpenAI({
 
 // Gemini client — used as primary LLM for document generation
 // In production: uses real GEMINI_API_KEY (direct Google v1 API)
-// ── Default model — cost-optimized fallback chain ────────────────────────────
-// Priority: Qwen Turbo (cheapest) → DeepSeek Chat → gpt-4o-mini
-// Vision always uses gpt-4o regardless.
+// ── Smart standard model — kualitas diutamakan (BUKAN hemat biaya) ───────────
+// Semua chatbot & fitur default ke model CERDAS. Bila OpenAI habis token/limit,
+// jalur chat streaming otomatis geser ke DeepSeek → Qwen → Gemini (semua cerdas).
+// Vision selalu gpt-4o.
+const SMART_MODEL = "gpt-4o";
 function defaultModel(): string {
-  if (process.env.QWEN_API_KEY)     return "qwen-turbo";
+  if (process.env.OPENAI_API_KEY)   return SMART_MODEL;
   if (process.env.DEEPSEEK_API_KEY) return "deepseek-chat";
-  return "gpt-4o-mini";
+  if (process.env.QWEN_API_KEY)     return process.env.QWEN_MODEL || "qwen-plus";
+  if (process.env.GEMINI_API_KEY)   return "gemini-2.5-pro";
+  return SMART_MODEL;
 }
 
 // In dev: uses Replit's modelfarm proxy (localhost) if no real key present
@@ -4939,7 +4943,7 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
                 }
               }
               const stream = await genai.models.generateContentStream({
-                model: "gemini-2.5-flash",
+                model: "gemini-2.5-pro",
                 contents: geminiContents as any,
                 config: {
                   ...(sysParts.length ? { systemInstruction: sysParts.join("\n\n") } : {}),
@@ -6539,7 +6543,7 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
       const client = deepseekKey
         ? new OpenAI({ apiKey: deepseekKey, baseURL: "https://api.deepseek.com" })
         : openai;
-      const model = deepseekKey ? (routingModel || "deepseek-chat") : "gpt-4o-mini";
+      const model = deepseekKey ? (routingModel || "deepseek-chat") : SMART_MODEL;
 
       const res = await client.chat.completions.create({
         model,
@@ -6879,7 +6883,7 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
       const candidatesMin = minifyCandidates(candidatesSorted);
       const routerPrompt = `Select up to ${cap} agents from the candidate list that best match the user request.\nReturn JSON exactly: {"selectedAgentIds":[...],"reason":"..."}\n\nINTENT_SUMMARY:\n${intentSummary}\n\nUSER_QUESTION:\n${question.slice(0, 800)}\n\nCANDIDATE_AGENTS:\n${JSON.stringify(candidatesMin)}`;
       const resp = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [
           { role: "system", content: "You are an agent router. Output ONLY valid JSON. No markdown. No code fences." },
           { role: "user", content: routerPrompt },
@@ -6912,7 +6916,7 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
     if (!openaiApiKey) return DEFAULT;
     try {
       const resp = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [
           { role: "system", content: "You are a strict evaluator. Output ONLY valid JSON. No markdown. No code fences." },
           {
@@ -7020,7 +7024,7 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
       { role: "user", content: userMessage }
     ];
     
-    const agentModel = agent.aiModel || "gpt-4o-mini";
+    const agentModel = agent.aiModel || defaultModel();
     const temperature = Math.max(0, Math.min(2, agent.temperature ?? 0.7));
     const maxTokens = Math.max(100, Math.min(4096, agent.maxTokens ?? 1024));
     
@@ -8454,7 +8458,7 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
         name: agent.name || "",
         description: agent.description || agent.tagline || "",
         instructions: agent.systemPrompt || "",
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         tools: [],
         tool_resources: {},
         conversation_starters: startMessages,
@@ -8654,7 +8658,7 @@ Instruksi:
       const abortController = new AbortController();
       req.on("close", () => abortController.abort());
       const stream = await openaiClient.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [
           { role: "system", content: `Kamu adalah asisten dokumen profesional untuk domain ${agent.name}. Hasilkan dokumen kerja Indonesia berkualitas tinggi, lengkap, dan siap pakai.` },
           { role: "user", content: userPrompt },
@@ -9197,7 +9201,7 @@ Post 5 — Produk Baru: Judul | Deskripsi produk | Harga | Link
       const client = new openai({ apiKey: process.env.OPENAI_API_KEY || process.env.AI_INTEGRATIONS_OPENAI_API_KEY, baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL });
 
       const completion = await client.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
@@ -9384,7 +9388,7 @@ Akhiri dengan 2-3 poin key takeaway untuk pembaca lain.`;
       const client = new openai({ apiKey: process.env.OPENAI_API_KEY || process.env.AI_INTEGRATIONS_OPENAI_API_KEY, baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL });
 
       const completion = await client.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
@@ -9486,7 +9490,7 @@ Persyaratan HTML:
 Output: HANYA kode HTML, mulai dari <!DOCTYPE html>, tanpa markdown fence atau penjelasan apapun.`;
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
@@ -9592,7 +9596,7 @@ Balas dengan JSON dengan struktur PERSIS ini:
 }`;
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
@@ -10712,7 +10716,7 @@ Balas HANYA dengan JSON array (tanpa markdown, tanpa penjelasan). Format setiap 
 Pilih tipe yang paling cocok dengan topik agent. Jangan gunakan tipe AI-powered seperti project_snapshot, risk_radar, dll.`;
 
       const aiResponse = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: systemPrompt }],
         temperature: 0.7,
         max_tokens: 1500,
@@ -10927,7 +10931,7 @@ Tugas kamu: Buat dokumen profesional yang lengkap, terstruktur, dan siap pakai b
       if (!openai) return res.status(503).json({ error: "Layanan AI tidak tersedia" });
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
@@ -12623,7 +12627,7 @@ Laporan ini dibuat AI. Lengkapi [DATA] dengan angka aktual dari dashboard platfo
       ];
 
       const response = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: chatMessages,
         temperature: 0.3,
         max_tokens: 2000,
@@ -15899,7 +15903,7 @@ Jika informasi tidak ditemukan, isi dengan string kosong "".
       const spec = platformSpecs[platform] || "General ad copy";
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [
           {
             role: "system",
@@ -15952,7 +15956,7 @@ Return JSON format:
         : `Generate 3 video reel script prompts for short-form content. Each should include: opening hook (first 3 seconds), main content flow, visual transitions, text overlays, and closing CTA. Focus on engagement and watch-time.`;
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [
           {
             role: "system",
@@ -16225,7 +16229,7 @@ Buat dokumen KB berkualitas tinggi untuk topik ini.`;
       console.log("[KB-generate] CODE_VERSION=v7-gemini-direct, key present:", !!geminiKey);
       if (!geminiKey) throw new Error("GEMINI_API_KEY not configured — tambahkan secret di Replit");
       const geminiResp = await fetch(
-        `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
+        `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent?key=${geminiKey}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -17008,7 +17012,7 @@ Return HANYA JSON berikut (tanpa penjelasan lain):
         aiModel = "deepseek-chat";
       } else if (integrationKey && integrationBaseURL) {
         aiClient = new OpenAI({ apiKey: integrationKey, baseURL: integrationBaseURL });
-        aiModel = "gpt-4o-mini";
+        aiModel = SMART_MODEL;
       } else {
         return res.status(503).json({ error: "Tidak ada AI provider yang tersedia. Silakan hubungi admin." });
       }
@@ -18703,7 +18707,7 @@ Return HANYA JSON berikut (tanpa penjelasan lain):
       // ─── TAHAP 1: OPENCLAW — Domain Analysis Agent ─────────────────────────
       // Agen ini memetakan domain secara mendalam sebelum sintesis dilakukan
       const openclawResponse = await aiClient.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [
           {
             role: "system",
@@ -18864,7 +18868,7 @@ KRITIS: Setiap field harus konkret, actionable, dan spesifik ke domain — bukan
       }
 
       const multiclawResponse = await aiClient.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [
           {
             role: "system",
@@ -18965,7 +18969,7 @@ Min 300 kata. Bahasa Indonesia profesional. Sitasi regulasi spesifik domain ini.
       const instruction = fieldInstructions[fieldName] || `Hasilkan konten berkualitas tinggi untuk field "${fieldLabel || fieldName}". Spesifik ke domain agen ini.`;
 
       const response = await aiClient.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [
           {
             role: "system",
@@ -19034,7 +19038,7 @@ Min 300 kata. Bahasa Indonesia profesional. Sitasi regulasi spesifik domain ini.
 
       // Stage 1: Domain analysis of each agent
       const domainAnalysisRes = await aiClient.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [
           {
             role: "system",
@@ -19055,7 +19059,7 @@ Min 300 kata. Bahasa Indonesia profesional. Sitasi regulasi spesifik domain ini.
 
       // Stage 2: Generate full orchestration plan
       const planRes = await aiClient.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [
           {
             role: "system",
@@ -19111,7 +19115,7 @@ Min 300 kata. Bahasa Indonesia profesional. Sitasi regulasi spesifik domain ini.
 
       // Stage 1: LPSE Analyst
       const s1Res = await ai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [
           { role: "system", content: `Anda adalah LPSE-ANALYST agent. Analisis data tender pengadaan pemerintah Indonesia. Hasilkan JSON: { "tenderType": "jenis/sub-bidang pekerjaan spesifik", "estimatedScale": "skala dan kualifikasi usaha", "keyRequirements": ["persyaratan kunci 1","2","3","4","5"], "urgencyLevel": "Tinggi/Sedang/Rendah", "regulatoryFramework": ["regulasi utama"], "winProbabilityFactors": ["faktor penentu menang"], "summary": "ringkasan konteks tender 2 kalimat" }` },
           { role: "user", content: `DATA TENDER:\n${tenderStr}\n\nPack type: ${packLabel}${kbCtx ? `\n\nKonteks KB: ${kbCtx.slice(0, 500)}` : ""}` },
@@ -19123,7 +19127,7 @@ Min 300 kata. Bahasa Indonesia profesional. Sitasi regulasi spesifik domain ini.
 
       // Stage 2: Compliance Checker
       const s2Res = await ai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [
           { role: "system", content: `Anda adalah COMPLIANCE-CHECKER agent. Buat checklist kelengkapan dokumen tender sesuai Perpres 46/2025 dan Permen PUPR 10/2021. Hasilkan JSON: { "overallScore": 0-100, "sections": [{ "code": "A", "name": "nama seksi", "items": [{ "code": "A1", "item": "nama item", "status": "Ada/Perlu Persiapan/Belum", "note": "catatan" }] }], "criticalItems": ["item kritis"], "complianceSummary": "ringkasan status" }` },
           { role: "user", content: `DATA TENDER:\n${tenderStr}\n\nPack: ${packLabel}\nHasil LPSE Analyst:\n${JSON.stringify(s1)}` },
@@ -19135,7 +19139,7 @@ Min 300 kata. Bahasa Indonesia profesional. Sitasi regulasi spesifik domain ini.
 
       // Stage 3: Gap Analyst
       const s3Res = await ai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [
           { role: "system", content: `Anda adalah GAP-ANALYST agent. Identifikasi gap, risiko, dan peluang dari data tender. Hasilkan JSON: { "redFlags": [{ "finding": "temuan", "impact": "dampak", "recommendation": "rekomendasi" }], "yellowFlags": [{ "finding": "temuan", "impact": "dampak", "recommendation": "rekomendasi" }], "opportunities": ["peluang keunggulan kompetitif"], "preparationTimeline": "estimasi waktu persiapan", "strategicRecommendation": "rekomendasi strategis 2-3 kalimat" }` },
           { role: "user", content: `DATA TENDER:\n${tenderStr}\n\nPack: ${packLabel}\nCompliance Score: ${s2.overallScore || "?"}\nKritis: ${JSON.stringify(s2.criticalItems || [])}\nLPSE: ${JSON.stringify(s1)}` },
@@ -19147,7 +19151,7 @@ Min 300 kata. Bahasa Indonesia profesional. Sitasi regulasi spesifik domain ini.
 
       // Stage 4: Document Drafter
       const s4Res = await ai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [
           { role: "system", content: `Anda adalah DOCUMENT-DRAFTER agent. Buat draft 2 dokumen kunci. Hasilkan JSON: { "surat_penawaran": "draft surat penawaran lengkap (min 300 kata, format formal)", "pernyataan_kepatuhan": "draft pernyataan kepatuhan Perpres 46/2025 (min 200 kata, format formal)" }` },
           { role: "user", content: `DATA TENDER:\n${tenderStr}\n\nPack: ${packLabel}\nJenis: ${s1.tenderType || "-"}\nRegulasi: ${JSON.stringify(s1.regulatoryFramework || [])}\nGap Kritis: ${JSON.stringify(s3.redFlags?.slice(0, 2) || [])}` },
@@ -19188,7 +19192,7 @@ Min 300 kata. Bahasa Indonesia profesional. Sitasi regulasi spesifik domain ini.
 
       // Stage 1: Proposal Analyzer
       const s1Res = await ai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [
           { role: "system", content: `Anda adalah PROPOSAL-ANALYZER agent. Evaluasi kualitas konfigurasi chatbot. Hasilkan JSON: { "overallQuality": 0-100, "weakFields": ["field yang lemah/kosong"], "strongFields": ["field yang sudah baik"], "domainCoherence": 0-100, "analysis": "analisis 2-3 kalimat", "improvementPriority": ["field prioritas tingkatkan"] }` },
           { role: "user", content: `Proposal konfigurasi:\n${proposalStr}\n\nKnowledge Chunks:\n${kbSummary || "(belum ada)"}` },
@@ -19200,7 +19204,7 @@ Min 300 kata. Bahasa Indonesia profesional. Sitasi regulasi spesifik domain ini.
 
       // Stage 2: Config Enhancer
       const s2Res = await ai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [
           { role: "system", content: `Anda adalah CONFIG-ENHANCER agent. Perkuat field-field lemah dalam konfigurasi chatbot. Hasilkan JSON berisi HANYA field yang ditingkatkan. Format: { "namaField": "nilai baru yang lebih baik" }. Field yang bisa ditingkatkan: name, tagline, description, systemPrompt, greetingMessage, philosophy, expertise, conversationStarters, keyPhrases, avoidTopics.` },
           { role: "user", content: `Proposal saat ini:\n${proposalStr}\n\nField yang perlu ditingkatkan: ${JSON.stringify(s1.weakFields || [])}\nAnalisis: ${s1.analysis || ""}\n\nPerkuat field agar lebih spesifik ke domain chatbot ini.` },
@@ -19212,7 +19216,7 @@ Min 300 kata. Bahasa Indonesia profesional. Sitasi regulasi spesifik domain ini.
 
       // Stage 3: KB Enricher
       const s3Res = await ai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [
           { role: "system", content: `Anda adalah KB-ENRICHER agent. Buat 3-5 potongan knowledge base TAMBAHAN. Hasilkan JSON: { "additionalChunks": [{ "name": "judul (maks 60 karakter)", "type": "reference/sop/faq/regulation/example", "content": "konten (min 150 kata)", "description": "deskripsi 1 kalimat" }] }` },
           { role: "user", content: `Nama chatbot: ${(proposal as any).name || "chatbot"}\nDomain: ${Array.isArray((proposal as any).expertise) ? ((proposal as any).expertise as string[]).join(", ") : ((proposal as any).expertise || "umum")}\n\nKB yang sudah ada:\n${kbSummary || "(belum ada)"}\n\nBuat KB tambahan yang melengkapi, bukan menduplikasi.` },
@@ -19259,7 +19263,7 @@ Min 300 kata. Bahasa Indonesia profesional. Sitasi regulasi spesifik domain ini.
 
       const [ebookRes, ecourseRes, docgenRes, chaesaRes] = await Promise.all([
         ai.chat.completions.create({
-          model: "gpt-4o-mini",
+          model: SMART_MODEL,
           messages: [
             { role: "system", content: `Anda adalah EBOOK-AGENT. Buat outline eBook kompetensi 8 bab. Hasilkan JSON: { "title": "judul ebook", "subtitle": "subtitle", "targetReader": "target pembaca", "chapters": [{ "number": 1, "title": "judul bab", "description": "deskripsi 2-3 kalimat", "keyPoints": ["poin 1","2","3"] }], "uniqueValue": "proposisi nilai unik ebook" }` },
             { role: "user", content: agentCtx },
@@ -19267,7 +19271,7 @@ Min 300 kata. Bahasa Indonesia profesional. Sitasi regulasi spesifik domain ini.
           temperature: 0.6, max_tokens: 900, response_format: { type: "json_object" },
         }),
         ai.chat.completions.create({
-          model: "gpt-4o-mini",
+          model: SMART_MODEL,
           messages: [
             { role: "system", content: `Anda adalah ECOURSE-AGENT. Buat kurikulum e-course. Hasilkan JSON: { "courseTitle": "judul kursus", "duration": "estimasi durasi", "targetLearner": "target peserta", "modules": [{ "number": 1, "title": "judul modul", "sessions": ["sesi 1","2"], "learningOutcome": "outcome" }], "practiceQuestions": ["soal latihan 1","2","3"] }` },
             { role: "user", content: agentCtx },
@@ -19275,7 +19279,7 @@ Min 300 kata. Bahasa Indonesia profesional. Sitasi regulasi spesifik domain ini.
           temperature: 0.6, max_tokens: 700, response_format: { type: "json_object" },
         }),
         ai.chat.completions.create({
-          model: "gpt-4o-mini",
+          model: SMART_MODEL,
           messages: [
             { role: "system", content: `Anda adalah DOCGEN-AGENT. Rekomendasikan template dokumen kerja. Hasilkan JSON: { "templates": [{ "name": "nama template", "type": "SOP/checklist/formulir/laporan/rencana kerja", "purpose": "tujuan dokumen", "keySections": ["seksi 1","2","3"] }], "primaryDoc": "dokumen paling penting" }` },
             { role: "user", content: agentCtx },
@@ -19283,7 +19287,7 @@ Min 300 kata. Bahasa Indonesia profesional. Sitasi regulasi spesifik domain ini.
           temperature: 0.6, max_tokens: 600, response_format: { type: "json_object" },
         }),
         ai.chat.completions.create({
-          model: "gpt-4o-mini",
+          model: SMART_MODEL,
           messages: [
             { role: "system", content: `Anda adalah CHAESA-BRIDGE-AGENT. Buat brief transfer ke Chaesa AI Studio. Hasilkan JSON: { "industryCategory": "kategori industri", "contentPillars": ["pilar konten 1","2","3"], "contentTypes": ["tipe konten yang direkomendasikan"], "keyPromptThemes": ["tema prompt AI relevan"], "bridgeRationale": "alasan transfer ke Chaesa 2 kalimat" }` },
             { role: "user", content: agentCtx },
@@ -19321,7 +19325,7 @@ Min 300 kata. Bahasa Indonesia profesional. Sitasi regulasi spesifik domain ini.
       const agentName = agentContext.name || "Chatbot";
 
       const result = await ai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [
           { role: "system", content: `Anda adalah BROADCAST-PERSONALIZE agent. Personalisasi template pesan WhatsApp untuk setiap kontak. Hasilkan JSON: { "personalizedMessages": [{ "phone": "nomor", "name": "nama", "message": "pesan dipersonalisasi (alami untuk WA)" }], "generalizedVersion": "versi pesan yang sedikit dipersonalisasi, gunakan {{name}} sebagai placeholder nama", "tips": ["tip meningkatkan engagement pesan ini"] }` },
           { role: "user", content: `Brand/Chatbot: ${agentName}\n\nTemplate pesan:\n${template}\n\nDaftar kontak:\n${contactList.map((c: any) => `- ${c.phone}: ${c.name || "tanpa nama"}`).join("\n") || "Tidak ada kontak spesifik"}` },
@@ -19352,7 +19356,7 @@ Min 300 kata. Bahasa Indonesia profesional. Sitasi regulasi spesifik domain ini.
       if (ekosistemCtx) contextParts.push(`EKOSISTEM GENERATION:\n- Agent: ${ekosistemCtx.agentName}\n- eBook: ${ekosistemCtx.ebookTitle}\n- eCourse: ${ekosistemCtx.ecourseTitle}\n- Dokumen: ${ekosistemCtx.docgenCount} template`);
 
       const result = await ai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [
           { role: "system", content: `Anda adalah MULTICLAW SYNTHESIS ORCHESTRATOR — agen integrasi tertinggi Gustafta yang menganalisis hasil kerja semua agen panel (Tender, Studio, Ekosistem, Broadcast) dan mensintesis mereka menjadi satu laporan strategis terpadu. Hasilkan JSON: { "integrationScore": number (0-100 seberapa terintegrasi data), "synopsisKalimat": "ringkasan 2-3 kalimat eksekutif", "flowAnalysis": { "tender_to_studio": "insight koneksi tender ke studio", "studio_to_ekosistem": "insight koneksi studio ke ekosistem", "ekosistem_to_broadcast": "insight koneksi ekosistem ke broadcast" }, "priorityActions": [{ "panel": "nama panel", "action": "aksi spesifik", "impact": "dampak bisnis" }], "winningStrategy": "strategi pemenangan keseluruhan dalam 1 paragraf", "broadcastRecommendation": "rekomendasi pesan broadcast berdasarkan semua data", "strengthMap": [{ "area": "area kekuatan", "score": number, "description": "deskripsi" }] }` },
           { role: "user", content: `Data lintas panel:\n\n${contextParts.join("\n\n") || "Belum ada data panel yang terakumulasi"}` },
@@ -19380,7 +19384,7 @@ Min 300 kata. Bahasa Indonesia profesional. Sitasi regulasi spesifik domain ini.
       const ai = new OpenAI({ apiKey: openaiKey, ...(openaiBaseURL ? { baseURL: openaiBaseURL } : {}) });
 
       const result = await ai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [
           { role: "system", content: `Anda adalah A/B TEST AGENT untuk WhatsApp broadcast. Dari satu template, buat 2 varian A/B yang berbeda secara signifikan (nada, struktur, CTA) namun sama tujuannya. Hasilkan JSON: { "variantA": { "name": "Variant A — [nama pendekatan]", "message": "teks pesan WA", "approach": "pendekatan psikologi", "expectedCTR": "estimasi CTR %", "bestFor": "segmen terbaik" }, "variantB": { "name": "Variant B — [nama pendekatan]", "message": "teks pesan WA", "approach": "pendekatan psikologi", "expectedCTR": "estimasi CTR %", "bestFor": "segmen terbaik" }, "recommendation": "rekomendasi varian terbaik dan alasannya" }` },
           { role: "user", content: `Brand: ${agentContext.name || "Chatbot"}\n\nTemplate asli:\n${template}` },
@@ -19707,7 +19711,7 @@ Format output JSON HARUS:
               let parsed: any = null;
               try {
                 const resp = await openai.chat.completions.create({
-                  model: "gpt-4o-mini",
+                  model: SMART_MODEL,
                   messages: [{ role: "user", content: prompt }],
                   temperature: 0.5,
                   max_tokens: 2500,
@@ -19890,7 +19894,7 @@ Format output JSON HARUS:
                 if (fillable.length === 0) return;
                 const expertStr = Array.isArray(agent.expertise) ? agent.expertise.slice(0, 5).join(", ") : "";
                 const resp = await openai.chat.completions.create({
-                  model: "gpt-4o-mini",
+                  model: SMART_MODEL,
                   messages: [{
                     role: "user",
                     content: `Isi field kosong untuk chatbot AI konstruksi Indonesia.\nNama: ${agent.name}\nDeskripsi: ${(agent.description || "").substring(0, 300)}\nDomain: ${agent.category || "-"}\nKeahlian: ${expertStr || "-"}\n\nField yang perlu diisi: ${fillable.join(", ")}\n\nHasilkan JSON dengan field tersebut. Spesifik terhadap domain agen, Bahasa Indonesia.`,
@@ -20075,7 +20079,7 @@ ${allMissing.map(f => {
 Hasilkan JSON valid dengan SEMUA field di atas terisi penuh. Jangan kosongkan satupun.`;
 
               const resp = await openai.chat.completions.create({
-                model: "gpt-4o-mini",
+                model: SMART_MODEL,
                 messages: [{ role: "user", content: prompt }],
                 temperature: 0.6,
                 max_tokens: 1200,
@@ -20221,7 +20225,7 @@ Format: { "foundational": { "name": "...", "content": "...", "description": "...
               let parsed: any = null;
               try {
                 const resp = await openai.chat.completions.create({
-                  model: "gpt-4o-mini",
+                  model: SMART_MODEL,
                   messages: [{ role: "user", content: prompt }],
                   temperature: 0.5, max_tokens: 2500,
                   response_format: { type: "json_object" },
@@ -20421,7 +20425,7 @@ ${allMissing.map(f => {
 Hasilkan JSON valid dengan semua field terisi.`;
 
               const resp = await openai.chat.completions.create({
-                model: "gpt-4o-mini",
+                model: SMART_MODEL,
                 messages: [{ role: "user", content: prompt }],
                 temperature: 0.6, max_tokens: 1200,
                 response_format: { type: "json_object" },
@@ -21282,7 +21286,7 @@ POLA KERJA: ELICIT (pahami tahap & niat) → DISPATCH (agen sesuai kebutuhan) �
           tagline: spec.role,
           maxTokens: 1500,
           temperature: 0.7,
-          aiModel: "gpt-4o-mini",
+          aiModel: SMART_MODEL,
           language: "id",
           isPublic: false,
           conversationStarters: [],
@@ -21311,7 +21315,7 @@ POLA KERJA: ELICIT (pahami tahap & niat) → DISPATCH (agen sesuai kebutuhan) �
         tagline: blueprint.label,
         maxTokens: 2000,
         temperature: 0.7,
-        aiModel: "gpt-4o-mini",
+        aiModel: SMART_MODEL,
         language: "id",
         isPublic: false,
         conversationStarters: [],
@@ -21794,7 +21798,7 @@ Tulis system prompt lengkap untuk Hub ini yang mencakup:
 Maksimal 600 kata.`;
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [
           { role: "system", content: systemMsg },
           { role: "user", content: userMsg }
@@ -22738,7 +22742,7 @@ Balas HANYA dengan JSON valid (tanpa markdown fence) sesuai skema:
 ${brief.trim()}`;
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         temperature: 0.7,
         max_tokens: 2500,
         response_format: { type: "json_object" },
@@ -22828,7 +22832,7 @@ Balas HANYA dengan JSON valid (tanpa markdown fence) sesuai skema:
 ${brief.trim()}`;
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         temperature: 0.6,
         max_tokens: 2800,
         response_format: { type: "json_object" },
@@ -23219,7 +23223,7 @@ Instruksi pembuatan dokumen:
       const openaiClient = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
 
       const stream = await openaiClient.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [
           {
             role: "system",
@@ -23973,7 +23977,7 @@ Analisis profil ini dan kembalikan JSON SAJA (tanpa markdown) dengan format pers
 }`;
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.3,
         response_format: { type: "json_object" },
@@ -24023,7 +24027,7 @@ Evaluasi setiap klaim secara kritis seperti asesor sungguhan. Kembalikan JSON PE
 
 Skor Kuat: 80-100, Cukup: 60-79, Lemah: 40-59, Tidak Cukup: 0-39. Bersikap tegas dan objektif.`;
       const c = await openai.chat.completions.create({
-        model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }],
+        model: SMART_MODEL, messages: [{ role: "user", content: prompt }],
         temperature: 0.3, response_format: { type: "json_object" }, max_tokens: 2500,
       });
       return res.json(JSON.parse(c.choices[0]?.message?.content ?? "{}"));
@@ -24071,7 +24075,7 @@ Kembalikan JSON PERSIS:
 
 Buat dokumen yang formal dan profesional menggunakan bahasa hukum Indonesia yang tepat. Checklist harus 8-10 item dokumen lampiran yang relevan.`;
       const c = await openai.chat.completions.create({
-        model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }],
+        model: SMART_MODEL, messages: [{ role: "user", content: prompt }],
         temperature: 0.3, response_format: { type: "json_object" }, max_tokens: 3000,
       });
       return res.json(JSON.parse(c.choices[0]?.message?.content ?? "{}"));
@@ -24114,7 +24118,7 @@ Kembalikan JSON PERSIS:
 
 Berikan langkah-langkah yang realistis dan spesifik sesuai kondisi ${kondisi}. Referensikan Permen PUPR No. 6/2021 (SBU), OSS-RBA, dan regulasi terkini.`;
       const c = await openai.chat.completions.create({
-        model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }],
+        model: SMART_MODEL, messages: [{ role: "user", content: prompt }],
         temperature: 0.3, response_format: { type: "json_object" }, max_tokens: 2500,
       });
       return res.json(JSON.parse(c.choices[0]?.message?.content ?? "{}"));
@@ -24186,7 +24190,7 @@ Kembalikan JSON PERSIS:
 
 Isi setiap sub-bab dengan konten spesifik untuk ${jenisProyek} oleh ${peran}. Konten harus substansif dan langsung bisa digunakan sebagai draft.`;
       const c = await openai.chat.completions.create({
-        model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }],
+        model: SMART_MODEL, messages: [{ role: "user", content: prompt }],
         temperature: 0.4, response_format: { type: "json_object" }, max_tokens: 4000,
       });
       return res.json(JSON.parse(c.choices[0]?.message?.content ?? "{}"));
@@ -24208,7 +24212,7 @@ Pertanyaan pertama harus realistis dan sering muncul di ${jenisEvaluasi} yang ny
 
 Kembalikan JSON: { "pertanyaanPertama": "teks pertanyaan pertama", "totalPertanyaan": 6 }`;
       const c = await openai.chat.completions.create({
-        model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }],
+        model: SMART_MODEL, messages: [{ role: "user", content: prompt }],
         temperature: 0.6, response_format: { type: "json_object" }, max_tokens: 400,
       });
       return res.json(JSON.parse(c.choices[0]?.message?.content ?? "{}"));
@@ -24274,7 +24278,7 @@ Respond JSON:
   "catatan": "catatan penggunaan dokumen ini (jika ada)"
 }`;
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.3,
         max_tokens: 4000,
@@ -24323,7 +24327,7 @@ Respond JSON:
 }
 Buat min 5 klausul (pilih yang paling relevan & penting untuk ${jenisKonstruksi}). Roadmap min 4 fase. Dokumen sistem min 15 item.`;
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.3,
         max_tokens: 4000,
@@ -24357,7 +24361,7 @@ Respond JSON:
   "catatan": "catatan penting atau instruksi pengarsipan"
 }`;
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.3,
         max_tokens: 2500,
@@ -24392,7 +24396,7 @@ Respond JSON:
 }
 Pastikan semua ${n} soal unik, relevan dengan ${bidang}, dan kunci jawaban terdistribusi (A/B/C/D tidak monoton).`;
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.5,
         max_tokens: 6000,
@@ -24462,7 +24466,7 @@ Sesuaikan semua dengan JENIS PROYEK yang diminta. Berikan data yang realistis da
       const openai = (await import("openai")).default;
       const client = new openai({ apiKey: process.env.OPENAI_API_KEY });
       const completion = await client.chat.completions.create({
-        model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }],
+        model: SMART_MODEL, messages: [{ role: "user", content: prompt }],
         response_format: { type: "json_object" }, max_tokens: 3000,
       });
       const data = JSON.parse(completion.choices[0].message.content || "{}");
@@ -24516,7 +24520,7 @@ Berikan panduan REALISTIS berbasis praktik CSMS di industri Indonesia. Sesuaikan
       const openai = (await import("openai")).default;
       const client = new openai({ apiKey: process.env.OPENAI_API_KEY });
       const completion = await client.chat.completions.create({
-        model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }],
+        model: SMART_MODEL, messages: [{ role: "user", content: prompt }],
         response_format: { type: "json_object" }, max_tokens: 3500,
       });
       const data = JSON.parse(completion.choices[0].message.content || "{}");
@@ -24572,7 +24576,7 @@ Buat temuan yang REALISTIS dan SPESIFIK sesuai standar dan industri konstruksi I
       const openai = (await import("openai")).default;
       const client = new openai({ apiKey: process.env.OPENAI_API_KEY });
       const completion = await client.chat.completions.create({
-        model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }],
+        model: SMART_MODEL, messages: [{ role: "user", content: prompt }],
         response_format: { type: "json_object" }, max_tokens: 3500,
       });
       const data = JSON.parse(completion.choices[0].message.content || "{}");
@@ -24606,7 +24610,7 @@ Jawab dalam JSON:
   "topik": "sub-topik yang diuji (contoh: 'Penanganan Kecelakaan Kerja', 'Metode Bekisting', dst)"
 }`;
         const completion = await client.chat.completions.create({
-          model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }],
+          model: SMART_MODEL, messages: [{ role: "user", content: prompt }],
           response_format: { type: "json_object" }, max_tokens: 400,
         });
         const data = JSON.parse(completion.choices[0].message.content || "{}");
@@ -24633,7 +24637,7 @@ Evaluasi jawaban dan berikan feedback dalam JSON:
 }`;
 
         const feedbackCompletion = await client.chat.completions.create({
-          model: "gpt-4o-mini", messages: [{ role: "user", content: feedbackPrompt }],
+          model: SMART_MODEL, messages: [{ role: "user", content: feedbackPrompt }],
           response_format: { type: "json_object" }, max_tokens: 600,
         });
         const feedbackData = JSON.parse(feedbackCompletion.choices[0].message.content || "{}");
@@ -24664,7 +24668,7 @@ Buat hasil akhir penilaian dalam JSON:
 
 Predikat: rata ≥3.0 = Kompeten, 2.0–2.9 = Kompeten Bersyarat, <2.0 = Belum Kompeten`;
           const finalCompletion = await client.chat.completions.create({
-            model: "gpt-4o-mini", messages: [{ role: "user", content: finalPrompt }],
+            model: SMART_MODEL, messages: [{ role: "user", content: finalPrompt }],
             response_format: { type: "json_object" }, max_tokens: 1000,
           });
           const finalData = JSON.parse(finalCompletion.choices[0].message.content || "{}");
@@ -24690,7 +24694,7 @@ JSON:
   "nextTopik": "sub-topik baru yang diuji"
 }`;
         const nextCompletion = await client.chat.completions.create({
-          model: "gpt-4o-mini", messages: [{ role: "user", content: nextPrompt }],
+          model: SMART_MODEL, messages: [{ role: "user", content: nextPrompt }],
           response_format: { type: "json_object" }, max_tokens: 400,
         });
         const nextData = JSON.parse(nextCompletion.choices[0].message.content || "{}");
@@ -24754,7 +24758,7 @@ Sesuaikan SEMUA isi dengan jenis pekerjaan spesifik. Buat REALISTIS dan dapat la
       const openai = (await import("openai")).default;
       const client = new openai({ apiKey: process.env.OPENAI_API_KEY });
       const completion = await client.chat.completions.create({
-        model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }],
+        model: SMART_MODEL, messages: [{ role: "user", content: prompt }],
         response_format: { type: "json_object" }, max_tokens: 3500,
       });
       res.json({ hasil: JSON.parse(completion.choices[0].message.content || "{}") });
@@ -24818,7 +24822,7 @@ Buat REALISTIS dan sesuai standar industri Indonesia (Permenaker 9/2016 untuk wo
       const openai = (await import("openai")).default;
       const client = new openai({ apiKey: process.env.OPENAI_API_KEY });
       const completion = await client.chat.completions.create({
-        model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }],
+        model: SMART_MODEL, messages: [{ role: "user", content: prompt }],
         response_format: { type: "json_object" }, max_tokens: 3500,
       });
       res.json({ hasil: JSON.parse(completion.choices[0].message.content || "{}") });
@@ -24864,7 +24868,7 @@ Buat FORMAL, PROFESIONAL, dan sesuai standar notulensi rapat proyek konstruksi I
       const openai = (await import("openai")).default;
       const client = new openai({ apiKey: process.env.OPENAI_API_KEY });
       const completion = await client.chat.completions.create({
-        model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }],
+        model: SMART_MODEL, messages: [{ role: "user", content: prompt }],
         response_format: { type: "json_object" }, max_tokens: 3000,
       });
       res.json({ hasil: JSON.parse(completion.choices[0].message.content || "{}") });
@@ -24893,7 +24897,7 @@ Siapkan sesi wawancara dan buat pertanyaan PERTAMA. Respond JSON:
   }
 }`;
         const completion = await client.chat.completions.create({
-          model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }],
+          model: SMART_MODEL, messages: [{ role: "user", content: prompt }],
           response_format: { type: "json_object" }, max_tokens: 800,
         });
         return res.json(JSON.parse(completion.choices[0].message.content || "{}"));
@@ -24941,7 +24945,7 @@ Respond JSON:
   }`}
 }`;
         const completion = await client.chat.completions.create({
-          model: "gpt-4o-mini", messages: [{ role: "user", content: evalPrompt }],
+          model: SMART_MODEL, messages: [{ role: "user", content: evalPrompt }],
           response_format: { type: "json_object" }, max_tokens: 1200,
         });
         return res.json(JSON.parse(completion.choices[0].message.content || "{}"));
@@ -24989,7 +24993,7 @@ Hasilkan JSON dengan struktur:
   "pasal_tandatangan": "Kalimat penutup: 'SPK ini dibuat dalam 2 rangkap, masing-masing bermaterai cukup dan mempunyai kekuatan hukum yang sama...'"
 }
 Balas hanya dengan JSON valid, tidak ada teks lain.`;
-      const completion = await openai.chat.completions.create({ model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }], response_format: { type: "json_object" }, max_tokens: 2000 });
+      const completion = await openai.chat.completions.create({ model: SMART_MODEL, messages: [{ role: "user", content: prompt }], response_format: { type: "json_object" }, max_tokens: 2000 });
       const hasil = JSON.parse(completion.choices[0].message.content || "{}");
       return res.json({ hasil });
     } catch (e: any) { console.error("generator-spk error:", e); res.status(500).json({ error: "Gagal membuat SPK." }); }
@@ -25038,7 +25042,7 @@ Hasilkan JSON:
   "totalEstimasiWaktu": "X–Y bulan (range realistis)"
 }
 Buat 6-8 tahapan yang logis dan realistis. Balas hanya JSON valid.`;
-      const completion = await openai.chat.completions.create({ model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }], response_format: { type: "json_object" }, max_tokens: 2500 });
+      const completion = await openai.chat.completions.create({ model: SMART_MODEL, messages: [{ role: "user", content: prompt }], response_format: { type: "json_object" }, max_tokens: 2500 });
       const hasil = JSON.parse(completion.choices[0].message.content || "{}");
       return res.json({ hasil });
     } catch (e: any) { console.error("panduan-pbg-slf error:", e); res.status(500).json({ error: "Gagal membuat panduan PBG/SLF." }); }
@@ -25089,7 +25093,7 @@ ATURAN PENTING:
 - 3-5 milestone kritis dengan nama bermakna (Mobilisasi Selesai, Struktur Atas Selesai, Finishing Selesai, PHO, dll)
 - Distribusi mengikuti kurva S: lambat-cepat-lambat
 Balas hanya JSON valid.`;
-      const completion = await openai.chat.completions.create({ model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }], response_format: { type: "json_object" }, max_tokens: 3000 });
+      const completion = await openai.chat.completions.create({ model: SMART_MODEL, messages: [{ role: "user", content: prompt }], response_format: { type: "json_object" }, max_tokens: 3000 });
       const raw = JSON.parse(completion.choices[0].message.content || "{}");
       // Normalize: ensure kumulatifRencana has exactly `durasi` elements
       if (raw.kumulatifRencana && raw.kumulatifRencana.length !== durasi) {
@@ -25138,7 +25142,7 @@ Hasilkan JSON:
   "konteks": "Konteks tambahan opsional (boleh kosong)"
 }
 Balas hanya JSON valid.`;
-        const completion = await openai.chat.completions.create({ model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }], response_format: { type: "json_object" }, max_tokens: 800 });
+        const completion = await openai.chat.completions.create({ model: SMART_MODEL, messages: [{ role: "user", content: prompt }], response_format: { type: "json_object" }, max_tokens: 800 });
         return res.json(JSON.parse(completion.choices[0].message.content || "{}"));
       }
 
@@ -25182,7 +25186,7 @@ Hasilkan JSON:
   "konteksBerikutnya": "Konteks tambahan opsional"`}
 }
 Balas hanya JSON valid.`;
-        const completion = await openai.chat.completions.create({ model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }], response_format: { type: "json_object" }, max_tokens: 1200 });
+        const completion = await openai.chat.completions.create({ model: SMART_MODEL, messages: [{ role: "user", content: prompt }], response_format: { type: "json_object" }, max_tokens: 1200 });
         return res.json(JSON.parse(completion.choices[0].message.content || "{}"));
       }
 
@@ -25212,7 +25216,7 @@ Respond JSON:
   "catatan": "catatan hukum atau instruksi penggunaan (jika ada)"
 }`;
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.3,
         max_tokens: 2500,
@@ -25264,7 +25268,7 @@ Respond JSON:
 }
 Buat min 8 risiko yang relevan dengan jenis & fase proyek tersebut. Kemungkinan & dampak antara 1-5.`;
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.3,
         max_tokens: 4000,
@@ -25298,7 +25302,7 @@ Respond JSON:
   "catatan": "catatan hukum, instruksi penyimpanan dokumen, atau informasi penting lainnya"
 }`;
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.3,
         max_tokens: 2500,
@@ -25326,7 +25330,7 @@ Buka sesi klarifikasi dengan:
 
 Respond JSON: {"pembuka": "pembukaan sesi klarifikasi formal (3-4 paragraf resmi)"}`;
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.4,
         response_format: { type: "json_object" },
@@ -25360,7 +25364,7 @@ Respond JSON:
   }` : ""}
 }`;
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.4,
         response_format: { type: "json_object" },
@@ -25410,7 +25414,7 @@ Respond JSON:
 }
 Buat min: 6 section, masing-masing min 4-8 item. Section wajib ada: Kelengkapan Dokumen, Kualitas Pekerjaan Fisik, K3 & Lingkungan, Uji Fungsi/Commissioning (jika MEP), As-Built Drawing & Manual. Dokumen pendamping min 8.`;
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.3,
         max_tokens: 4000,
@@ -25455,7 +25459,7 @@ Respond JSON:
 }
 Min: komponen 4, formula 2, dokumen 5, prosedur 5, sanksi 3, tips 4, regulasi 4.`;
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.3,
         max_tokens: 3000,
@@ -25521,7 +25525,7 @@ Respond JSON:
 }
 Jika insiden = 0, buat statistik nihil kecelakaan dengan penekanan Zero Accident. Inspeksi min 3 area. Program min 4 item.`;
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.3,
         max_tokens: 3000,
@@ -25548,7 +25552,7 @@ Buka sesi asesmen dengan:
 
 Respond JSON: {"pembuka": "pembukaan asesmen formal (3-4 paragraf profesional)"}`;
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.4,
         response_format: { type: "json_object" },
@@ -25583,7 +25587,7 @@ Respond JSON:
   }` : ""}
 }`;
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.4,
         response_format: { type: "json_object" },
@@ -25612,7 +25616,7 @@ Buka negosiasi dengan:
 
 Respond JSON: {"pembuka": "dialog pembuka negosiasi (2-3 paragraf formal tapi tegas)"}`;
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.6,
         response_format: { type: "json_object" },
@@ -25646,7 +25650,7 @@ Respond JSON:
   }` : ""}
 }`;
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.6,
         response_format: { type: "json_object" },
@@ -25691,7 +25695,7 @@ Respond JSON:
 }
 Min: jalur 3, persyaratan 4 kategori, prosedur 6 langkah, lembaga 3, biaya 5 komponen, tips 4.`;
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.3,
         max_tokens: 3000,
@@ -25740,7 +25744,7 @@ Respond JSON:
 }
 Pastikan: peserta min 3, agenda dibahas sesuai poin diskusi, keputusan min 3, action item min 4.`;
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.3,
         max_tokens: 2500,
@@ -25768,7 +25772,7 @@ Buka sidang resmi dengan:
 
 Respond JSON: {"pembuka": "pembukaan sidang K3 resmi dan formal (3-4 paragraf)"}`;
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.5,
         response_format: { type: "json_object" },
@@ -25802,7 +25806,7 @@ Respond JSON:
   }` : ""}
 }`;
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.5,
         response_format: { type: "json_object" },
@@ -25845,7 +25849,7 @@ Respond JSON:
   "catatan": "catatan penting untuk legal/admin (opsional)"
 }`;
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.3,
         max_tokens: 2500,
@@ -25891,7 +25895,7 @@ Respond JSON:
 }
 Komponen min 6, rencana K3 min 8, hirarki 5 langkah (Eliminasi → APD).`;
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.3,
         max_tokens: 3000,
@@ -25936,7 +25940,7 @@ Respond JSON:
 }
 Steps min 6 langkah kerja (urutan dari mobilisasi hingga demobilisasi). Setiap step min 2 bahaya dan 2 pengendalian.`;
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.3,
         max_tokens: 3000,
@@ -25965,7 +25969,7 @@ Buka rapat dengan:
 
 Respond JSON: {"pembuka": "pembuka rapat lengkap (3-4 paragraf formal namun to-the-point)"}`;
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.6,
         response_format: { type: "json_object" },
@@ -25997,7 +26001,7 @@ Respond JSON:
   "nilaiEvaluasi": "evaluasi singkat partisipasi user dalam rapat"` : ""}
 }`;
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.6,
         response_format: { type: "json_object" },
@@ -26043,7 +26047,7 @@ Respond JSON:
   "catatanHukum": "catatan penting tentang aspek hukum yang perlu diperhatikan (2-3 kalimat)"
 }`;
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.3,
         max_tokens: 4000,
@@ -26085,7 +26089,7 @@ Respond JSON:
 
 Gap list min 8 item (campuran Terpenuhi/Perlu Perhatian/Kritis). Dokumen min 10. Strategi min 5.`;
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.3,
         max_tokens: 3000,
@@ -26134,7 +26138,7 @@ Respond JSON:
 
 Tabel progress min 5 aktivitas. Isu kritis hanya jika deviasi negatif besar atau ada kendala serius.`;
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.4,
         max_tokens: 3000,
@@ -26162,7 +26166,7 @@ Mulai PCM dengan:
 
 Respond JSON: {"sessionId": "pcm-${Date.now()}", "pembuka": "pembuka PCM lengkap sebagai fasilitator (3-4 paragraf)"}`;
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.6,
         response_format: { type: "json_object" },
@@ -26194,7 +26198,7 @@ Respond JSON:
   "evaluasi": "evaluasi singkat partisipasi user dalam PCM"` : ""}
 }`;
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.6,
         response_format: { type: "json_object" },
@@ -26241,7 +26245,7 @@ Respond dengan JSON:
 
 Tabel kemajuan minimal 5 item pekerjaan utama yang relevan.`;
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.4,
         max_tokens: 3000,
@@ -26281,7 +26285,7 @@ Respond dengan JSON:
 
 APD min 6 item, prosedur kerja min 8 langkah, risiko utama min 5, checklist min 10 item, prosedur darurat min 6 langkah.`;
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.3,
         max_tokens: 3000,
@@ -26327,7 +26331,7 @@ Respond dengan JSON:
 
 Min 6 grup checklist, setiap grup min 5 item. Total item wajib min 30. Dokumen serah terima min 12.`;
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.3,
         max_tokens: 4000,
@@ -26352,7 +26356,7 @@ Buka simulasi negosiasi dengan:
 
 Respond JSON: {"pembuka": "kalimat pembuka negosiasi oleh lawan (2-3 paragraf, realistis dan tegas)", "tip": "tip singkat untuk user tentang strategi menghadapi argumen ini"}`;
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: lamanPrompt }],
         temperature: 0.7,
         response_format: { type: "json_object" },
@@ -26386,7 +26390,7 @@ Respond JSON:
   "tipsKunci": ["tip negosiasi kunci 1", "tip 2", "tip 3"]` : ""}
 }`;
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.7,
         response_format: { type: "json_object" },
@@ -26430,7 +26434,7 @@ Respond dengan JSON:
   "catatanTeknis": ["catatan penting sebelum mengirim 1", "catatan 2", ...]
 }`;
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.4,
         response_format: { type: "json_object" },
@@ -26477,7 +26481,7 @@ Respond dengan JSON:
 
 Sertakan minimal 6 klausul yang relevan dengan standar tersebut.`;
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.3,
         max_tokens: 3000,
@@ -26521,7 +26525,7 @@ Respond dengan JSON:
   "dokumenPendukung": ["dokumen 1", "dokumen 2", ...]
 }`;
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.3,
         max_tokens: 3000,
@@ -26573,7 +26577,7 @@ Respond dengan JSON:
 
 Sertakan min 5 langkah klaim dan 8 dokumen wajib.`;
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.3,
         max_tokens: 3000,
@@ -26606,7 +26610,7 @@ Kembalikan JSON:
   ${selesai ? `"selesai": true, "skorAkhir": [0-100 skor keseluruhan semua jawaban], "pertanyaanBerikut": ""` : `"selesai": false, "pertanyaanBerikut": "pertanyaan berikutnya yang relevan dan kritis"`}
 }`;
       const c = await openai.chat.completions.create({
-        model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }],
+        model: SMART_MODEL, messages: [{ role: "user", content: prompt }],
         temperature: 0.5, response_format: { type: "json_object" }, max_tokens: 500,
       });
       return res.json(JSON.parse(c.choices[0]?.message?.content ?? "{}"));
@@ -26650,7 +26654,7 @@ Kembalikan JSON PERSIS:
 
 Berikan analisis yang realistis. Jika jabatan sangat berbeda, tingkat kesulitan Sulit. Jika satu bidang/naik level, Mudah/Sedang.`;
       const c = await openai.chat.completions.create({
-        model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }],
+        model: SMART_MODEL, messages: [{ role: "user", content: prompt }],
         temperature: 0.4, response_format: { type: "json_object" }, max_tokens: 2500,
       });
       return res.json(JSON.parse(c.choices[0]?.message?.content ?? "{}"));
@@ -26690,7 +26694,7 @@ Kembalikan JSON PERSIS:
 
 Fokus pada regulasi Indonesia terbaru: UU 2/2017, PP 14/2021, Perpres 12/2021, Perlem LKPP, Permen PUPR terkait. Berikan regulasi yang akurat dan spesifik.`;
       const c = await openai.chat.completions.create({
-        model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }],
+        model: SMART_MODEL, messages: [{ role: "user", content: prompt }],
         temperature: 0.3, response_format: { type: "json_object" }, max_tokens: 2500,
       });
       return res.json(JSON.parse(c.choices[0]?.message?.content ?? "{}"));
@@ -26733,7 +26737,7 @@ Kembalikan JSON PERSIS:
 
 Berikan 3 jabatan yang paling realistis dan reachable. Strategi RPL harus konkret memanfaatkan magang/KP. Langkah pertama harus 5-6 langkah berurutan.`;
       const c = await openai.chat.completions.create({
-        model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }],
+        model: SMART_MODEL, messages: [{ role: "user", content: prompt }],
         temperature: 0.4, response_format: { type: "json_object" }, max_tokens: 2500,
       });
       return res.json(JSON.parse(c.choices[0]?.message?.content ?? "{}"));
@@ -26784,7 +26788,7 @@ Kembalikan JSON PERSIS:
 
 Berikan 2-3 jabatan wajib, 3-4 yang disarankan, 4-5 persyaratan BUJK, dan 3-4 komponen biaya setup.`;
       const c = await openai.chat.completions.create({
-        model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }],
+        model: SMART_MODEL, messages: [{ role: "user", content: prompt }],
         temperature: 0.3, response_format: { type: "json_object" }, max_tokens: 2500,
       });
       return res.json(JSON.parse(c.choices[0]?.message?.content ?? "{}"));
@@ -26835,7 +26839,7 @@ Kembalikan JSON PERSIS:
 
 Buat seksi untuk SETIAP aktivitas yang diminta plus 1 seksi umum. Setiap seksi harus punya 4-6 langkah prosedur konkret. Referensi regulasi harus nyata (Permenaker, PP 50/2012, SNI, dll). 4-5 definisi penting.`;
       const c = await openai.chat.completions.create({
-        model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }],
+        model: SMART_MODEL, messages: [{ role: "user", content: prompt }],
         temperature: 0.3, response_format: { type: "json_object" }, max_tokens: 4000,
       });
       return res.json(JSON.parse(c.choices[0]?.message?.content ?? "{}"));
@@ -26877,7 +26881,7 @@ Kembalikan JSON PERSIS:
 
 Fokus pada dokumen yang paling kritis untuk jabatan ${jabatan}. Hanya flag kekurangan yang benar-benar akan menjadi masalah saat asesmen.`;
       const c = await openai.chat.completions.create({
-        model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }],
+        model: SMART_MODEL, messages: [{ role: "user", content: prompt }],
         temperature: 0.3, response_format: { type: "json_object" }, max_tokens: 2000,
       });
       return res.json(JSON.parse(c.choices[0]?.message?.content ?? "{}"));
@@ -26929,7 +26933,7 @@ Kembalikan JSON PERSIS:
 
 Buat 3 tipologi LSP yang relevan, 4-5 langkah menemukan, 6-7 checklist verifikasi (2-3 bendaRed), 3-4 komponen biaya. Berikan informasi yang konkret dan actionable.`;
       const c = await openai.chat.completions.create({
-        model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }],
+        model: SMART_MODEL, messages: [{ role: "user", content: prompt }],
         temperature: 0.4, response_format: { type: "json_object" }, max_tokens: 2500,
       });
       return res.json(JSON.parse(c.choices[0]?.message?.content ?? "{}"));
@@ -26972,7 +26976,7 @@ Kembalikan JSON PERSIS:
   "saranPenguatan": ["3-4 saran untuk memperkuat portofolio sebelum diserahkan ke LSP"]
 }`;
       const c = await openai.chat.completions.create({
-        model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }],
+        model: SMART_MODEL, messages: [{ role: "user", content: prompt }],
         temperature: 0.4, response_format: { type: "json_object" }, max_tokens: 3000,
       });
       return res.json(JSON.parse(c.choices[0]?.message?.content ?? "{}"));
@@ -27020,7 +27024,7 @@ Kembalikan JSON PERSIS dengan 3 dokumen surat formal:
 
 Buat surat yang LENGKAP, FORMAL, dan SIAP PAKAI. Cantumkan semua proyek dari data yang diberikan. Gunakan bahasa formal Indonesia yang baku.`;
       const c = await openai.chat.completions.create({
-        model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }],
+        model: SMART_MODEL, messages: [{ role: "user", content: prompt }],
         temperature: 0.3, response_format: { type: "json_object" }, max_tokens: 3500,
       });
       return res.json(JSON.parse(c.choices[0]?.message?.content ?? "{}"));
@@ -27071,7 +27075,7 @@ Kembalikan JSON PERSIS:
 
 Buat 5-7 unit kompetensi yang representatif dan realistis sesuai SKKNI. Setiap unit punya 2-3 elemen, tiap elemen punya 3-4 KUK. Pastikan realistis dan relevan.`;
       const c = await openai.chat.completions.create({
-        model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }],
+        model: SMART_MODEL, messages: [{ role: "user", content: prompt }],
         temperature: 0.3, response_format: { type: "json_object" }, max_tokens: 3500,
       });
       return res.json(JSON.parse(c.choices[0]?.message?.content ?? "{}"));
@@ -27118,7 +27122,7 @@ Kembalikan JSON PERSIS:
 
 Buat 3-4 langkah prosedur, 1 surat banding lengkap dan formal, analisis strategiRemedial per unit tidak lulus, 3-4 minggu rencana. Surat banding harus siap pakai (hanya perlu isi nama/tanggal).`;
       const c = await openai.chat.completions.create({
-        model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }],
+        model: SMART_MODEL, messages: [{ role: "user", content: prompt }],
         temperature: 0.4, response_format: { type: "json_object" }, max_tokens: 3000,
       });
       return res.json(JSON.parse(c.choices[0]?.message?.content ?? "{}"));
@@ -27171,7 +27175,7 @@ Kembalikan JSON PERSIS:
 
 Buat 4-6 tahapan sesuai status ${statusPendaftar}, 3-4 sistem digital LPJK/BNSP yang relevan, 4-5 masalah umum, 5-6 FAQ. Gunakan pengetahuan terkini tentang sistem SIKI-SKK, SiKA-SKK, e-SKK LPJK Indonesia.`;
       const c = await openai.chat.completions.create({
-        model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }],
+        model: SMART_MODEL, messages: [{ role: "user", content: prompt }],
         temperature: 0.4, response_format: { type: "json_object" }, max_tokens: 2800,
       });
       return res.json(JSON.parse(c.choices[0]?.message?.content ?? "{}"));
@@ -27235,7 +27239,7 @@ Kembalikan JSON PERSIS:
 
 Buat 4-5 milestones realistis sesuai ${timeline}, 3-4 kategori CPD, 4-5 pelatihan, 3-4 hambatan. Sesuaikan dengan gap antara ${jabatanSekarang} dan ${jabatanTarget}.`;
       const c = await openai.chat.completions.create({
-        model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }],
+        model: SMART_MODEL, messages: [{ role: "user", content: prompt }],
         temperature: 0.4, response_format: { type: "json_object" }, max_tokens: 3000,
       });
       return res.json(JSON.parse(c.choices[0]?.message?.content ?? "{}"));
@@ -27279,7 +27283,7 @@ Kembalikan JSON PERSIS:
 
 Soal harus relevan, kontekstual, dan menguji kompetensi nyata jabatan ${jabatan}. PG berbobot 5, Esai berbobot 10.`;
       const c = await openai.chat.completions.create({
-        model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }],
+        model: SMART_MODEL, messages: [{ role: "user", content: prompt }],
         temperature: 0.5, response_format: { type: "json_object" }, max_tokens: 3000,
       });
       return res.json(JSON.parse(c.choices[0]?.message?.content ?? "{}"));
@@ -27323,7 +27327,7 @@ Kembalikan JSON PERSIS:
   "kesimpulan": "kesimpulan evaluasi 2 kalimat"
 }`;
       const c = await openai.chat.completions.create({
-        model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }],
+        model: SMART_MODEL, messages: [{ role: "user", content: prompt }],
         temperature: 0.2, response_format: { type: "json_object" }, max_tokens: 2500,
       });
       return res.json(JSON.parse(c.choices[0]?.message?.content ?? "{}"));
@@ -27367,7 +27371,7 @@ Kembalikan JSON PERSIS:
 
 Buat 4-5 unit kompetensi yang relevan dengan ${jabatanSKK}. Gunakan bahasa profesional dan formal. Pastikan kompetensi yang dibuktikan spesifik dan relevan dengan jabatan SKK yang dilamar.`;
       const c = await openai.chat.completions.create({
-        model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }],
+        model: SMART_MODEL, messages: [{ role: "user", content: prompt }],
         temperature: 0.4, response_format: { type: "json_object" }, max_tokens: 2500,
       });
       return res.json(JSON.parse(c.choices[0]?.message?.content ?? "{}"));
@@ -27413,7 +27417,7 @@ Kembalikan JSON PERSIS:
 
 Gunakan pengetahuan unit kompetensi SKKNI untuk jabatan ${jabatanSKK}. Skor tinggi (85+) hanya untuk proyek yang sangat spesifik relevan.`;
       const c = await openai.chat.completions.create({
-        model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }],
+        model: SMART_MODEL, messages: [{ role: "user", content: prompt }],
         temperature: 0.3, response_format: { type: "json_object" }, max_tokens: 2000,
       });
       return res.json(JSON.parse(c.choices[0]?.message?.content ?? "{}"));
@@ -27476,7 +27480,7 @@ Kembalikan JSON PERSIS:
 
 Buat 4-5 tahapan, 3-4 kategori seleksi, 5-6 pertanyaan wawancara, 4 langkah verifikasi. Sesuaikan dengan konteks BUJK ${kualifikasiBUJK} dan urgensi ${urgensi}.`;
       const c = await openai.chat.completions.create({
-        model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }],
+        model: SMART_MODEL, messages: [{ role: "user", content: prompt }],
         temperature: 0.4, response_format: { type: "json_object" }, max_tokens: 2800,
       });
       return res.json(JSON.parse(c.choices[0]?.message?.content ?? "{}"));
@@ -27527,7 +27531,7 @@ Kembalikan JSON PERSIS:
 ${isLulus ? "Karena LULUS: fokus pada proses penerbitan, penggunaan SKK, pendaftaran digital, dan memanfaatkan SKK untuk karir." : "Karena TIDAK LULUS: fokus pada banding, persiapan ulang, remedial, dan langkah memperbaiki kelemahan."}
 Buat 4-5 fase, 3-4 hak, 4-5 cara penggunaan, 3-4 sistem digital, 5-6 FAQ. Gunakan pengetahuan terkini regulasi BNSP/LPJK Indonesia.`;
       const c = await openai.chat.completions.create({
-        model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }],
+        model: SMART_MODEL, messages: [{ role: "user", content: prompt }],
         temperature: 0.4, response_format: { type: "json_object" }, max_tokens: 3000,
       });
       return res.json(JSON.parse(c.choices[0]?.message?.content ?? "{}"));
@@ -27578,7 +27582,7 @@ Kembalikan JSON PERSIS:
 
 Buat 5-7 seksi APL-01 yang umum (identitas, pendidikan, pengalaman kerja, unit kompetensi, dokumen pendukung, dll.), 6-8 dokumen pendukung, 8-10 item checklist (3-4 kritikal). Sesuaikan dengan spesifik jabatan ${jabatan} dan jalur ${jalur}.`;
       const c = await openai.chat.completions.create({
-        model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }],
+        model: SMART_MODEL, messages: [{ role: "user", content: prompt }],
         temperature: 0.3, response_format: { type: "json_object" }, max_tokens: 3000,
       });
       return res.json(JSON.parse(c.choices[0]?.message?.content ?? "{}"));
@@ -27631,7 +27635,7 @@ Kembalikan JSON PERSIS:
   "tipsCV": ["3-4 tips spesifik untuk mengoptimalkan CV ini untuk aplikasi ${jabatanTarget} dan dokumen tender konstruksi Indonesia"]
 }`;
       const c = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.4,
         response_format: { type: "json_object" },
@@ -27695,7 +27699,7 @@ Kembalikan JSON PERSIS:
 
 Analisis berdasarkan Permen PUPR No. 6 Tahun 2021, PP 14/2021, dan regulasi terkait. Status SKK disesuaikan dengan data yang dimiliki.`;
       const c = await openai.chat.completions.create({
-        model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }],
+        model: SMART_MODEL, messages: [{ role: "user", content: prompt }],
         temperature: 0.3, response_format: { type: "json_object" }, max_tokens: 2500,
       });
       return res.json(JSON.parse(c.choices[0]?.message?.content ?? "{}"));
@@ -27751,7 +27755,7 @@ Kembalikan JSON PERSIS:
 
 Gunakan: PP 14/2021, Permen PUPR 6/2021, Perpres 12/2021 (pengadaan), dan regulasi K3 konstruksi.`;
       const c = await openai.chat.completions.create({
-        model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }],
+        model: SMART_MODEL, messages: [{ role: "user", content: prompt }],
         temperature: 0.3, response_format: { type: "json_object" }, max_tokens: 2000,
       });
       return res.json(JSON.parse(c.choices[0]?.message?.content ?? "{}"));
@@ -27805,7 +27809,7 @@ Kembalikan JSON PERSIS:
 
 Buat 5-7 topik belajar (mix wajib/penting/tambahan), 6-8 referensi (mix SNI/Peraturan/Buku/Online), rencana belajar 3-5 periode. Semua referensi harus nyata dan relevan untuk konstruksi Indonesia.`;
       const c = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.3,
         response_format: { type: "json_object" },
@@ -27874,7 +27878,7 @@ Kriteria evaluasi yang harus dinilai (5 kriteria):
 Berikan evaluasi yang jujur, konstruktif, dan spesifik berdasarkan regulasi BNSP Indonesia.`;
 
       const c = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.3,
         response_format: { type: "json_object" },
@@ -27936,7 +27940,7 @@ Buat roadmap sertifikasi SKK yang realistis dan optimal. Kembalikan JSON PERSIS 
 Buat 3-5 langkah sertifikasi yang logis dan berurutan. Sesuaikan dengan regulasi LPJK/BNSP (syarat pengalaman per level KKNI: Muda=2th, Madya=5th, Utama=10th), realita biaya pasar Indonesia 2024-2025, dan tujuan karir kandidat.`;
 
       const c = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.4,
         response_format: { type: "json_object" },
@@ -27991,7 +27995,7 @@ Kembalikan JSON dengan struktur PERSIS seperti ini (JANGAN tambah field lain):
 Buat 5-7 unit kompetensi yang paling representatif (mix inti dan pilihan/umum). Setiap unit harus punya 2-3 elemen kompetensi, masing-masing 2-3 KUK. Contoh bukti harus spesifik dan relevan dengan industri konstruksi Indonesia.`;
 
       const c = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.3,
         response_format: { type: "json_object" },
@@ -28033,7 +28037,7 @@ Kembalikan JSON SAJA:
   "unitKompetensi": "nama singkat unit kompetensi yang dinilai (maks 5 kata)"
 }`;
         const c = await openai.chat.completions.create({
-          model: "gpt-4o-mini",
+          model: SMART_MODEL,
           messages: [{ role: "user", content: prompt }],
           temperature: 0.6,
           response_format: { type: "json_object" },
@@ -28087,7 +28091,7 @@ Fokus: "${fokus}".
 Buat pertanyaan dari unit kompetensi BERBEDA yang belum ditanyakan, semakin mendalam/teknis.
 Kembalikan JSON: {"pertanyaan": "...", "unitKompetensi": "..."}`;
           const nq = await openai.chat.completions.create({
-            model: "gpt-4o-mini",
+            model: SMART_MODEL,
             messages: [{ role: "user", content: nextPrompt }],
             temperature: 0.6,
             response_format: { type: "json_object" },
@@ -28096,7 +28100,7 @@ Kembalikan JSON: {"pertanyaan": "...", "unitKompetensi": "..."}`;
         }
 
         const fc = await openai.chat.completions.create({
-          model: "gpt-4o-mini",
+          model: SMART_MODEL,
           messages: [{ role: "user", content: feedbackPrompt }],
           temperature: 0.3,
           response_format: { type: "json_object" },
@@ -28206,7 +28210,7 @@ Penting:
 - rekomendasiMulai: berdasarkan sisaHari=${sisaHari}, berikan saran timing spesifik
 - Jika sudah expired: jalur asesmen baru (bukan perpanjangan) harus disebutkan`;
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.15,
         response_format: { type: "json_object" },
@@ -28317,7 +28321,7 @@ Format:
 Tulis langsung isi surat, siap cetak.`;
       }
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.2,
       });
@@ -28386,7 +28390,7 @@ Aturan:
 - Fokus pada PJT (Penanggung Jawab Teknik), PJK (Penanggung Jawab Keuangan jika ada), dan Tenaga Ahli minimum`;
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.15,
         response_format: { type: "json_object" },
@@ -28480,7 +28484,7 @@ Penting:
 - totalROI5Tahun = kumulatifSelisih tahun ke-5 (sudah dikurangi biaya sertifikasi)`;
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.2,
         response_format: { type: "json_object" },
@@ -28544,7 +28548,7 @@ Aturan penting:
 - Sertakan SEMUA unit kompetensi yang relevan untuk jabatan ini (biasanya 8-15 unit)`;
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.2,
         response_format: { type: "json_object" },
@@ -28619,7 +28623,7 @@ Aturan penting:
 - Berikan setidaknya 3-6 jabatan eligible jika memungkinkan`;
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.2,
         response_format: { type: "json_object" },
@@ -28693,7 +28697,7 @@ Pastikan:
 - Tips praktis dan spesifik, bukan generik`;
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.2,
         response_format: { type: "json_object" },
@@ -28740,7 +28744,7 @@ Kembalikan JSON SAJA (tanpa markdown) dengan format persis:
 Pastikan soal relevan dengan SKKNI dan standar BNSP. Options berisi 4 pilihan (index 0-3). correctIndex adalah index dari jawaban benar.`;
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.4,
         response_format: { type: "json_object" },
@@ -28809,7 +28813,7 @@ Hasilkan JSON:
 Buat 6-8 item HIRADC, 5-6 program keselamatan, 8-10 item APD. Balas hanya JSON valid.`;
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.3,
         response_format: { type: "json_object" },
@@ -28879,7 +28883,7 @@ Hasilkan JSON:
 Buat 5-6 elemen CSMS, 3-4 kategori dokumen, 12-15 checklist, 6-8 pertanyaan auditor, 4-5 kesalahan umum. Balas hanya JSON valid.`;
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.4,
         response_format: { type: "json_object" },
@@ -28913,7 +28917,7 @@ Hasilkan JSON:
 Balas hanya JSON valid.`;
 
         const completion = await openai.chat.completions.create({
-          model: "gpt-4o-mini",
+          model: SMART_MODEL,
           messages: [{ role: "user", content: prompt }],
           temperature: 0.5,
           response_format: { type: "json_object" },
@@ -28952,7 +28956,7 @@ Hasilkan JSON:
 Balas hanya JSON valid.`;
 
         const completion = await openai.chat.completions.create({
-          model: "gpt-4o-mini",
+          model: SMART_MODEL,
           messages: [{ role: "user", content: prompt }],
           temperature: 0.4,
           response_format: { type: "json_object" },
@@ -29013,7 +29017,7 @@ Hasilkan JSON:
 }
 
 Buat minimal 10-14 baris risiko yang realistis dan spesifik. Level: Rendah (1-5), Sedang (6-9), Tinggi (10-15), Ekstrem (16-25). Isi jumlah rekapRisiko sesuai hasil. Balas hanya JSON valid.`;
-      const completion = await openai.chat.completions.create({ model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }], response_format: { type: "json_object" }, max_tokens: 4000 });
+      const completion = await openai.chat.completions.create({ model: SMART_MODEL, messages: [{ role: "user", content: prompt }], response_format: { type: "json_object" }, max_tokens: 4000 });
       const data = JSON.parse(completion.choices[0]?.message?.content ?? "{}");
       res.json({ hasil: data });
     } catch (e: any) { console.error("generator-hiradc error:", e); res.status(500).json({ error: "Gagal generate HIRADC. Coba lagi." }); }
@@ -29063,7 +29067,7 @@ Hasilkan JSON:
 }
 
 Buat 5-7 tahapan yang realistis dan spesifik untuk ${bentukBU}. Sertakan minimal 5 item checklistVerifikasi dan 4 masalahUmum. Balas hanya JSON valid.`;
-      const completion = await openai.chat.completions.create({ model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }], response_format: { type: "json_object" }, max_tokens: 4000 });
+      const completion = await openai.chat.completions.create({ model: SMART_MODEL, messages: [{ role: "user", content: prompt }], response_format: { type: "json_object" }, max_tokens: 4000 });
       const data = JSON.parse(completion.choices[0]?.message?.content ?? "{}");
       res.json({ hasil: data });
     } catch (e: any) { console.error("panduan-oss-perizinan error:", e); res.status(500).json({ error: "Gagal generate panduan perizinan. Coba lagi." }); }
@@ -29106,7 +29110,7 @@ Hasilkan JSON:
 }
 
 Buat 8-12 pasal yang relevan dengan jenis dokumen. Pasal harus mencakup: ruang lingkup, nilai/harga, jadwal, pembayaran, perubahan pekerjaan, jaminan mutu, keselamatan kerja, force majeure, penalti/denda, pemutusan kontrak, penyelesaian perselisihan, penutup. Isi setiap pasal formal dan spesifik dalam bahasa Indonesia baku. Balas hanya JSON valid.`;
-      const completion = await openai.chat.completions.create({ model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }], response_format: { type: "json_object" }, max_tokens: 5000 });
+      const completion = await openai.chat.completions.create({ model: SMART_MODEL, messages: [{ role: "user", content: prompt }], response_format: { type: "json_object" }, max_tokens: 5000 });
       const data = JSON.parse(completion.choices[0]?.message?.content ?? "{}");
       res.json({ hasil: data });
     } catch (e: any) { console.error("generator-spk-kontrak error:", e); res.status(500).json({ error: "Gagal generate kontrak. Coba lagi." }); }
@@ -29131,7 +29135,7 @@ Hasilkan JSON:
   "pertanyaan": "Pertanyaan audit pertama yang spesifik tentang klausul kritis standar ini — langsung dan konkret, sebutkan klausul yang diuji"
 }
 Balas hanya JSON valid.`;
-        const completion = await openai.chat.completions.create({ model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }], response_format: { type: "json_object" }, max_tokens: 800 });
+        const completion = await openai.chat.completions.create({ model: SMART_MODEL, messages: [{ role: "user", content: prompt }], response_format: { type: "json_object" }, max_tokens: 800 });
         const data = JSON.parse(completion.choices[0]?.message?.content ?? "{}");
         return res.json({ pembukaan: data.pembukaan, pertanyaan: data.pertanyaan });
       }
@@ -29174,7 +29178,7 @@ Riwayat sesi:
 ${riwayatStr}
 
 Evaluasi dengan objektif. Level: Conformance (jawaban memadai+bukti ada), OFI (bisa ditingkatkan), Minor NCR (ketidaksesuaian parsial), Major NCR (ketidaksesuaian sistemik/tidak ada bukti). Balas hanya JSON valid.`;
-        const completion = await openai.chat.completions.create({ model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }], response_format: { type: "json_object" }, max_tokens: 1500 });
+        const completion = await openai.chat.completions.create({ model: SMART_MODEL, messages: [{ role: "user", content: prompt }], response_format: { type: "json_object" }, max_tokens: 1500 });
         const data = JSON.parse(completion.choices[0]?.message?.content ?? "{}");
         return res.json(data);
       }
@@ -29223,7 +29227,7 @@ Hasilkan JSON dengan struktur:
 Buat 8-12 item ITP yang relevan dan komprehensif untuk jenis pekerjaan tersebut. Level H=Hold Point, W=Witness, R=Review, M=Monitor. Balas hanya JSON valid.`;
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.3,
         response_format: { type: "json_object" },
@@ -29276,7 +29280,7 @@ Hasilkan JSON:
 Buat 6-8 tahapan lengkap dan 5-6 kesalahan umum. Balas hanya JSON valid.`;
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.4,
         response_format: { type: "json_object" },
@@ -29338,7 +29342,7 @@ Hasilkan JSON:
 Buat 3-5 item kegiatan, 4-6 jabatan personel, 2-4 peralatan. Balas hanya JSON valid.`;
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.4,
         response_format: { type: "json_object" },
@@ -29375,7 +29379,7 @@ Hasilkan JSON:
 Soal harus: (1) berbasis situasi lapangan nyata, (2) sesuai level kompetensi ${level}, (3) mengacu regulasi Indonesia (Permenaker/PP 50/2012/SMK3/ISO 45001). Balas hanya JSON valid.`;
 
         const completion = await openai.chat.completions.create({
-          model: "gpt-4o-mini",
+          model: SMART_MODEL,
           messages: [{ role: "user", content: prompt }],
           temperature: 0.6,
           response_format: { type: "json_object" },
@@ -29420,7 +29424,7 @@ Hasilkan JSON:
 Balas hanya JSON valid.`;
 
         const completion = await openai.chat.completions.create({
-          model: "gpt-4o-mini",
+          model: SMART_MODEL,
           messages: [{ role: "user", content: prompt }],
           temperature: 0.4,
           response_format: { type: "json_object" },
@@ -29483,7 +29487,7 @@ Setiap langkah harus spesifik, realistis, dan langsung bisa diterapkan di lapang
 Kondisi darurat minimal 3 jenis.
 Balas hanya JSON valid.`;
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }],
+        model: SMART_MODEL, messages: [{ role: "user", content: prompt }],
         response_format: { type: "json_object" }, max_tokens: 3500,
       });
       const hasil = JSON.parse(completion.choices[0].message.content || "{}");
@@ -29535,7 +29539,7 @@ Buat minimal 5 kategori limbah (campuran B3 dan non-B3). Checklist minimal 10 it
 Denda pelanggaran harus mengacu pada regulasi yang nyata.
 Balas hanya JSON valid.`;
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }],
+        model: SMART_MODEL, messages: [{ role: "user", content: prompt }],
         response_format: { type: "json_object" }, max_tokens: 3500,
       });
       const hasil = JSON.parse(completion.choices[0].message.content || "{}");
@@ -29592,7 +29596,7 @@ kemajuanPekerjaan minimal 6 paket pekerjaan. kendalaUtama minimal 2-3 kendala ji
 statusTrafik: Hijau=on schedule, Kuning=slightly delayed, Merah=critical delay.
 Balas hanya JSON valid.`;
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }],
+        model: SMART_MODEL, messages: [{ role: "user", content: prompt }],
         response_format: { type: "json_object" }, max_tokens: 3000,
       });
       const hasil = JSON.parse(completion.choices[0].message.content || "{}");
@@ -29647,7 +29651,7 @@ checklistKesiapan: minimal 15 item.
 jadwalImplementasi: 6-12 bulan tergantung skala.
 Balas hanya JSON valid.`;
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }],
+        model: SMART_MODEL, messages: [{ role: "user", content: prompt }],
         response_format: { type: "json_object" }, max_tokens: 3500,
       });
       const hasil = JSON.parse(completion.choices[0].message.content || "{}");
@@ -29710,7 +29714,7 @@ Hasilkan JSON dengan struktur:
   "catatanPenting": ["catatan khusus untuk konteks ini"]
 }
 Hasilkan JSON valid, komprehensif, sesuai regulasi terbaru 2024-2025.`;
-      const completion = await openai.chat.completions.create({ model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }], response_format: { type: "json_object" }, max_tokens: 3000 });
+      const completion = await openai.chat.completions.create({ model: SMART_MODEL, messages: [{ role: "user", content: prompt }], response_format: { type: "json_object" }, max_tokens: 3000 });
       const hasil = JSON.parse(completion.choices[0].message.content || "{}");
       return res.json({ hasil });
     } catch (e: any) { console.error("pbj-konstruksi error:", e); res.status(500).json({ error: "Gagal generate panduan PBJ." }); }
@@ -29768,7 +29772,7 @@ Hasilkan JSON NCR Report formal:
   "catatanPenting": ["catatan penting untuk penanganan NCR ini"]
 }
 Hasilkan JSON valid dan profesional.`;
-      const completion = await openai.chat.completions.create({ model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }], response_format: { type: "json_object" }, max_tokens: 2500 });
+      const completion = await openai.chat.completions.create({ model: SMART_MODEL, messages: [{ role: "user", content: prompt }], response_format: { type: "json_object" }, max_tokens: 2500 });
       const hasil = JSON.parse(completion.choices[0].message.content || "{}");
       return res.json({ hasil });
     } catch (e: any) { console.error("ncr-report error:", e); res.status(500).json({ error: "Gagal generate NCR Report." }); }
@@ -29816,7 +29820,7 @@ ATURAN SOAL:
 - Penjelasan singkat tapi informatif (1-2 kalimat + referensi SNI/Perlem/PP jika relevan)
 - Hindari pertanyaan trivial atau terlalu umum
 Hasilkan JSON valid dengan tepat ${jumlahSoal} soal.`;
-      const completion = await openai.chat.completions.create({ model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }], response_format: { type: "json_object" }, max_tokens: 4000 });
+      const completion = await openai.chat.completions.create({ model: SMART_MODEL, messages: [{ role: "user", content: prompt }], response_format: { type: "json_object" }, max_tokens: 4000 });
       const data = JSON.parse(completion.choices[0].message.content || "{}");
       return res.json({ soalList: data.soalList || [] });
     } catch (e: any) { console.error("simulator-tes-teori-skk error:", e); res.status(500).json({ error: "Gagal generate soal ujian." }); }
@@ -29868,7 +29872,7 @@ Hasilkan JSON BAST formal:
 
 Buat daftar pemeriksaan 8-12 item yang spesifik untuk ${jenisProyek}. Status: "Sesuai", "Perlu Perbaikan", atau "N/A".
 Hasilkan JSON valid dan profesional.`;
-      const completion = await openai.chat.completions.create({ model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }], response_format: { type: "json_object" }, max_tokens: 2500 });
+      const completion = await openai.chat.completions.create({ model: SMART_MODEL, messages: [{ role: "user", content: prompt }], response_format: { type: "json_object" }, max_tokens: 2500 });
       const hasil = JSON.parse(completion.choices[0].message.content || "{}");
       return res.json({ hasil });
     } catch (e: any) { console.error("bast-konstruksi error:", e); res.status(500).json({ error: "Gagal generate BAST." }); }
@@ -29881,7 +29885,7 @@ Hasilkan JSON valid dan profesional.`;
       if (!agent) return res.status(404).json({ error: "Agent not found for slug: " + req.params.slug });
       return res.json({
         id: agent.id, name: agent.name, slug: agent.slug,
-        model: (agent as any).aiModel || (agent as any).model || "gpt-4o-mini",
+        model: (agent as any).aiModel || (agent as any).model || SMART_MODEL,
         temperature: (agent as any).temperature ?? 0.7,
         maxTokens: (agent as any).maxTokens ?? 2000,
         systemPrompt: (agent as any).systemPrompt || "",
@@ -29939,7 +29943,7 @@ Hasilkan JSON:
 }
 
 Buat 15-25 item pekerjaan yang logis untuk ${jenisProyek}. Bobot semua item harus total 100%. Kurva S harus dimulai dari sekitar 5-10% di minggu pertama dan mencapai tepat 100 di minggu terakhir (bentuk S). Hasilkan JSON valid.`;
-      const completion = await openai.chat.completions.create({ model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }], response_format: { type: "json_object" }, max_tokens: 3000 });
+      const completion = await openai.chat.completions.create({ model: SMART_MODEL, messages: [{ role: "user", content: prompt }], response_format: { type: "json_object" }, max_tokens: 3000 });
       const hasil = JSON.parse(completion.choices[0].message.content || "{}");
       return res.json({ hasil });
     } catch (e: any) { console.error("jadwal-pelaksanaan error:", e); res.status(500).json({ error: "Gagal generate jadwal pelaksanaan." }); }
@@ -29988,7 +29992,7 @@ Hasilkan panduan PBG (Persetujuan Bangunan Gedung) dalam JSON:
 }
 
 Buat 5-8 tahapan, 8-12 dokumen teknis, 4-6 syarat khusus, 5 kesalahan umum, 5 tips. Sesuaikan dengan jenis bangunan dan wilayah. Hasilkan JSON valid.`;
-      const completion = await openai.chat.completions.create({ model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }], response_format: { type: "json_object" }, max_tokens: 2500 });
+      const completion = await openai.chat.completions.create({ model: SMART_MODEL, messages: [{ role: "user", content: prompt }], response_format: { type: "json_object" }, max_tokens: 2500 });
       const hasil = JSON.parse(completion.choices[0].message.content || "{}");
       return res.json({ hasil });
     } catch (e: any) { console.error("panduan-pbg-imb error:", e); res.status(500).json({ error: "Gagal generate panduan PBG." }); }
@@ -30041,7 +30045,7 @@ Hasilkan laporan audit K3 formal dalam JSON:
 }
 
 Sesuaikan jumlah dan tingkat temuan dengan skala: "${skalaTemuan}". Buat 6-8 elemen penilaian, 4-8 temuan utama, 3-5 good practice, 3-5 rekomendasi strategis. Hasilkan JSON valid dan profesional.`;
-      const completion = await openai.chat.completions.create({ model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }], response_format: { type: "json_object" }, max_tokens: 3000 });
+      const completion = await openai.chat.completions.create({ model: SMART_MODEL, messages: [{ role: "user", content: prompt }], response_format: { type: "json_object" }, max_tokens: 3000 });
       const hasil = JSON.parse(completion.choices[0].message.content || "{}");
       return res.json({ hasil });
     } catch (e: any) { console.error("laporan-audit-k3 error:", e); res.status(500).json({ error: "Gagal generate laporan audit K3." }); }
@@ -30094,7 +30098,7 @@ LARANGAN:
         .map((m: any) => ({ role: m.role as "user" | "assistant", content: m.content.slice(0, 2000) }));
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "system", content: systemPrompt }, ...safeMessages],
         max_tokens: 400,
         temperature: 0.85,
@@ -30148,7 +30152,7 @@ Hasilkan JSON dengan format persis:
 Gunakan bahasa Indonesia yang hangat dan menyemangati.`;
 
       const c = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         response_format: { type: "json_object" },
         max_tokens: 400,
@@ -30191,7 +30195,7 @@ Hasilkan JSON:
 Buat terasa personal dan berdasarkan detail nyata dari dialog. Bahasa Indonesia yang hangat dan menginspirasi.`;
 
       const c = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         response_format: { type: "json_object" },
         max_tokens: 500,
@@ -30249,7 +30253,7 @@ Hasilkan JSON dengan format persis:
 Buat blueprint yang terasa personal, didasarkan pada detail nyata dari dialog. Gunakan bahasa Indonesia.`;
 
       const c = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: SMART_MODEL,
         messages: [{ role: "user", content: prompt }],
         response_format: { type: "json_object" },
         max_tokens: 600,

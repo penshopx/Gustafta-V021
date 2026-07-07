@@ -319,9 +319,9 @@ export const INFERENCE_RULES: InferenceRule[] = [
     module: "aiEngine",
     field: "aiModel",
     infer: () => ({
-      value: "gpt-4o-mini",
+      value: "gpt-4o",
       confidence: 0.6,
-      evidence: "Model default hemat & cepat untuk awal.",
+      evidence: "Model standar cerdas untuk kualitas jawaban terbaik.",
       needsConfirmation: false,
     }),
   },

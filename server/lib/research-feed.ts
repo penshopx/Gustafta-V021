@@ -475,7 +475,7 @@ export async function generateDailyAdMaterials(
     !agent.aiModel.startsWith("gemini") &&
     agent.aiModel !== "custom"
       ? agent.aiModel
-      : "gpt-4o-mini";
+      : "gpt-4o";
   const today = new Date().toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta", dateStyle: "full" });
 
   const platformDoc = buildAdPlatformLibraryDoc();
@@ -669,7 +669,7 @@ export async function generateDailyRetentionSequence(
     !agent.aiModel.startsWith("gemini") &&
     agent.aiModel !== "custom"
       ? agent.aiModel
-      : "gpt-4o-mini";
+      : "gpt-4o";
   const today = new Date().toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta", dateStyle: "full" });
   const foundation = buildGustaftaFoundationDoc();
 
@@ -851,7 +851,7 @@ export async function generateDailyClosingKit(
     !agent.aiModel.startsWith("gemini") &&
     agent.aiModel !== "custom"
       ? agent.aiModel
-      : "gpt-4o-mini";
+      : "gpt-4o";
   const today = new Date().toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta", dateStyle: "full" });
   const foundation = buildGustaftaFoundationDoc();
   const playbook = buildSalesPlaybookDoc();
