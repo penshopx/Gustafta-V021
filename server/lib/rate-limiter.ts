@@ -170,14 +170,49 @@ type SqlQuery = (
   params: any[]
 ) => Promise<{ rows: any[] }>;
 
+// Probabilitas & batas batch untuk pemangkasan baris kedaluwarsa yang DIPICU
+// oleh lalu-lintas (delete-on-write). Bisa disetel lewat env tanpa deploy ulang.
+const PRUNE_PROBABILITY = (() => {
+  const raw = parseFloat(process.env.RATE_LIMIT_PRUNE_PROBABILITY ?? "");
+  if (Number.isFinite(raw) && raw >= 0 && raw <= 1) return raw;
+  return 0.02; // ~1 dari 50 hit ikut memangkas baris basi
+})();
+const PRUNE_BATCH_LIMIT = intEnv("RATE_LIMIT_PRUNE_BATCH", 1000);
+
+export interface PostgresRateLimitStoreOptions {
+  /** Peluang (0..1) sebuah hit ikut memangkas baris kedaluwarsa. Default 0.02. */
+  pruneProbability?: number;
+  /** Batas baris kedaluwarsa yang dihapus per pemangkasan. Default 1000. */
+  pruneBatchLimit?: number;
+  /** Sumber acak (dapat disuntik saat test agar deterministik). Default Math.random. */
+  random?: () => number;
+}
+
 /**
  * Store bersama berbasis PostgreSQL. Satu UPSERT atomik menaikkan hitungan
  * (atau me-reset window bila sudah lewat) dan mengembalikan nilai final.
  * Karena `INSERT ... ON CONFLICT DO UPDATE` mengunci baris, kenaikan serempak
  * dari banyak instance ter-serialisasi dengan benar → satu hitungan tunggal.
+ *
+ * PEMANGKASAN DIPICU LALU-LINTAS (delete-on-write): tabel `rate_limit_buckets`
+ * hanya membengkak karena WRITE (bucket per-menit lahir 1 baris per IP/akun per
+ * menit, lalu jadi baris yatim yang kedaluwarsa dan tak pernah disentuh lagi).
+ * Karena itu setiap hit — dengan peluang kecil `pruneProbability` — ikut
+ * menghapus SEBATCH baris kedaluwarsa (`reset_at <= now`, dibatasi `LIMIT` agar
+ * tidak mengunci tabel). Ini menjadikan pembersihan sebanding dengan churn dan
+ * tidak bergantung pada satu instance yang harus tetap hidup (berbeda dari
+ * `setInterval` yang best-effort). Idempoten & aman dari banyak instance.
  */
 export class PostgresRateLimitStore implements RateLimitStore {
-  constructor(private query: SqlQuery) {}
+  private pruneProbability: number;
+  private pruneBatchLimit: number;
+  private random: () => number;
+
+  constructor(private query: SqlQuery, opts: PostgresRateLimitStoreOptions = {}) {
+    this.pruneProbability = opts.pruneProbability ?? PRUNE_PROBABILITY;
+    this.pruneBatchLimit = opts.pruneBatchLimit ?? PRUNE_BATCH_LIMIT;
+    this.random = opts.random ?? Math.random;
+  }
 
   async hit(key: string, windowMs: number, now: number): Promise<RateLimitHit> {
     const resetAt = now + windowMs;
@@ -197,7 +232,47 @@ export class PostgresRateLimitStore implements RateLimitStore {
       [key, resetAt, now]
     );
     const row = rows[0];
+
+    // Fire-and-forget: pemangkasan tidak menahan jalur respons (tak di-await).
+    // Peluang kecil per hit sudah cukup karena volume hit tinggi = pemangkasan
+    // sering, sebanding dengan laju churn tabel.
+    if (this.pruneProbability > 0 && this.random() < this.pruneProbability) {
+      void this.pruneExpired(now).catch(() => {
+        // best-effort — jangan pernah mematikan chat karena pembersihan gagal.
+      });
+    }
+
     return { count: Number(row.count), resetAt: Number(row.reset_at) };
+  }
+
+  /**
+   * Hapus SEBATCH baris kedaluwarsa (`reset_at <= now`). Dibatasi `LIMIT` lewat
+   * subquery agar tidak mengunci seluruh tabel saat backlog besar; dipanggil
+   * berulang oleh lalu-lintas sampai backlog habis. Mengembalikan jumlah baris
+   * yang terhapus.
+   */
+  async pruneExpired(now: number, limit: number = this.pruneBatchLimit): Promise<number> {
+    // Race-safe: baris kandidat dipilih (tertua dulu) & DIKUNCI via
+    // `FOR UPDATE SKIP LOCKED`, dan `reset_at <= $1` DIULANG di klausa DELETE
+    // luar. Tanpa cek-ulang ini, sebuah baris yang terpilih sebagai kedaluwarsa
+    // bisa di-reset oleh `hit()` (window baru) di antara SELECT dan DELETE lalu
+    // tetap terhapus karena kunci-nya masih cocok — menghapus counter aktif dan
+    // melemahkan penegakan batas. SKIP LOCKED juga mencegah dua instance saling
+    // menunggu baris yang sama.
+    const { rows } = await this.query(
+      `DELETE FROM rate_limit_buckets
+       WHERE reset_at <= $1
+         AND bucket_key IN (
+           SELECT bucket_key FROM rate_limit_buckets
+           WHERE reset_at <= $1
+           ORDER BY reset_at
+           LIMIT $2
+           FOR UPDATE SKIP LOCKED
+         )
+       RETURNING bucket_key`,
+      [now, limit]
+    );
+    return rows.length;
   }
 
   async reset(key: string): Promise<void> {
@@ -350,19 +425,27 @@ export async function chatAgentIdRateLimiter(
   return next();
 }
 
-// Pembersih baris kedaluwarsa di store bersama. Idempoten & aman dijalankan dari
-// banyak instance sekaligus. .unref(): timer tak boleh menahan event loop hidup.
+// BACKSTOP: pembersih terjadwal di store bersama. Jalur pembersihan UTAMA kini
+// dipicu lalu-lintas (delete-on-write di `PostgresRateLimitStore.hit`), jadi
+// interval ini hanya jaring pengaman untuk baris yatim saat lalu-lintas sepi.
+// Memangkas per-BATCH (via `pruneExpired`, dibatasi LIMIT) berulang sampai
+// backlog habis agar tidak mengunci tabel dalam satu DELETE raksasa. Idempoten &
+// aman dari banyak instance. .unref(): timer tak boleh menahan event loop hidup.
 setInterval(
   async () => {
     try {
-      const { pool } = await import("../db");
-      await pool.query("DELETE FROM rate_limit_buckets WHERE reset_at <= $1", [
-        Date.now(),
-      ]);
+      let deleted = 0;
+      // Kuras backlog per batch; batasi jumlah putaran agar satu tick tidak
+      // berjalan tanpa henti bila churn sangat tinggi (sisanya diambil tick
+      // berikut / delete-on-write).
+      for (let i = 0; i < 50; i++) {
+        deleted = await defaultSharedStore.pruneExpired(Date.now());
+        if (deleted < PRUNE_BATCH_LIMIT) break;
+      }
     } catch {
       // Bersih-bersih bersifat best-effort; abaikan error sementara.
     }
     memoryFallbackStore.cleanup();
   },
-  10 * 60 * 1000
+  2 * 60 * 1000
 ).unref();
