@@ -164,13 +164,34 @@ export default function BlueprintBuilderPage() {
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
   const [presetLabel, setPresetLabel] = useState<string | null>(null);
+  const [journeyBonus, setJourneyBonus] = useState(false);
+  const [profBusy, setProfBusy] = useState(false);
   const [, setLocation] = useLocation();
 
   /* Preset via ?preset= — mis. tautan bonus event mengarahkan ke mode reflektif konstruksi.
-     Hanya mengisi awal intent (bisa diedit), tidak memaksa mulai. */
+     Prefill via localStorage `gustafta_blueprint_prefill_v1` (dari Dialog Gustafta).
+     Keduanya hanya mengisi awal intent (bisa diedit), tidak memaksa mulai. */
   useEffect(() => {
-    const preset = new URLSearchParams(window.location.search).get("preset");
-    if (preset === "konstruksi") {
+    const params = new URLSearchParams(window.location.search);
+    const preset = params.get("preset");
+    if (params.get("journey") === "bonus") setJourneyBonus(true);
+
+    // Prefill dari Dialog Gustafta (menang atas preset bila ada).
+    let usedPrefill = false;
+    try {
+      const raw = localStorage.getItem("gustafta_blueprint_prefill_v1");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed.intent === "string" && parsed.intent.trim()) {
+          setIntent(parsed.intent.trim());
+          setPresetLabel("Dari Dialog Gustafta");
+          usedPrefill = true;
+        }
+        localStorage.removeItem("gustafta_blueprint_prefill_v1");
+      }
+    } catch { /* storage diblokir — abaikan */ }
+
+    if (!usedPrefill && preset === "konstruksi") {
       setIntent(
         "Saya tenaga ahli konstruksi. Saya ingin mengubah pengalaman lapangan saya menjadi AI asisten profesional " +
         "yang dapat menjawab pertanyaan teknis, menyusun SOP/checklist/lesson learned, dan mendampingi pekerjaan " +
@@ -514,6 +535,126 @@ export default function BlueprintBuilderPage() {
     }
   };
 
+  /* ── Unduh "Blueprint Profesional" (PDF) — profil diri + saran rancangan chatbot ──
+     Menggabungkan Profil Penguasaan (masteryProfile) dengan spesifikasi chatbot
+     dari blueprint. Branding acara (ASDAMKINDO × Gustafta) saat jalur bonus. */
+  const downloadBlueprintProfesional = async () => {
+    if (!blueprint) return;
+    setProfBusy(true);
+    try {
+      const { jsPDF } = await import("jspdf");
+      const doc = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+      const W = 210, M = 18;
+      const indigo: [number, number, number] = [67, 56, 202];
+      const ink: [number, number, number] = [31, 41, 55];
+      const soft: [number, number, number] = [107, 114, 128];
+      const line: [number, number, number] = [224, 231, 255];
+      let y = 0;
+
+      // Header band
+      doc.setFillColor(...indigo);
+      doc.rect(0, 0, W, 34, "F");
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(18);
+      doc.text("Blueprint Profesional", M, 16);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.text(
+        journeyBonus ? "Bonus Peserta Indobuildtech 2026 — ASDAMKINDO x Gustafta" : "Gustafta Blueprint Agen AI",
+        M, 24,
+      );
+      doc.setFontSize(8);
+      doc.text(`Dibuat: ${new Date().toLocaleString("id-ID")}`, M, 30);
+      y = 44;
+
+      const ensure = (need: number) => { if (y + need > 282) { doc.addPage(); y = 20; } };
+      const heading = (t: string) => {
+        ensure(14);
+        doc.setTextColor(...indigo);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.text(t, M, y);
+        y += 3;
+        doc.setDrawColor(...line);
+        doc.setLineWidth(0.4);
+        doc.line(M, y, W - M, y);
+        y += 6;
+      };
+      const para = (label: string, value: string) => {
+        const v = (value || "").trim();
+        if (!v) return;
+        ensure(10);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9.5);
+        doc.setTextColor(...ink);
+        doc.text(label, M, y);
+        y += 5;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9.5);
+        doc.setTextColor(...soft);
+        const lines = doc.splitTextToSize(v, W - M * 2);
+        for (const ln of lines) { ensure(6); doc.text(ln, M, y); y += 5; }
+        y += 2;
+      };
+
+      // Bagian 1 — Profil Profesional (dari refleksi)
+      const mp = analysis?.masteryProfile;
+      heading("1. Profil Profesional Anda");
+      if (mp) {
+        if (mp.role) para("Peran / bidang", mp.role);
+        if (mp.topic) para("Fokus topik", mp.topic);
+        para("Ringkasan pemahaman", mp.narrative);
+        if (mp.strengths.length > 0) para("Kekuatan yang sudah jelas", mp.strengths.join(", "));
+        if (mp.growthAreas.length > 0) para("Area yang masih bisa ditumbuhkan", mp.growthAreas.join(", "));
+        ensure(8);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8.5);
+        doc.setTextColor(...soft);
+        doc.text(
+          `Kelengkapan refleksi: ${pct(mp.completion)}% (${mp.answeredFields}/${mp.totalFields} sudut).`,
+          M, y,
+        );
+        y += 8;
+      } else {
+        para("Catatan", "Jalankan Analisis untuk memunculkan profil penguasaan dari refleksi Anda.");
+      }
+
+      // Bagian 2 — Saran Rancangan Chatbot (dari blueprint)
+      heading("2. Chatbot yang Disarankan");
+      para("Nama", bpText(bpVal("identity", "name")));
+      para("Deskripsi", bpText(bpVal("identity", "description")));
+      para("Keahlian utama", bpText(bpVal("identity", "expertise")));
+      para("Nada bicara", bpText(bpVal("identity", "toneOfVoice")));
+      para("Pesan sambutan", bpText(bpVal("identity", "greetingMessage")));
+      para("Tujuan utama", bpText(bpVal("goals", "primaryOutcome")));
+      para("Sasaran pengguna", bpText(bpVal("monetization", "productTargetUser")));
+      para("Batasan / piagam domain", bpText(bpVal("policy", "domainCharter")));
+      if (blueprint?.meta?.intent) para("Niat awal", bpText(blueprint.meta.intent));
+
+      // Footer
+      ensure(16);
+      y += 4;
+      doc.setDrawColor(...line);
+      doc.line(M, y, W - M, y);
+      y += 6;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(...soft);
+      doc.text(
+        "Dokumen ini adalah draf. Tinjau & sunting sebelum menyetujui pembuatan chatbot. Dibuat dengan Gustafta.",
+        M, y,
+      );
+
+      doc.save(`blueprint-profesional-${blueprintFileName().replace(/^gustafta-blueprint-/, "")}.pdf`);
+      toast({ title: "Blueprint Profesional diunduh", description: "Berkas PDF siap Anda tinjau atau bagikan." });
+    } catch {
+      toast({ title: "Gagal mengunduh", description: "Coba lagi sebentar.", variant: "destructive" });
+    } finally {
+      setProfBusy(false);
+    }
+  };
+
   /* ── Buat tautan berbagi publik (snapshot beku) ── */
   const shareCertificateLink = async () => {
     const mp = analysis?.masteryProfile;
@@ -627,6 +768,16 @@ export default function BlueprintBuilderPage() {
       const data = await apiRequest("POST", "/api/blueprint/configure", { blueprint, mode: "create", dryRun: false });
       setCreated(data);
       setStep("done");
+      // Jalur Bonus: catat chatbot yang dibuat agar langkah testimoni terbuka.
+      if (journeyBonus && data?.agentId) {
+        try {
+          const raw = localStorage.getItem("gustafta_bonus_journey_v1");
+          const j = raw ? JSON.parse(raw) : {};
+          j.step3AgentId = String(data.agentId);
+          j.step3AgentName = bpText(bpVal("identity", "name")) || "Chatbot Anda";
+          localStorage.setItem("gustafta_bonus_journey_v1", JSON.stringify(j));
+        } catch { /* storage diblokir — abaikan */ }
+      }
     } catch (e: any) {
       toast({ title: "Gagal membuat agen", description: e?.message || "Coba lagi.", variant: "destructive" });
     } finally { setBusy(false); }
@@ -963,9 +1114,20 @@ export default function BlueprintBuilderPage() {
               </p>
               <div className="flex flex-wrap gap-2">
                 <Button
+                  onClick={downloadBlueprintProfesional}
+                  disabled={profBusy}
+                  size="sm"
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white gap-2"
+                  data-testid="btn-download-blueprint-profesional"
+                >
+                  {profBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                  Unduh Blueprint Profesional (PDF)
+                </Button>
+                <Button
                   onClick={downloadBlueprintJSON}
                   size="sm"
-                  className="bg-sky-600 hover:bg-sky-500 text-white gap-2"
+                  variant="outline"
+                  className="gap-2 border-sky-300 dark:border-sky-500/40 text-sky-700 dark:text-sky-300"
                   data-testid="btn-download-blueprint-json"
                 >
                   <FileJson className="h-3.5 w-3.5" /> Unduh Blueprint (JSON)
@@ -1076,6 +1238,11 @@ export default function BlueprintBuilderPage() {
               <p className="text-xs text-amber-600 dark:text-amber-400 mb-4">⚠ {created.warnings.slice(0, 3).join(" · ")}</p>
             )}
             <div className="flex flex-wrap gap-3 justify-center mt-4">
+              {journeyBonus && (
+                <Button onClick={() => setLocation("/bonus-indobuildtech")} className="bg-indigo-600 hover:bg-indigo-500 text-white gap-2" data-testid="btn-back-to-journey">
+                  <ArrowLeft className="h-4 w-4" /> Kembali ke Jalur Bonus (isi testimoni)
+                </Button>
+              )}
               {created.agentId && (
                 <Button onClick={openInBuilder} disabled={busy} className="bg-emerald-600 hover:bg-emerald-500 text-white gap-2" data-testid="btn-open-in-builder">
                   {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Rocket className="h-4 w-4" />} Buka di Builder

@@ -12,6 +12,7 @@ import { Brain, Cpu, GraduationCap, Sparkles, Database, HardHat, Bot, Scale, Shi
 import Landing from "@/pages/landing";
 import PartnerLanding from "@/pages/partner-landing";
 import IndobuildtechPage from "@/pages/indobuildtech";
+import BonusIndobuildtechPage from "@/pages/bonus-indobuildtech";
 import PaketKonstruksiPage from "@/pages/paket-konstruksi";
 import KodeAksesPage from "@/pages/kode-akses";
 import AdminAccessCodesPage from "@/pages/admin-access-codes";
@@ -476,6 +477,7 @@ function Router() {
       <Route path="/account" component={AccountPage} />
       <Route path="/mini-app/:slug" component={MiniAppPublic} />
       <Route path="/indobuildtech" component={IndobuildtechPage} />
+      <Route path="/bonus-indobuildtech" component={BonusIndobuildtechPage} />
       <Route path="/paket-konstruksi" component={PaketKonstruksiPage} />
       <Route path="/kode-akses" component={KodeAksesPage} />
       <Route path="/admin/access-codes" component={AdminAccessCodesPage} />

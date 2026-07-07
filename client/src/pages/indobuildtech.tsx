@@ -118,8 +118,8 @@ export default function IndobuildtechPage() {
                 </a>
               </Button>
               <Button asChild size="lg" variant="ghost" className="gap-2 text-orange-200 hover:text-white hover:bg-white/10" data-testid="button-redeem-hero">
-                <Link href="/kode-akses">
-                  <Ticket className="h-4 w-4" /> Punya kode peserta?
+                <Link href="/bonus-indobuildtech">
+                  <Ticket className="h-4 w-4" /> Punya kode peserta? Mulai Jalur Bonus
                 </Link>
               </Button>
             </div>

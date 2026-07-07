@@ -467,6 +467,34 @@ export default function DialogGustaftaPage() {
     navigate("/organization-builder");
   };
 
+  // Jembatan Dialog → Blueprint Builder: bawa niat awal untuk merancang 1 chatbot.
+  // Deteksi jalur bonus event dari localStorage → tandai step2 & teruskan ?journey=bonus.
+  const handleRancangChatbot = () => {
+    if (!blueprint) return;
+    const intent = [
+      blueprint.judul && `Saya ingin membuat chatbot: ${blueprint.judul}.`,
+      blueprint.ringkasan,
+      blueprint.persona && `Persona yang diinginkan: ${blueprint.persona}.`,
+      blueprint.targetPengguna && `Target pengguna: ${blueprint.targetPengguna}.`,
+      blueprint.langkahAwal?.length ? `Langkah awal: ${blueprint.langkahAwal.join("; ")}.` : "",
+    ].filter(Boolean).join(" ");
+    try { localStorage.setItem("gustafta_blueprint_prefill_v1", JSON.stringify({ intent })); } catch { /* abaikan */ }
+
+    // Bila peserta sedang di jalur bonus, tandai langkah "coba Dialog" selesai.
+    let isBonus = false;
+    try {
+      const raw = localStorage.getItem("gustafta_bonus_journey_v1");
+      if (raw !== null) {
+        isBonus = true;
+        const j = raw ? JSON.parse(raw) : {};
+        j.step2Dialog = true;
+        localStorage.setItem("gustafta_bonus_journey_v1", JSON.stringify(j));
+      }
+    } catch { /* abaikan */ }
+
+    navigate(isBonus ? "/blueprint-builder?journey=bonus" : "/blueprint-builder");
+  };
+
   // ── Reset ────────────────────────────────────────────────────────────────
   const handleReset = () => {
     clearSession();
@@ -889,7 +917,10 @@ export default function DialogGustaftaPage() {
                   </Link>
                 )}
                 <div className="text-xs text-white/50 text-center">Blueprint ini adalah bagian dari Starter Kit Anda</div>
-                <Button onClick={handleRakitTim} className="w-full bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white gap-2 font-semibold" data-testid="button-blueprint-rakit-tim">
+                <Button onClick={handleRancangChatbot} className="w-full bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 text-white gap-2 font-semibold" data-testid="button-blueprint-rancang-chatbot">
+                  <Sparkles className="w-4 h-4" /> Rancang Chatbot Saya
+                </Button>
+                <Button onClick={handleRakitTim} variant="outline" className="w-full border-violet-400/40 text-violet-200 hover:bg-violet-500/10 gap-2 font-semibold" data-testid="button-blueprint-rakit-tim">
                   <Sparkles className="w-4 h-4" /> Kembangkan Jadi Tim AI
                 </Button>
                 <Button onClick={shareWA} className="w-full bg-green-600 hover:bg-green-700 text-white gap-2 font-semibold" data-testid="button-blueprint-share-wa">

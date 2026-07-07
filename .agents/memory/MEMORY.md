@@ -47,4 +47,5 @@
 - [Access-code voucher system](access-code-voucher.md) — self-redeem code → active subscription grant; redeem must NEVER touch users.isActive (bypass); atomic txn, quota-locked, unique-conflict→"already".
 - [Brevo attachment format](brevo-attachment-format.md) — Brevo 400s on .gz/.sql attachments; email DB backups must be .zip (build via jszip, no zip binary here); .gz ok only for on-demand download.
 - [Claw agent model & durability](claw-agent-model.md) — claw answers driven by model tier not KB; dev upgrade never reaches prod (separate DB, seeds skip existing); durable fix = boot-time idempotent UPDATE in index.ts after seeds, effective only after redeploy.
+- [drizzle-kit push blocked](drizzle-push-blocked.md) — push hangs on interactive access_codes unique-constraint drift prompt; add NEW tables via direct executeSql DDL, keep schema.ts in sync separately.
 - [createAgent 2nd-arg polymorphism](create-agent-arg2.md) — arg2 is Executor OR legacy userId string; string accepted only to avoid crash, NEVER persisted as owner; ownership only from insertAgent.userId else "" (else Store misclassifies seeds as creator products).

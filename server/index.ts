@@ -1448,6 +1448,14 @@ Data yang belum tersedia akan saya estimasi dengan standar industri dan ditandai
         log("[Seed Tender Sources] Error: " + (err as Error).message);
       }
 
+      // Seed: Kode akses event Indobuildtech (hadir/online, label berbeda)
+      try {
+        const { seedEventAccessCodes } = await import("./seed-event-access-codes");
+        await seedEventAccessCodes();
+      } catch (err) {
+        log("[Seed Event Access Codes] Error: " + (err as Error).message);
+      }
+
       // Seed: SIRUP + 80+ LPSE Kabupaten/Kota (UKM focus)
       try {
         const { seedKabKotaSources } = M_kabKotaSources;

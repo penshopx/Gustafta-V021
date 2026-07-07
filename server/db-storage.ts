@@ -15,6 +15,7 @@ import {
   subscriptionsTable,
   accessCodes,
   accessCodeRedemptions,
+  eventTestimonials,
   ownerMonthlyUsageTable,
   userProfiles,
   projectBrainTemplates,
@@ -2535,6 +2536,81 @@ export class DatabaseStorage implements IStorage {
       }
       throw err;
     });
+  }
+
+  // ─── Event Testimonials (Jalur Bonus) ────────────────────────────────────
+  /**
+   * Turunkan asal peserta (hadir/online) dari label kode akses yang pernah
+   * ditukarkan user. Cocokkan kata kunci pada label; default "lainnya".
+   */
+  async getUserEventSource(userId: string): Promise<"hadir" | "online" | "lainnya"> {
+    if (!userId) return "lainnya";
+    const rows = await db
+      .select({ label: accessCodes.label })
+      .from(accessCodeRedemptions)
+      .innerJoin(accessCodes, eq(accessCodes.id, accessCodeRedemptions.codeId))
+      .where(eq(accessCodeRedemptions.userId, userId));
+    const labels = rows.map((r) => String(r.label || "").toLowerCase());
+    if (labels.some((l) => /hadir|offline|onsite|luring/.test(l))) return "hadir";
+    if (labels.some((l) => /online|daring|webinar|virtual/.test(l))) return "online";
+    return "lainnya";
+  }
+
+  /**
+   * Simpan/perbarui testimoni user (1 per user — upsert by user_id).
+   * source diturunkan di server, moderasi (approved/featured) tetap default.
+   */
+  async upsertEventTestimonial(data: {
+    userId: string; name: string; role?: string; rating?: number;
+    quote: string; agentId?: number | null; source: string;
+  }): Promise<typeof eventTestimonials.$inferSelect> {
+    const rating = Math.max(1, Math.min(5, Math.round(Number(data.rating) || 5)));
+    const [row] = await db.insert(eventTestimonials).values({
+      userId: data.userId,
+      name: data.name.slice(0, 200),
+      role: (data.role ?? "").slice(0, 200),
+      rating,
+      quote: data.quote.slice(0, 2000),
+      agentId: data.agentId ?? null,
+      source: data.source,
+    }).onConflictDoUpdate({
+      target: eventTestimonials.userId,
+      set: {
+        name: data.name.slice(0, 200),
+        role: (data.role ?? "").slice(0, 200),
+        rating,
+        quote: data.quote.slice(0, 2000),
+        agentId: data.agentId ?? null,
+        source: data.source,
+      },
+    }).returning();
+    return row;
+  }
+
+  async getEventTestimonialByUser(userId: string): Promise<typeof eventTestimonials.$inferSelect | undefined> {
+    const [row] = await db.select().from(eventTestimonials)
+      .where(eq(eventTestimonials.userId, userId)).limit(1);
+    return row;
+  }
+
+  async listEventTestimonials(): Promise<Array<typeof eventTestimonials.$inferSelect>> {
+    return await db.select().from(eventTestimonials).orderBy(desc(eventTestimonials.createdAt));
+  }
+
+  /** Testimoni publik: hanya yang disetujui admin (approved). featured di depan. */
+  async listPublicEventTestimonials(limit = 12): Promise<Array<typeof eventTestimonials.$inferSelect>> {
+    return await db.select().from(eventTestimonials)
+      .where(eq(eventTestimonials.approved, true))
+      .orderBy(desc(eventTestimonials.featured), desc(eventTestimonials.createdAt))
+      .limit(Math.max(1, Math.min(100, limit)));
+  }
+
+  async setEventTestimonialFlags(id: number, flags: { featured?: boolean; approved?: boolean }): Promise<void> {
+    const patch: Record<string, boolean> = {};
+    if (typeof flags.featured === "boolean") patch.featured = flags.featured;
+    if (typeof flags.approved === "boolean") patch.approved = flags.approved;
+    if (Object.keys(patch).length === 0) return;
+    await db.update(eventTestimonials).set(patch).where(eq(eventTestimonials.id, id));
   }
 
   // ─── Lisensi Seat Asosiasi (Model B) ─────────────────────────────────────
