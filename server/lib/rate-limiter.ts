@@ -76,22 +76,34 @@ const retryAfterHandler = (
   });
 };
 
+/**
+ * Batas per-menit efektif untuk sebuah request chat.
+ * Admin → 0 (di-skip terpisah). User login dapat kuota lebih besar dari anonim,
+ * dan mode event menaikkan keduanya. Diekspor agar bisa diuji regresi langsung.
+ */
+export function chatRateLimitValue(req: Request, now: Date = new Date()): number {
+  if (isAdminUser(req)) return 0;
+  const event = isEventMode(now);
+  if (isAuthenticatedUser(req)) return event ? AUTH_LIMIT_EVENT : AUTH_LIMIT_NORMAL;
+  return event ? ANON_LIMIT_EVENT : ANON_LIMIT_NORMAL;
+}
+
+/**
+ * Kunci bucket rate-limit untuk sebuah request chat.
+ * User login dikunci per-AKUN (`user:<id>`) — BUKAN per-IP: di venue acara
+ * ratusan peserta berbagi satu IP WiFi, jadi keying per-IP membuat mereka
+ * saling mengunci. Anonim tetap dibatasi per-IP. Diekspor untuk uji regresi.
+ */
+export function chatRateLimitKey(req: Request): string {
+  const userId = getUserId(req);
+  if (isAuthenticatedUser(req) && userId) return `user:${userId}`;
+  return ipKeyGenerator(req.ip ?? "");
+}
+
 export const chatIpRateLimiter = rateLimit({
   windowMs: 60 * 1000,
-  limit: (req: Request) => {
-    if (isAdminUser(req)) return 0;
-    const event = isEventMode();
-    if (isAuthenticatedUser(req)) return event ? AUTH_LIMIT_EVENT : AUTH_LIMIT_NORMAL;
-    return event ? ANON_LIMIT_EVENT : ANON_LIMIT_NORMAL;
-  },
-  // Kunci per-AKUN untuk user login (bukan per-IP): di venue acara ratusan peserta
-  // berbagi satu IP WiFi — keying per-IP membuat mereka saling mengunci. Anonim
-  // tetap dibatasi per-IP.
-  keyGenerator: (req: Request) => {
-    const userId = getUserId(req);
-    if (isAuthenticatedUser(req) && userId) return `user:${userId}`;
-    return ipKeyGenerator(req.ip ?? "");
-  },
+  limit: (req: Request) => chatRateLimitValue(req),
+  keyGenerator: (req: Request) => chatRateLimitKey(req),
   skip: (req: Request) => isAdminUser(req),
   standardHeaders: "draft-7",
   legacyHeaders: false,
