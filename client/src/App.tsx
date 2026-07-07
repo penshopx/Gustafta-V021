@@ -1607,15 +1607,78 @@ function Router() {
         <Route path="/checker-skk-proyek" component={CheckerSKKProyek} />
         <Route path="/panduan-apl01" component={PanduanAPL01} />
         <Route path="/biaya-tim-skk" component={BiayaTimSKK} />
-        <Route path="/tenderbot" component={TenderBotPage} />
-        <Route path="/sertifikasibot" component={SertifikasiBotPage} />
-        <Route path="/proyekbot" component={ProyekBotPage} />
-        <Route path="/perijinanbot" component={PerijinanBotPage} />
-        <Route path="/kontraktorbot" component={KontraktorBotPage} />
-        <Route path="/konsultanbot" component={KonsultanBotPage} />
-        <Route path="/ownerbot" component={OwnerBotPage} />
-        <Route path="/boheerbot" component={BoheerBotPage} />
-        <Route path="/supplierbot" component={SupplierBotPage} />
+        <Route path="/tenderbot" component={() => (
+          <PremiumPageGuard
+            feature="advanced_ai_tools" requiredPlan="profesional"
+            title="TenderBot — AI Pengadaan"
+            description="Asisten AI multi-agen untuk analisis tender, kesiapan dokumen, dan strategi penawaran konstruksi."
+            icon={<HardHat className="h-12 w-12 text-amber-500" />}
+          ><TenderBotPage /></PremiumPageGuard>
+        )} />
+        <Route path="/sertifikasibot" component={() => (
+          <PremiumPageGuard
+            feature="advanced_ai_tools" requiredPlan="profesional"
+            title="SertifikasiBot — AI SBU & SKK"
+            description="Asisten AI untuk sertifikasi badan usaha (SBU), sertifikat kompetensi kerja (SKK), dan persyaratan konstruksi."
+            icon={<Award className="h-12 w-12 text-amber-500" />}
+          ><SertifikasiBotPage /></PremiumPageGuard>
+        )} />
+        <Route path="/proyekbot" component={() => (
+          <PremiumPageGuard
+            feature="advanced_ai_tools" requiredPlan="profesional"
+            title="ProyekBot — AI Manajemen Proyek"
+            description="Asisten AI multi-agen untuk perencanaan, pengendalian, dan pelaporan proyek konstruksi."
+            icon={<HardHat className="h-12 w-12 text-indigo-500" />}
+          ><ProyekBotPage /></PremiumPageGuard>
+        )} />
+        <Route path="/perijinanbot" component={() => (
+          <PremiumPageGuard
+            feature="advanced_ai_tools" requiredPlan="profesional"
+            title="PerijinanBot — AI OSS-RBA & Perizinan"
+            description="8 agen spesialis OSS-RBA, NIB, IUJK, PBG, SLF, AMDAL, dan KBLI untuk perizinan berusaha konstruksi."
+            icon={<Landmark className="h-12 w-12 text-emerald-500" />}
+          ><PerijinanBotPage /></PremiumPageGuard>
+        )} />
+        <Route path="/kontraktorbot" component={() => (
+          <PremiumPageGuard
+            feature="advanced_ai_tools" requiredPlan="profesional"
+            title="KontraktorBot — AI Kontraktor"
+            description="Asisten AI multi-agen untuk kebutuhan kontraktor konstruksi: teknis, administrasi, dan operasional lapangan."
+            icon={<Wrench className="h-12 w-12 text-amber-500" />}
+          ><KontraktorBotPage /></PremiumPageGuard>
+        )} />
+        <Route path="/konsultanbot" component={() => (
+          <PremiumPageGuard
+            feature="advanced_ai_tools" requiredPlan="profesional"
+            title="KonsultanBot — AI Konsultan"
+            description="Asisten AI multi-agen untuk konsultan perencana dan pengawas konstruksi."
+            icon={<Users className="h-12 w-12 text-blue-500" />}
+          ><KonsultanBotPage /></PremiumPageGuard>
+        )} />
+        <Route path="/ownerbot" component={() => (
+          <PremiumPageGuard
+            feature="advanced_ai_tools" requiredPlan="profesional"
+            title="OwnerBot — AI Pemilik Proyek"
+            description="Asisten AI multi-agen untuk pemilik proyek: kontrol biaya, mutu, waktu, dan kepatuhan konstruksi."
+            icon={<Building2 className="h-12 w-12 text-indigo-500" />}
+          ><OwnerBotPage /></PremiumPageGuard>
+        )} />
+        <Route path="/boheerbot" component={() => (
+          <PremiumPageGuard
+            feature="advanced_ai_tools" requiredPlan="profesional"
+            title="BoheerBot — AI Bouwheer"
+            description="Asisten AI multi-agen untuk bouwheer/pemberi tugas: pengendalian proyek dan pengambilan keputusan konstruksi."
+            icon={<Building2 className="h-12 w-12 text-emerald-500" />}
+          ><BoheerBotPage /></PremiumPageGuard>
+        )} />
+        <Route path="/supplierbot" component={() => (
+          <PremiumPageGuard
+            feature="advanced_ai_tools" requiredPlan="profesional"
+            title="SupplierBot — AI Supplier Konstruksi"
+            description="Asisten AI multi-agen untuk supplier & pengadaan material konstruksi: penawaran, spesifikasi, dan logistik."
+            icon={<Wrench className="h-12 w-12 text-blue-500" />}
+          ><SupplierBotPage /></PremiumPageGuard>
+        )} />
         <Route path="/generator-sop-pekerjaan" component={GeneratorSOPPekerjaan} />
         <Route path="/panduan-limbah-konstruksi" component={PanduanLimbahKonstruksi} />
         <Route path="/generator-laporan-kemajuan" component={GeneratorLaporanKemajuan} />

@@ -187,7 +187,7 @@ function ChatTab({ agentId }: { agentId: number }) {
                   <div className="bg-slate-800/60 border border-slate-700/40 rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-slate-200">
                     {m.isStreaming && !m.content
                       ? <div className="flex items-center gap-2 text-slate-500"><Loader2 className="w-3.5 h-3.5 animate-spin"/><span className="text-xs">Menganalisis harga & supply chain...</span></div>
-                      : <MessageContent content={m.content}/>}
+                      : <MessageContent text={m.content}/>}
                     {m.isStreaming && m.content && <span className="inline-block w-1.5 h-4 bg-teal-400 animate-pulse ml-0.5 align-middle"/>}
                   </div>
                   {m.subAgents && m.subAgents.length > 0 && <SubAgentPanel agents={m.subAgents}/>}
