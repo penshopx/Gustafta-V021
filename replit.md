@@ -5,100 +5,105 @@ Gustafta is an AI chatbot builder platform that enables users to create, configu
 - **Run Development Server**: `npm run dev`
 - **Build**: `npm run build`
 - **Typecheck**: `npm run check`
-- **Run Tests**: `npx tsx --test tests/*.test.ts` (Node built-in `node:test`; tidak ada script `npm test`). Mis. regresi authz: `npx tsx --test tests/agent-authz-guard.test.ts`
-- **Codegen (Drizzle)**: `npx drizzle-kit generate`
-- **DB Push (Drizzle)**: `npx drizzle-kit push`
-- **Environment Variables**: `MIDTRANS_SERVER_KEY`, `MIDTRANS_CLIENT_KEY` (for Midtrans payment integration)
+- **Run Tests**: `npx tsx --test tests/*.test.ts` (Node built-in `node:test`; tidak ada script `npm test`). Contoh regresi authz: `npx tsx --test tests/agent-authz-guard.test.ts`
+- **Codegen (Drizzle)**: `npx drizzle-kit generate` · **DB Push**: `npx drizzle-kit push`
+- **Environment Variables**: `MIDTRANS_SERVER_KEY`, `MIDTRANS_CLIENT_KEY` (Midtrans, legacy)
 
 ## Stack
-- **Frontend**: React 18 + TypeScript, Tailwind CSS, shadcn/ui, TanStack React Query, Vite
+- **Frontend**: React 18 + TypeScript, Tailwind CSS, shadcn/ui, TanStack React Query, Vite, wouter
 - **Backend**: Express 5 + TypeScript, Node.js (`tsx`), Drizzle ORM + Zod, PostgreSQL
 - **Payment**: Scalev.id (menggantikan Midtrans)
-- **AI Models**: OpenAI (gpt-4o-mini/gpt-4o/gpt-4-turbo/gpt-3.5-turbo), DeepSeek (deepseek-chat/deepseek-reasoner), Qwen (qwen-turbo/qwen-plus/qwen-max), Google Gemini (gemini-1.5-flash/gemini-1.5-pro/gemini-2.0-flash), Anthropic via proxy (claude-3-haiku/claude-3-sonnet/claude-3-5-sonnet), Custom
+- **AI Models**: OpenAI (gpt-4o-mini/gpt-4o/gpt-4-turbo/gpt-3.5-turbo), DeepSeek, Qwen, Google Gemini, Anthropic via proxy (claude-3-*), Custom
+
+## Build & Deploy gotcha
+- Build = `npx tsx script/build.ts` (vite client + esbuild server → `dist/index.cjs`, format cjs, minify). Start prod = `node dist/index.cjs`.
+- **Dependensi ESM-murni (`"type":"module"`) yang di-import server WAJIB masuk `allowlist` di `script/build.ts`** agar di-inline esbuild. Kalau di-externalize, `require(ESM)` di bundle CJS produksi crash saat boot (`(0,x.default) is not a function`). Dev (tsx) tidak menunjukkan bug ini. Detail: `.agents/memory/esm-dep-prod-bundle-allowlist.md`.
 
 ## Where things live
-- **Database Schema**: `shared/schema.ts` (source of truth; `db/schema.ts` is symlinked)
-- **API Routes**: `server/routes.ts`
-- **Inter-Agent API v2**: `server/routes.ts` ~line 2806 (orchestration block), ~line 3926 (`callAgentInternal` v2)
-- **Legal AI Configuration**: `server/lib/legal-agents.ts`
-- **Legal Landing/Chat**: `client/src/pages/legal-landing.tsx` (route `/legal`), `client/src/pages/legal-chat.tsx` (route `/legal/chat`)
-- **Chaesa Lexbot Widget**: `client/src/components/chaesa-widget.tsx`
-- **MultiClaw Orchestration Planner**: `client/src/components/agentic-ai-panel.tsx`
-- **Rakit Tim Agen (Trilogi)**: `client/src/pages/tutor-builder.tsx` (route `/tutor-builder`)
-- **Trilogi OpenClaw Chat**: `client/src/pages/trilogi-chat.tsx` (route `/trilogi-chat/:orchestratorId`)
-- **Test Tracker**: `client/src/pages/test-tracker.tsx` (route `/test-tracker`) — 6 tab: Tender + Federation + Pilot + KONSTRA + AI Tutor + SBUClaw
-- **RAB Kalkulator Otomatis**: `client/src/pages/rab-kalkulator.tsx` (route `/rab-kalkulator`) — GPT-4o JSON → tabel terstruktur + CSV export + PDF export (jsPDF). Backend: `POST /api/tools/rab-kalkulator`.
-- **AI Vision K3 Inspector**: `client/src/pages/k3-vision.tsx` (route `/k3-vision`) — upload foto → GPT-4o Vision → laporan temuan K3 + skor kepatuhan. Backend: `POST /api/tools/k3-vision`.
-- **Generator Penawaran/Proposal Jasa**: `client/src/pages/proposal-jasa.tsx` (route `/proposal-jasa`) — form kebutuhan calon klien Jasa Order → GPT-4o JSON → draf proposal terstruktur (ringkasan, solusi, lingkup, tim agen, tahapan, estimasi setup+bulanan, syarat, asumsi, penutup) + salin/unduh .txt. Backend: `POST /api/tools/proposal-jasa` (public tool, grounded via `buildSalesPlaybookDoc`+`buildGustaftaFoundationDoc` + harga kanonik SERVICE_TIERS/HOSTING; honest [ASUMSI], ◆ gerbang manusia). On-demand (per klien), BUKAN pipeline harian. **Claw-aware (Fase F)**: prompt di-ground dengan `formatClawCatalogForPrompt()` (dari `CLAW_PACKAGES`) → bila kebutuhan klien cocok, output field `claw_rekomendasi` menawarkan PAKET claw sebagai "manajemen AI siap pakai" (departemen). Nama divalidasi ke katalog via `resolveClawPackageName()` (cegah claw ngarang), wajib sebut biaya lisensi premium+bulanan tersendiri. Tetap sertakan `tim_agen` custom. Tes: `tests/claw-packages.test.ts`.
-- **MarketIntelligenceClaw (SELLABLE Premium)**: `client/src/pages/market-intelligence-claw.tsx` (route `/market-intelligence-claw`) — war-room riset pasar & intelijen marketing. Orkestrator gpt-4o (slug `market-intelligence-claw-orchestrator`) + 8 divisi paralel dibagi per FUNGSI (bukan platform): kompetitor/audiens/tren/angle/hook/offer/kanal/funnel (`server/seed-market-intelligence-claw.ts`). Ubah 1 subjek (profesi/usaha/konten/produk) → laporan intelijen + amunisi iklan siap pakai + aksi 7 hari. **HYBRID**: native claw (paket marketing-digital) DAN produk Premium siap jual di Store TANPA setup pembeli — orkestrator di-stamp `isPublic/isListed/isActive`, `premiumClass:private`, `licenseClass:2` (K2 Rp2,5jt), `monthlyPrice:199rb`, `category:Marketing`; penjualan via jalur clone-per-pembeli (premium-private) + webhook Scalev, salinan mereferensikan divisi bersama (`callAgentInternal` tanpa cek owner) = zero setup. Endpoint: `GET /api/market-intelligence-claw/orchestrator`. **Catatan seed**: `createAgent` mengabaikan `isListed`/`premiumClass` & memetakan `aiModel` (bukan `model`) — seed pakai `aiModel` + `updateAgent` pasca-create, dan REKONSILIASI field Store bila orkestrator sudah ada (bukan early-return).
-- **AI Tools Hub**: `client/src/pages/ai-tools-hub.tsx` (route `/ai-tools`) — directory semua AI tools standalone + penjelasan Model Router.
-- **Model Router**: `server/lib/model-router.ts` — utility `chooseModel(task)` + `callWithRouter()` untuk intelligent LLM routing: GPT-4o (orchestration/vision), DeepSeek (math/RAB), Gemini (large docs), Qwen (data extraction).
-- **Pipeline Marketing Gustafta**: `server/lib/research-feed.ts` → `runResearchSweep()` (dijadwalkan harian 06:30 WIB di `server/index.ts`). 4 tahap berurutan fire-and-forget: (1) RISET feed → (2) MATERI IKLAN per platform (`generateDailyAdMaterials`, agen `mkt-materi-iklan` id 1522) → (3) SEQUENCE RETENSI email/WA (`generateDailyRetentionSequence`, agen `mkt-retensi-sequence` id 1553; grounded via `buildGustaftaFoundationDoc`/KB `Fondasi Gustafta` = visi+Trilogi+produk/jasa) → (4) AMUNISI JUALAN (`generateDailyClosingKit`, agen `mkt-closing-asisten` id 1564: keberatan+jawaban, skrip closing WA, follow-up prospek; grounded via `buildSalesPlaybookDoc`/KB `Fondasi Penjualan` + Fondasi Gustafta; agen juga chatbot bantu jualan RAG). Orkestrator: Kepala Tim Marketing (id 1511, 7 sub: KONTEN/MEDSOS/IKLAN/MATERI_IKLAN/RISET/RETENSI/CLOSING). Semua draf, ◆ gerbang manusia. Detail: `docs/marketing-pipeline.md`.
-- **Halaman Event Indobuildtech 2026**: `client/src/pages/indobuildtech.tsx` (route `/indobuildtech`, publik) — landing co-branded ASDAMKINDO × Gustafta untuk soft-launch di seminar (bonus acara). CTA "Coba Blueprint Agen AI" → `/blueprint-builder?preset=konstruksi`; link ke `/paket-konstruksi`; link "Punya kode peserta? Mulai Jalur Bonus" → `/bonus-indobuildtech`.
-- **Jalur Bonus Peserta (unified journey)**: `client/src/pages/bonus-indobuildtech.tsx` (route `/bonus-indobuildtech`, publik/auth-aware) — stepper 4 langkah berurutan bertema acara: (1) aktifkan kode akses → status dari `GET /api/subscriptions/my` (`status==="active"`); (2) coba Dialog Gustafta; (3) rancang + unduh **Blueprint Profesional (PDF)** lalu buat chatbot; (4) chatbot jadi → isi testimoni via `POST /api/testimonials`. Progres langkah 2/3 disimpan di localStorage `gustafta_bonus_journey_v1` (penanda UX; langkah 1 & 4 diverifikasi server). Handoff Dialog→Blueprint: `handleRancangChatbot()` di `dialog-gustafta.tsx` menulis `gustafta_blueprint_prefill_v1={intent}`, menandai `step2Dialog`, navigasi `/blueprint-builder?journey=bonus`. `blueprint-builder.tsx`: baca prefill saat mount (menang atas `?preset=konstruksi`), `downloadBlueprintProfesional()` (jspdf) gabung Profil Penguasaan + spek chatbot, tulis `step3AgentId/Name` saat `confirmCreate` sukses, CTA "Kembali ke Jalur Bonus" di done-step.
-- **Testimoni Event**: tabel `event_testimonials` (`shared/schema.ts`; `user_id` unique, name/role/rating/quote/agentId/`source`(hadir|online|lainnya)/featured/approved). `source` diturunkan server dari label kode akses via `getUserEventSource`. Route: `POST /api/testimonials` (isAuthenticated; upsert per user; `agentId` hanya dilampirkan bila agen milik user — cegah IDOR), `GET /api/testimonials/mine`, `GET /api/testimonials/featured` (publik, redaksi), admin `GET /api/admin/testimonials`, `GET /api/admin/testimonials/export.csv` (sanitasi formula-injection), `PATCH /api/admin/testimonials/:id`.
-- **Blueprint Reflektif Konstruksi (preset)**: di `blueprint-builder.tsx`, query param `?preset=konstruksi` mengisi awal intent (bisa diedit) untuk tenaga ahli konstruksi + badge "Blueprint Reflektif Konstruksi". Hanya pre-fill, tidak auto-start.
-- **Paket Konstruksi (kurasi claw)**: `client/src/pages/paket-konstruksi.tsx` (route `/paket-konstruksi`, publik) — kurasi claw konstruksi (4 grup: Kompetensi/Tender/Teknis/K3), semua tautan ke rute nyata (skk-coach, sbu-claw, tendera-claw, konstra-tender-claw, geoteknik-claw, bs-claw, bg-claw, safira-claw, smk3-claw).
-- **Sistem Kode Akses (voucher peserta)**: tabel `access_codes` + `access_code_redemptions` (unique index `(code_id,user_id)`). Peserta: `client/src/pages/kode-akses.tsx` (route `/kode-akses`, auth) → `POST /api/access-codes/redeem` (isAuthenticated). Admin: `client/src/pages/admin-access-codes.tsx` (route `/admin/access-codes`, role admin) → `GET/POST /api/admin/access-codes`, `PATCH /api/admin/access-codes/:id`. Logika redeem ATOMIK di `db-storage.ts` `redeemAccessCode()` (kuota terkunci `redemption_count < max_redemptions`, expire langganan aktif lama → 1 grant baru, `grantedBy`=pembuat kode, race unique-conflict → `already`). TIDAK menyentuh `users.isActive`. Kode event ter-seed (idempotent via `server/seed-event-access-codes.ts`, wired di boot `server/index.ts`): `INDOBUILDTECH-HADIR` (label "…Hadir (Offline)", 90 hari, 500 kuota) + `INDOBUILDTECH-ONLINE` (label "…Online", 90 hari, 2000 kuota) — label memuat "Hadir"/"Online" agar `getUserEventSource` bisa menurunkan sumber testimoni. Kode lama `INDOBUILDTECH2026` masih ada (manual, source→lainnya).
-- **Blueprint Engine (Tahap 1–10)**: engine pure di `server/services/blueprint-engine/*` (Dialogue/Inference/Confidence/Gap/Critic/Simulation/Evolution + Mapping/Configuration), skema di `shared/blueprint/blueprint-schema.ts`. API wiring (Tahap 10): `server/blueprint-engine-routes.ts` → `POST /api/blueprint/{start,answer,state,analyze,configure}` (stateless, `isAuthenticated`). `/configure` = satu-satunya jalur tulis, **safe-by-default `dryRun`** (tulis hanya bila `dryRun:false` eksplisit); mode `update` wajib pemilik/admin. UI Wizard (Tahap 11): `client/src/pages/blueprint-builder.tsx` (route `/blueprint-builder`, auth-gated) — alur intro/intent → dialog (render `dialogue.nextQuestions` per `inputType`) → analisis (scorecard confidence/gap/critique/simulation) → configure (preview `dryRun:true` lalu create `dryRun:false`). Terpisah dari `dialog-gustafta.tsx` (lead-gen publik). Pintu masuk (Tahap 12): kartu "Rancang Agen" di Aksi Cepat `dashboard.tsx` + CTA sekunder di hero & CTA final `/blueprint` (tombol dialog lama tak diubah). Builder Handoff (Tahap 13): `/configure` mode `create` men-stamp `ownerUserId` (sesi) ke agen baru lewat `ConfigurationOptions.ownerUserId` → agen muncul di dashboard pemilik & bisa di-`update`; tombol "Buka di Builder" di wizard meng-aktivasi agen lalu navigasi ke `/dashboard`. Roadmap: `docs/blueprint-engine/00-roadmap.md`.
+Peta ringkas (rute → file → fungsi + endpoint utama). Detail mendalam ada di `docs/` dan `.agents/memory/` yang dirujuk tiap entri.
+
+**Inti**
+- **DB Schema**: `shared/schema.ts` (source of truth; `db/schema.ts` symlink)
+- **API Routes**: `server/routes.ts` — Inter-Agent orchestration block ~line 2806, `callAgentInternal` v2 ~line 3926
+- **Model Router**: `server/lib/model-router.ts` — `chooseModel(task)`/`callWithRouter()` (GPT-4o orchestration/vision, DeepSeek math/RAB, Gemini large docs, Qwen extraction)
+
+**Legal (LexCom)**
+- Config `server/lib/legal-agents.ts`; landing `legal-landing.tsx` (`/legal`), chat `legal-chat.tsx` (`/legal/chat`); widget `chaesa-widget.tsx`
+
+**Builder & Blueprint**
+- **Rakit Tim Agen (Trilogi)**: `tutor-builder.tsx` (`/tutor-builder`); chat `trilogi-chat.tsx` (`/trilogi-chat/:orchestratorId`)
+- **Blueprint Engine**: engine `server/services/blueprint-engine/*`, skema `shared/blueprint/blueprint-schema.ts`, API `server/blueprint-engine-routes.ts` → `POST /api/blueprint/{start,answer,state,analyze,configure}` (stateless, `isAuthenticated`). `/configure` = satu-satunya jalur tulis, **safe-by-default `dryRun`** (tulis hanya bila `dryRun:false`); `create` men-stamp `ownerUserId`, `update` wajib pemilik/admin. UI `blueprint-builder.tsx` (`/blueprint-builder`). Detail: `docs/blueprint-engine/00-roadmap.md`, `.agents/memory/blueprint-engine-api.md`.
+- **MultiClaw Planner**: `agentic-ai-panel.tsx`
+
+**AI Tools standalone** (directory: `ai-tools-hub.tsx` `/ai-tools`)
+- RAB Kalkulator: `rab-kalkulator.tsx` (`/rab-kalkulator`) → `POST /api/tools/rab-kalkulator`
+- K3 Vision: `k3-vision.tsx` (`/k3-vision`) → `POST /api/tools/k3-vision` (GPT-4o Vision)
+- Proposal Jasa: `proposal-jasa.tsx` (`/proposal-jasa`) → `POST /api/tools/proposal-jasa` (public, on-demand). Grounded via `buildSalesPlaybookDoc`+`buildGustaftaFoundationDoc` + harga kanonik; claw-aware (field `claw_rekomendasi` divalidasi ke katalog via `resolveClawPackageName()`). Tes: `tests/claw-packages.test.ts`.
+
+**Marketing**
+- **Pipeline harian**: `server/lib/research-feed.ts` → `runResearchSweep()` (terjadwal 06:30 WIB di `server/index.ts`). 4 tahap fire-and-forget: RISET → MATERI IKLAN → SEQUENCE RETENSI → AMUNISI JUALAN. Orkestrator "Kepala Tim Marketing". Semua draf, ◆ gerbang manusia. Detail: `docs/marketing-pipeline.md`.
+- **MarketIntelligenceClaw (Sellable Premium)**: `market-intelligence-claw.tsx` (`/market-intelligence-claw`) → `GET /api/market-intelligence-claw/orchestrator`. Orkestrator gpt-4o (slug `market-intelligence-claw-orchestrator`) + 8 divisi paralel per fungsi (`server/seed-market-intelligence-claw.ts`). Hybrid: native claw + produk Premium siap jual (clone-per-pembeli, zero setup). **Seed gotcha**: `createAgent` mengabaikan `isListed`/`premiumClass` & pakai `aiModel` (bukan `model`) → seed pakai `aiModel` + `updateAgent` pasca-create, REKONSILIASI (bukan early-return). Detail: `.agents/memory/sellable-claw-seed.md`.
+
+**Event Indobuildtech 2026**
+- Landing `indobuildtech.tsx` (`/indobuildtech`, publik, co-branded ASDAMKINDO)
+- **Jalur Bonus**: `bonus-indobuildtech.tsx` (`/bonus-indobuildtech`) — stepper 4 langkah (aktif kode akses → Dialog → Blueprint PDF + buat chatbot → testimoni). Progres UX di localStorage `gustafta_bonus_journey_v1` (langkah 1 & 4 diverifikasi server). Handoff Dialog→Blueprint via localStorage `gustafta_blueprint_prefill_v1`.
+- **Testimoni**: tabel `event_testimonials` (`user_id` unique; `source` diturunkan server via `getUserEventSource`). Routes `POST /api/testimonials` (upsert, agentId hanya bila agen milik user — cegah IDOR), `GET /api/testimonials/{mine,featured}`, admin `GET/PATCH /api/admin/testimonials` + `export.csv` (sanitasi formula-injection).
+- **Kode Akses (voucher)**: tabel `access_codes` + `access_code_redemptions` (unique `(code_id,user_id)`). Peserta `kode-akses.tsx` (`/kode-akses`) → `POST /api/access-codes/redeem`; admin `admin-access-codes.tsx` (`/admin/access-codes`). Redeem ATOMIK di `db-storage.ts` `redeemAccessCode()`, **TIDAK menyentuh `users.isActive`**. Kode ter-seed idempotent (`server/seed-event-access-codes.ts`): `INDOBUILDTECH-HADIR`/`INDOBUILDTECH-ONLINE`. Detail: `.agents/memory/access-code-voucher.md`.
+- **Paket/Preset Konstruksi**: `paket-konstruksi.tsx` (`/paket-konstruksi`, kurasi claw); preset `?preset=konstruksi` di blueprint-builder (pre-fill saja).
+
+**Tracker**: `test-tracker.tsx` (`/test-tracker`) — 6 tab (Tender/Federation/Pilot/KONSTRA/AI Tutor/SBUClaw)
 
 ## Architecture decisions
-- **5-Level Modular Hierarchy**: Agents organized Master → Series HUB → Sub-HUB → Specialist → Deep Specialist.
-- **Two-Panel Dashboard Layout**: Separates global navigation from selected content.
-- **Multi-Provider LLM Fallback**: Chain: OpenAI → DeepSeek → Qwen → Gemini.
-- **Inter-Agent API v2 (L2.5)**: Orchestrator agents call sub-agents in parallel via `callAgentInternal()` (25s AbortController timeout, min 1500 maxTokens, conversation history passed). Results injected as `LAPORAN SUB-AGEN` block before orchestrator synthesizes. SSE events: `orchestrating_start`, `sub_agent_start`, `sub_agent_done`, `aggregating`. Config via `agenticSubAgents` jsonb on agents table.
-- **FEDERATION_MODE v2 Guard**: Seed checks for `FEDERATION_MODE v2` marker in prompts to avoid overwriting upgraded orchestrator prompts.
+- **5-Level Modular Hierarchy**: Master → Series HUB → Sub-HUB → Specialist → Deep Specialist.
+- **Two-Panel Dashboard Layout**: navigasi global terpisah dari konten terpilih.
+- **Multi-Provider LLM Fallback**: OpenAI → DeepSeek → Qwen → Gemini.
+- **Inter-Agent API v2 (L2.5)**: orkestrator memanggil sub-agen paralel via `callAgentInternal()` (timeout 25s, min 1500 maxTokens, history diteruskan). Hasil di-inject sebagai `LAPORAN SUB-AGEN`. SSE: `orchestrating_start`/`sub_agent_start`/`sub_agent_done`/`aggregating`. Config di jsonb `agenticSubAgents`.
+- **FEDERATION_MODE v2 Guard**: seed cek marker `FEDERATION_MODE v2` agar tak menimpa prompt orkestrator yang sudah di-upgrade.
 
 ## Product
-- **Kerangka Produk (acuan resmi — 3 sumbu terpisah, jangan dicampur)**:
-  1. **Cara dapat chatbot (3 jalur) + program Creator**: (a) **Chatbot Biasa** (kosongan, user merakit) = lisensi standar + bulanan · (b) **Chatbot Premium** (siap pakai, dibuat Gustafta/Creator) = lisensi premium (lebih tinggi) + bulanan · (c) **Jasa Order** (custom, belum ada di katalog, Gustafta merakit) = biaya setup sekali (termasuk lisensi) + bulanan. **Biaya bulanan (hosting + token) dikenakan ke SEMUA produk** (biasa & premium) dan mengikuti 4 tier platform; 100% ke Gustafta. **Beda chatbot biasa vs premium HANYA di biaya lisensi** (premium tidak dirakit sendiri). **Program Creator (marketplace)**: Creator menjual chatbot premium di toko Gustafta — bagi hasil **80% Creator / 20% Gustafta dihitung dari biaya LISENSI saja** (bulanan tetap 100% ke Gustafta). **Semua pengguna wajib punya lisensi (hak pakai)**; di jalur Jasa lisensi tidak ditagih terpisah. Konstanta: `MARKETPLACE`/`MARKETPLACE_INFO` di `pricing.ts`.
-  2. **Tier langganan platform (4)**: Starter → Profesional → Bisnis → Enterprise. Naik tier = naik kuota + tambah chatbot premium + tambah Mini Apps. Angka di `client/src/data/pricing.ts`, gating di `shared/feature-plans.ts`.
-  3. **Starter Kit = produk onboarding sekali bayar (Rp 245rb), BUKAN tier** (lisensi + panduan + trial 7 hari; pintu masuk lintas-tier). Jangan sejajarkan dengan tier "Starter". Di jalur Jasa, Starter Kit otomatis dibundel **gratis** (tanpa tagihan tambahan) — yang diberikan di situ panduan/enablement, bukan lisensi kedua. Detail: `.agents/memory/gustafta-pricing-model.md`.
-- **AI Chatbot Builder**: Create, configure, and deploy intelligent conversational agents.
-- **LexCom Legal AI**: Integrated system with 12 specialized legal agents and a floating "Chaesa Lexbot" widget.
-- **Federation Layer (131 hubs — COMPLETE)**: 131 hub orchestrators with `agenticSubAgents` configured, SYNTHESIS ORCHESTRATOR marker, SCORECARD/WIN PROBABILITY 4-dimension table, T5-HANDOVER, F3-FALLBACK MODE, MASTER STANDAR v2.0 — semua 129/129 complete.
-- **ABD v1.1 Upgrade (934/944 agents — COMPLETE)**: SBU (339) + SKK (53) + ASKOM/LSP (52) + Universal (609). Marker per kategori: `SBU_ABD_v1.1_UPGRADED`, `SKK_ABD_v1.1_UPGRADED`, `ASKOM_ABD_v1.1_UPGRADED`, `ABD_v1.1_UPGRADED`. 10 agen sisa seeded ABD-compliant by design.
-- **Mini Apps (43 types — COMPLETE)**: Registered in schema.ts (`miniAppTypeSchema`) & mini-apps-panel.tsx (both 43, in sync). 26 tipe AI-powered punya handler di `/api/mini-app/:id/run` (server/routes.ts); 17 tipe "basic" (checklist, calculator, dll.) berfungsi sebagai template data terstruktur tanpa AI-run (by design). Hub cards: violet Kreator, emerald Bekerja, orange Berusaha.
-- **Dynamic Knowledge Base**: Hierarchical classification, versioning, source attribution, multiple upload types.
-- **Chatbot Templates & Gustafta Store**: Public marketplace with payment integration.
-- **Gustafta Apps Feature Access System**: Plan-gated. Tiers: `free`(0) `starter`(1) `profesional`(2) `bisnis`(3) `enterprise`(4). Source: `shared/feature-plans.ts`. Hook: `use-feature-access.ts`. Gate: `feature-gate.tsx`. Admin activates via `POST /api/subscriptions/activate/:id`.
-- **Kelas Premium 1–4 (band harga LISENSI)**: Sumbu harga lisensi premium berjenjang. Sumber tunggal `shared/premium-classes.ts` (`priceForClass`/`isPremiumClass`/`DEFAULT_LICENSE_PRICE`=299rb/`resolveLicensePrice`). Band K1=Rp1jt · K2=Rp2,5jt · K3=Rp5jt · K4=Rp10jt. **Harga lisensi (sekali bayar) = kolom `agents.licensePrice` (int nullable), TERPISAH dari `agents.monthlyPrice`** (bulanan hosting/token). Harga jual lisensi efektif SELALU via `resolveLicensePrice(licenseClass, licensePrice)` (band bila premium → licensePrice bebas → DEFAULT). Bila berkelas, `licensePrice` diikat ke band; enforcement berlapis: create route (validasi range) + PATCH (kelas EFEKTIF body∨record) + `createAgent`/`updateAgent` storage backstop. Marketplace 80/20 tercatat di `storeOrders` (`agentId`,`creatorUserId`,`creatorShare`,`platformShare`) pada `/api/store/order` (agentId & productId→agen) + `/order/manual`. `mapAgentRow` WAJIB expose licenseClass+licensePrice. Terpisah dari `premiumClass` (standard/private) & 4 tier bulanan. UI: `product-settings-panel.tsx`, badge di `store.tsx`. Detail: `.agents/memory/gustafta-pricing-model.md`.
+**Kerangka Produk (acuan resmi — 3 sumbu terpisah, jangan dicampur)**. Detail: `.agents/memory/gustafta-pricing-model.md`.
+1. **Cara dapat chatbot (3 jalur)**: (a) **Biasa** (kosongan, user merakit) = lisensi standar + bulanan · (b) **Premium** (siap pakai, dibuat Gustafta/Creator) = lisensi premium + bulanan · (c) **Jasa Order** (custom) = setup sekali (termasuk lisensi) + bulanan. **Bulanan (hosting+token) untuk SEMUA produk, 100% ke Gustafta.** Beda biasa vs premium HANYA di lisensi. **Creator marketplace**: bagi hasil 80/20 dari LISENSI saja (bulanan tetap 100% Gustafta). Konstanta `MARKETPLACE`/`MARKETPLACE_INFO` di `pricing.ts`.
+2. **Tier langganan platform (4)**: Starter → Profesional → Bisnis → Enterprise. Angka di `client/src/data/pricing.ts`, gating di `shared/feature-plans.ts`.
+3. **Starter Kit = onboarding sekali bayar (Rp 245rb), BUKAN tier** (lisensi + panduan + trial 7 hari). Di jalur Jasa dibundel gratis (enablement, bukan lisensi kedua).
+
+**Kelas Premium 1–4 (band harga LISENSI)**: sumber tunggal `shared/premium-classes.ts` (`resolveLicensePrice`, `DEFAULT_LICENSE_PRICE`=299rb). Band K1=1jt/K2=2,5jt/K3=5jt/K4=10jt. Harga lisensi = kolom `agents.licensePrice` (TERPISAH dari `agents.monthlyPrice`); harga efektif SELALU via `resolveLicensePrice()`. Enforcement berlapis (create route + PATCH + storage backstop). `mapAgentRow` WAJIB expose licenseClass+licensePrice. Marketplace 80/20 tercatat di `storeOrders`. UI `product-settings-panel.tsx`, badge `store.tsx`.
+
+**Lainnya**
+- **LexCom Legal AI**: 12 agen legal + widget "Chaesa Lexbot".
+- **Federation Layer (131 hubs — COMPLETE)**: orkestrator + `agenticSubAgents`, SYNTHESIS/SCORECARD/T5-HANDOVER/F3-FALLBACK, MASTER STANDAR v2.0.
+- **ABD v1.1 Upgrade (934/944 — COMPLETE)**: SBU(339)+SKK(53)+ASKOM/LSP(52)+Universal(609). Marker per kategori (`*_ABD_v1.1_UPGRADED`).
+- **Mini Apps (43 types — COMPLETE)**: di `schema.ts` (`miniAppTypeSchema`) & `mini-apps-panel.tsx` (sinkron). 26 AI-powered (`/api/mini-app/:id/run`), 17 "basic" (template tanpa AI-run, by design).
+- **Feature Access System**: plan-gated. Tiers `free`(0) `starter`(1) `profesional`(2) `bisnis`(3) `enterprise`(4). Source `shared/feature-plans.ts`, hook `use-feature-access.ts`, gate `feature-gate.tsx`. Admin aktivasi `POST /api/subscriptions/activate/:id`.
+- **Dynamic Knowledge Base**, **Chatbot Templates & Gustafta Store** (marketplace publik + payment).
 
 ## MultiClaw Suite (85 halaman)
-Semua pakai `PremiumPageGuard` feature="advanced_ai_tools" requiredPlan="profesional". SSE streaming, sub-agent panel dots, legend strip, 6 sample prompts.
-
-**Paket Bidang (model Kombinasi)**: `shared/claw-packages.ts` = sumber tunggal 10 paket bidang (72 route) + `BASE_CLAW_ROUTES` (13 claw dasar Starter) = 85 claw. Aturan: Profesional pilih 2 paket (`PRO_PACKAGE_SLOTS`), pilihan TERKUNCI setelah simpan (atomic claim, reset via `POST /api/admin/claw-packages/reset/:userId`); Bisnis/Enterprise buka semua; paket terpilih meng-override feature flag lama (claw eks-Bisnis ikut terbuka). Gating di `PremiumPageGuard` via `useLocation()` + `packageForRoute()` — TANPA edit 85 halaman claw. API: `GET /api/claw-packages/my`, `POST /api/claw-packages/select`. Kolom: `users.selected_claw_packages varchar[]`. UI pilih: `client/src/pages/paket-bidang.tsx` (route `/paket-bidang`). Hook: `use-claw-packages.ts`.
-
-Endpoint: `GET /api/{nama}-claw/orchestrator` → `{ id, name, tagline, avatar }`. Semua route pakai `getAgentBySlug` sebagai primary lookup — JANGAN ganti ke hardcoded ID.
-
-**Tabel lengkap 85 route (rute → nama → agen → hub slug → theme): `docs/multiclaw-routes.md`.** Saat menambah/mengubah claw, update tabel di docs itu (bukan di sini).
+Semua pakai `PremiumPageGuard` feature="advanced_ai_tools" requiredPlan="profesional". SSE streaming, sub-agent dots, legend strip, 6 sample prompts. Endpoint tiap claw: `GET /api/{nama}-claw/orchestrator` → `{ id, name, tagline, avatar }`, primary lookup via `getAgentBySlug` (JANGAN hardcoded ID).
+- **Paket Bidang (Kombinasi)**: `shared/claw-packages.ts` = 10 paket bidang (72 route) + `BASE_CLAW_ROUTES` (13 dasar Starter) = 85. Profesional pilih 2 paket (`PRO_PACKAGE_SLOTS`, terkunci setelah simpan, reset via `POST /api/admin/claw-packages/reset/:userId`); Bisnis/Enterprise buka semua. Gating di `PremiumPageGuard` via `packageForRoute()` (tanpa edit 85 halaman). API `GET /api/claw-packages/my`, `POST /api/claw-packages/select`. Kolom `users.selected_claw_packages`. UI `paket-bidang.tsx` (`/paket-bidang`), hook `use-claw-packages.ts`.
+- **Tabel lengkap 85 route**: `docs/multiclaw-routes.md` (update di sana saat menambah/ubah claw).
 
 ## Whitelabel Partner Mode
-- **Deteksi mitra per host**: hook `client/src/hooks/use-partner-branding.ts` → `GET /api/partner/by-host?host=` (null bila bukan host mitra). **Pratinjau**: `?preview=<slug>` di URL (mis. `.replit.app/?preview=aspekindo`) memaksa branding mitra tsb, abaikan host — untuk melihat landing sebelum custom domain tersambung; endpoint by-host mendukung `?preview=<slug>` (lookup by slug, active-only). Tabel `partners` (kolom `host` unique, `active`, `brand_name`, `logo_url`, `primary_color`, `tagline`, `description`, `contact_phone`, `contact_email`, `default_agent_id`, `hide_platform_branding`). Admin: `client/src/pages/admin-partners.tsx`.
-- **Self-service partner-admin**: pengurus mitra (email di `partners.admin_emails`) login → `/partner` (`partner-dashboard.tsx`): lihat kuota/kursi, ajukan top-up, dan **atur branding sendiri** (kartu "Pengaturan Brand": brandName, logoUrl, primaryColor, tagline, description, contactPhone, contactEmail) via `PATCH /api/partner/me` (allowlist ketat — host/slug/kuota/kursi/cheapModel/defaultAgentId/adminEmails TETAP admin Gustafta via `/api/admin/partners`). String kosong = hapus nilai (null). Warna wajib hex.
-- **Halaman partner-aware**: `partner-landing.tsx` (root `/` di host mitra; CTA utama → `/dialog-gustafta`, tombol "Chat Asisten AI" bila `defaultAgentId` ada), `shared-header.tsx`, `dialog-gustafta.tsx` (greeting/judul/avatar/toast/share/WA/footer/fallback blueprint pakai brand mitra; WA ke `contactPhone` mitra), `dashboard.tsx` (banner upsell Gustafta disembunyikan, teks "Dialog Gustafta"→"Dialog Konsultasi", logo/nama sidebar+welcome pakai mitra, kartu `/packs` & `/monitor-marketing` disembunyikan).
-- **Aturan**: SEMUA halaman baru yang tampil di host mitra wajib cek `usePartnerBranding()` sebelum menampilkan branding/upsell Gustafta. Uji lokal: insert row `partners` dengan `host='localhost'`, hapus setelah selesai.
+- **Deteksi per host**: `use-partner-branding.ts` → `GET /api/partner/by-host?host=`. Pratinjau `?preview=<slug>` (paksa branding, abaikan host). Tabel `partners` (`host` unique, branding + kontak + `default_agent_id` + `hide_platform_branding`). Admin `admin-partners.tsx`.
+- **Self-service partner-admin**: pengurus (email di `partners.admin_emails`) → `/partner` (`partner-dashboard.tsx`): kuota/kursi, top-up, atur branding sendiri via `PATCH /api/partner/me` (allowlist ketat — host/slug/kuota/kursi/model/defaultAgentId/adminEmails tetap admin Gustafta). String kosong = null; warna wajib hex.
+- **Halaman partner-aware**: `partner-landing.tsx`, `shared-header.tsx`, `dialog-gustafta.tsx`, `dashboard.tsx`.
+- **Aturan**: SEMUA halaman baru di host mitra WAJIB cek `usePartnerBranding()` sebelum menampilkan branding/upsell Gustafta. Uji lokal: insert row `partners` `host='localhost'`, hapus setelah selesai.
 
 ## Tender Data Relay (SIRUP)
-- `sirup.lkpp.go.id` TIDAK bisa diakses dari hosting ini (blokir geo/IP) — scraper terjadwal selalu gagal ke data demo. `isb.lkpp.go.id` reachable (jalur resmi, butuh akun/token LKPP — rencana jangka panjang).
-- Solusi sementara: **relay eksternal**. Skrip `scripts/tender-relay.mjs` dijalankan di komputer/server Indonesia (Node 18+, tanpa dependensi) → kirim ke `POST /api/tender-ingest` (auth header `x-tender-ingest-key` = secret `TENDER_INGEST_KEY`, timing-safe compare, batch maks 500, upsert dedup per `tenderId`).
-- Data masuk ke sumber `sourceType="sirup"` (dibuat otomatis "SIRUP LKPP (Relay Eksternal)"). Alert harian 08:00 WIB (`runTenderAlertNotification` di `server/index.ts`) memakai tabel `tenders` — otomatis bekerja setelah relay jalan.
-
-## User preferences
-Preferred communication style: Simple, everyday language.
-Bahasa komunikasi: Bahasa Indonesia (balas ke pengguna dalam Bahasa Indonesia).
+- `sirup.lkpp.go.id` terblokir dari hosting ini (geo/IP); `isb.lkpp.go.id` reachable (butuh akun/token LKPP — jangka panjang).
+- Sementara: **relay eksternal** `scripts/tender-relay.mjs` (dijalankan di server Indonesia) → `POST /api/tender-ingest` (header `x-tender-ingest-key` = secret `TENDER_INGEST_KEY`, timing-safe, batch maks 500, dedup per `tenderId`). Alert harian 08:00 WIB (`runTenderAlertNotification`) memakai tabel `tenders`.
 
 ## Gotchas
-- **FEDERATION_MODE v2 marker**: Embedded in DB prompts for upgraded orchestrators. Seed checks this. NEVER remove.
-- **Agent Cache 5 min TTL**: Restart server after bulk SQL prompt/agenticSubAgents updates.
-- **LexCom Admin Key**: Admin KB uploads require `x-legal-admin-key` header.
-- **Disabled Agents**: `/api/chat/config/:agentId` and `/api/widget/config/:agentId` return 503 if disabled.
+- **FEDERATION_MODE v2 marker**: tertanam di prompt DB orkestrator; seed mengeceknya. NEVER remove.
+- **Agent Cache 5 min TTL**: restart server setelah bulk SQL update prompt/agenticSubAgents.
+- **Dev server = plain `tsx` (tanpa watch)**: restart workflow "Start application" setelah ubah file server, atau route baru 404 ke SPA.
+- **LexCom Admin Key**: upload KB admin butuh header `x-legal-admin-key`.
+- **Disabled Agents**: `/api/chat/config/:agentId` & `/api/widget/config/:agentId` → 503 bila disabled.
 - **callAgentInternal signature**: `(agentId, userMessage, conversationHistory?, timeoutMs=25000)` — v2.
-- **Sub-agent maxTokens**: `Math.max(1500, Math.min(3000, subAgent.maxTokens ?? 1500))` — min guaranteed 1500.
+- **Sub-agent maxTokens**: `Math.max(1500, Math.min(3000, subAgent.maxTokens ?? 1500))`.
 - **FALLBACK template**: `[ASUMSI: {nilai} | basis: {regulasi/heuristik} | verifikasi-ke: {pihak}]`
-- **agenticSubAgents JSON format**: `[{"role": "KODE", "agentId": 123, "description": "..."}]`
-- **Orchestrator routes**: SELALU gunakan `getAgentBySlug(slug)` sebagai primary lookup. JANGAN `getAgent("hardcoded-id")` — ID drift setelah re-seed menyebabkan route mengembalikan agen yang salah tanpa error.
+- **agenticSubAgents JSON**: `[{"role":"KODE","agentId":123,"description":"..."}]`
+- **Orchestrator routes**: SELALU `getAgentBySlug(slug)` primary lookup, JANGAN hardcoded ID (drift setelah re-seed → agen salah tanpa error).
+- **Test Tracker localStorage**: `gustafta_test_tracker_v1` (Tender) · `gustafta_fed_tracker_v1` (Federation) · `gustafta_pilot_tracker_v1` (Pilot) · `gustafta_konstra_tracker_v1` (KONSTRA) · `gustafta_konstra_signoff_v1` (Sign-Off)
 
-## Pointers
-- **Inter-Agent API**: `server/routes.ts` orchestration block ~line 2806
-- **Test Tracker Storage** (localStorage): `gustafta_test_tracker_v1` (Tender) · `gustafta_fed_tracker_v1` (Federation) · `gustafta_pilot_tracker_v1` (Pilot) · `gustafta_konstra_tracker_v1` (KONSTRA) · `gustafta_konstra_signoff_v1` (Sprint 4 Sign-Off)
+## User preferences
+- Preferred communication style: Simple, everyday language.
+- Bahasa komunikasi: Bahasa Indonesia (balas ke pengguna dalam Bahasa Indonesia).
