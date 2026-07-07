@@ -7,7 +7,7 @@ import { SharedHeader } from "@/components/shared-header";
 import {
   Stethoscope, FileCheck2, Gavel, HardHat, Briefcase, Truck, Award, Building2,
   ArrowRight, MessageCircle, Headset, CheckCircle2, Clock, Sparkles, Bot,
-  TrendingUp, GraduationCap,
+  TrendingUp, GraduationCap, ShieldQuestion,
 } from "lucide-react";
 
 /*
@@ -36,6 +36,17 @@ const LOKET: Loket[] = [
   { name: "Loket SBU", tag: "Sertifikat badan usaha (BUJK)", href: "/sbu-claw", icon: Building2, accent: "text-rose-600 dark:text-rose-400" },
   { name: "Loket PUB (LKUT)", tag: "Pengembangan usaha berkelanjutan & LKUT", href: "/pub-lkut-claw", icon: TrendingUp, accent: "text-sky-600 dark:text-sky-400" },
   { name: "Loket PKB", tag: "Pengembangan keprofesian berkelanjutan", href: "/pkb", icon: GraduationCap, accent: "text-violet-600 dark:text-violet-400" },
+];
+
+type WorkroomLink = { domain: string; name: string; tag: string; icon: any };
+
+const WORKROOM_LINKS: WorkroomLink[] = [
+  { domain: "sbu", name: "Workroom SBU", tag: "Kesiapan Sertifikat Badan Usaha", icon: Building2 },
+  { domain: "skk", name: "Workroom SKK", tag: "Kesiapan sertifikasi kompetensi", icon: Award },
+  { domain: "pub", name: "Workroom PUB (LKUT)", tag: "Laporan kegiatan usaha tahunan", icon: TrendingUp },
+  { domain: "pkb", name: "Workroom PKB", tag: "Pengembangan keprofesian berkelanjutan", icon: GraduationCap },
+  { domain: "perizinan", name: "Workroom Perizinan", tag: "Kesiapan izin berusaha (OSS)", icon: FileCheck2 },
+  { domain: "tender", name: "Workroom Tender", tag: "Kelayakan & win probability tender", icon: Gavel },
 ];
 
 const STEPS = [
@@ -132,8 +143,44 @@ export default function KlinikKonsultasiPage() {
         </div>
       </section>
 
+      {/* Jembatan ke Workroom — dari konsultasi ke tindakan bertahap */}
+      <section className="max-w-5xl mx-auto px-4 pb-2 space-y-5">
+        <div className="flex items-center gap-2">
+          <Briefcase className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+          <h2 className="text-xl md:text-2xl font-black text-gray-900 dark:text-white">
+            Sudah konsultasi? Lanjut ke Workroom
+          </h2>
+        </div>
+        <p className="text-sm text-gray-600 dark:text-gray-400 max-w-3xl">
+          Workroom adalah ruang kerja bertahap: AI menganalisis kelayakan &amp; kesiapan berkas Anda,
+          lalu setiap keputusan penting melewati{" "}
+          <span className="inline-flex items-center gap-1 font-medium text-amber-600 dark:text-amber-400">
+            <ShieldQuestion className="h-3.5 w-3.5" /> gerbang persetujuan manusia ◆
+          </span>
+          . Pilih bidang untuk mulai menggarap kasus Anda (perlu login).
+        </p>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {WORKROOM_LINKS.map((w) => (
+            <Link key={w.domain} href={`/workroom?domain=${w.domain}`} className="group" data-testid={`link-workroom-${w.domain}`}>
+              <Card className="h-full transition-all hover:shadow-md border-2 border-transparent hover:border-emerald-300 dark:hover:border-emerald-700">
+                <CardContent className="pt-5 pb-5 space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <w.icon className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                    <h3 className="font-bold text-gray-900 dark:text-white">{w.name}</h3>
+                  </div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{w.tag}</p>
+                  <span className="inline-flex items-center gap-1 text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                    Buka Workroom <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                  </span>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      </section>
+
       {/* Operator fallback */}
-      <section className="max-w-5xl mx-auto px-4 pb-14">
+      <section className="max-w-5xl mx-auto px-4 pt-12 pb-14">
         <Card className="bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-950/40 dark:to-cyan-950/30 border-teal-200 dark:border-teal-800">
           <CardContent className="pt-6 flex flex-col md:flex-row md:items-center gap-4 justify-between">
             <div className="flex items-start gap-3">

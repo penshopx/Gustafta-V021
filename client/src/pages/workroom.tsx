@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -32,6 +32,16 @@ export default function WorkroomListPage() {
   const [fields, setFields] = useState<Record<string, string>>({});
 
   const meta = workroomDomainMeta(domain);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const d = (params.get("domain") || "").toLowerCase();
+    if (d && WORKROOM_DOMAIN_META.some((m) => m.key === d)) {
+      setDomain(d);
+      setFields({});
+      setShowForm(true);
+    }
+  }, []);
 
   const { data: rooms, isLoading } = useQuery<Workroom[]>({
     queryKey: ["/api/workrooms"],

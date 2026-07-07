@@ -73,6 +73,48 @@ export const WORKROOM_DOMAIN_META: WorkroomDomainMeta[] = [
       { key: "catatan", label: "Catatan Awal", placeholder: "Jumlah pekerja, bahaya utama, dokumen K3 yang sudah ada.", textarea: true },
     ],
   },
+  {
+    key: "sbu",
+    label: "Sertifikat Badan Usaha (SBU)",
+    short: "SBU",
+    desc: "Urus SBU jasa konstruksi bertahap: identifikasi klasifikasi & subklasifikasi, cek persyaratan (tenaga kerja/PJBU), sampai terbit lewat LSBU/OSS.",
+    analyzeHeading: "Analisis AI — Kesiapan SBU",
+    analyzeDesc: "Agen menilai kesiapan badan usaha mengurus SBU untuk klasifikasi yang dituju (berbasis UU Jasa Konstruksi & OSS-RBA).",
+    scoreLabel: "Skor kesiapan SBU",
+    fields: [
+      { key: "klasifikasi", label: "Klasifikasi & Subklasifikasi", placeholder: "mis. BG009 — Bangunan Gedung Lainnya" },
+      { key: "kualifikasi", label: "Kualifikasi Badan Usaha", placeholder: "mis. Kecil / Menengah / Besar" },
+      { key: "catatan", label: "Catatan Awal", placeholder: "Bentuk BUJK, PJBU/PJTBU/PJSKBU, SKK tenaga kerja, penjualan tahunan, dokumen yang sudah ada.", textarea: true },
+    ],
+  },
+  {
+    key: "pub",
+    label: "PUB / Laporan Kegiatan Usaha (LKUT)",
+    short: "PUB (LKUT)",
+    desc: "Siapkan Laporan Kegiatan Usaha Tahunan (LKUT) & pengembangan usaha berkelanjutan bertahap: kumpulkan data kegiatan setahun, susun laporan, sampai dilaporkan.",
+    analyzeHeading: "Analisis AI — Kesiapan LKUT / PUB",
+    analyzeDesc: "Agen menilai kelengkapan data & kesiapan badan usaha menyusun/menyampaikan LKUT (ketentuan LPJK & UU Jasa Konstruksi).",
+    scoreLabel: "Skor kesiapan LKUT",
+    fields: [
+      { key: "badanUsaha", label: "Nama Badan Usaha", placeholder: "mis. PT Karya Konstruksi Nusantara" },
+      { key: "periode", label: "Periode Laporan", placeholder: "mis. Tahun 2025" },
+      { key: "catatan", label: "Catatan Awal", placeholder: "Daftar proyek/kegiatan setahun, nilai, SBU aktif, kewajiban pelaporan yang sudah/belum dipenuhi.", textarea: true },
+    ],
+  },
+  {
+    key: "pkb",
+    label: "Pengembangan Keprofesian Berkelanjutan (PKB)",
+    short: "PKB",
+    desc: "Penuhi kewajiban PKB tenaga kerja konstruksi bertahap: identifikasi SKK & masa berlaku, hitung kebutuhan angka kredit, kumpulkan bukti kegiatan, sampai tercatat.",
+    analyzeHeading: "Analisis AI — Kesiapan PKB",
+    analyzeDesc: "Agen menilai kesiapan pemegang SKK memenuhi kewajiban PKB (angka kredit) untuk mempertahankan/memperpanjang SKK (ketentuan LPJK).",
+    scoreLabel: "Skor kesiapan PKB",
+    fields: [
+      { key: "skk", label: "SKK & Jenjang", placeholder: "mis. Ahli Muda Manajemen Konstruksi — Jenjang 7" },
+      { key: "target", label: "Tujuan / Target", placeholder: "mis. Perpanjangan SKK / penuhi angka kredit PKB" },
+      { key: "catatan", label: "Catatan Awal", placeholder: "Masa berlaku SKK, kegiatan PKB yang sudah diikuti, bukti/sertifikat yang dimiliki.", textarea: true },
+    ],
+  },
 ];
 
 const DEFAULT_META = WORKROOM_DOMAIN_META[0];

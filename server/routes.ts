@@ -22326,6 +22326,51 @@ MAKNA FIELD: "kelayakan.layak" = apakah pemohon layak mendaftar uji untuk jenjan
 
 MAKNA FIELD: "kelayakan.layak" = apakah rencana/kondisi K3 layak untuk mulai bekerja. "win_probability.skor" = estimasi skor KEMATANGAN/KESIAPAN sistem K3 (0-100). "risiko" = bahaya K3 utama yang perlu dikendalikan. "syarat_kurang" = elemen SMKK/dokumen yang masih kurang.`,
     },
+    sbu: {
+      label: "Sertifikat Badan Usaha (SBU)",
+      stages: [
+        { key: "identifikasi", label: "Identifikasi Klasifikasi & Subklasifikasi", status: "active" },
+        { key: "persyaratan",  label: "Cek Persyaratan (PJBU/PJTBU/SKK)", status: "pending" },
+        { key: "dokumen",      label: "Penyusunan Berkas", status: "pending" },
+        { key: "pengajuan",    label: "Pengajuan ke LSBU / OSS", status: "pending" },
+        { key: "review",       label: "Review & Gerbang Manusia ◆", status: "pending" },
+        { key: "terbit",       label: "Terbit & Arsip", status: "pending" },
+      ],
+      analyzeContent: "Analisis Kesiapan SBU",
+      systemPrompt: `Anda adalah konsultan Sertifikasi Badan Usaha (SBU) jasa konstruksi Indonesia senior. Analisis kesiapan badan usaha mengurus SBU secara jujur berbasis UU 2/2017 jo UU 6/2023 (Jasa Konstruksi), PP 5/2021, sistem OSS-RBA, dan proses LSBU.
+
+MAKNA FIELD: "kelayakan.layak" = apakah badan usaha layak/siap mengajukan SBU untuk klasifikasi & kualifikasi yang dituju. "win_probability.skor" = estimasi skor KESIAPAN berkas SBU lolos verifikasi tanpa perbaikan (0-100). "syarat_kurang" = persyaratan yang masih kurang (tenaga kerja bersertifikat/SKK, PJBU/PJTBU/PJSKBU, kemampuan keuangan, penjualan tahunan).`,
+    },
+    pub: {
+      label: "PUB / Laporan Kegiatan Usaha Tahunan (LKUT)",
+      stages: [
+        { key: "identifikasi", label: "Identifikasi Kewajiban Pelaporan", status: "active" },
+        { key: "kumpul",       label: "Kumpulkan Data Kegiatan Setahun", status: "pending" },
+        { key: "susun",        label: "Susun Laporan (LKUT)", status: "pending" },
+        { key: "pelaporan",    label: "Pelaporan via Sistem", status: "pending" },
+        { key: "review",       label: "Review & Gerbang Manusia ◆", status: "pending" },
+        { key: "selesai",      label: "Selesai & Arsip", status: "pending" },
+      ],
+      analyzeContent: "Analisis Kesiapan LKUT / PUB",
+      systemPrompt: `Anda adalah konsultan jasa konstruksi Indonesia senior yang memahami kewajiban Laporan Kegiatan Usaha Tahunan (LKUT) badan usaha jasa konstruksi dan pengembangan usaha berkelanjutan (PUB), berbasis UU 2/2017 jo UU 6/2023 (Jasa Konstruksi) dan ketentuan LPJK.
+
+MAKNA FIELD: "kelayakan.layak" = apakah data & kondisi badan usaha sudah cukup untuk menyusun/menyampaikan LKUT. "win_probability.skor" = estimasi skor KELENGKAPAN & KESIAPAN laporan (0-100). "syarat_kurang" = data/dokumen kegiatan usaha (daftar proyek, nilai, SBU aktif) yang masih kurang. Bila detail format/besaran tidak pasti, nyatakan sebagai [ASUMSI] — jangan mengarang angka atau pasal.`,
+    },
+    pkb: {
+      label: "Pengembangan Keprofesian Berkelanjutan (PKB)",
+      stages: [
+        { key: "identifikasi", label: "Identifikasi SKK & Masa Berlaku", status: "active" },
+        { key: "kebutuhan",    label: "Hitung Kebutuhan Angka Kredit PKB", status: "pending" },
+        { key: "bukti",        label: "Kumpulkan Bukti Kegiatan PKB", status: "pending" },
+        { key: "pencatatan",   label: "Pencatatan / Pelaporan PKB", status: "pending" },
+        { key: "review",       label: "Review & Gerbang Manusia ◆", status: "pending" },
+        { key: "selesai",      label: "Selesai & Arsip", status: "pending" },
+      ],
+      analyzeContent: "Analisis Kesiapan PKB",
+      systemPrompt: `Anda adalah pembina Pengembangan Keprofesian Berkelanjutan (PKB) tenaga kerja konstruksi Indonesia senior, berbasis UU 2/2017 jo UU 6/2023 (Jasa Konstruksi) dan ketentuan LPJK tentang PKB untuk mempertahankan/memperpanjang SKK Konstruksi.
+
+MAKNA FIELD: "kelayakan.layak" = apakah pemegang SKK berada di jalur yang benar untuk memenuhi kewajiban PKB. "win_probability.skor" = estimasi skor KESIAPAN memenuhi angka kredit/kewajiban PKB (0-100). "syarat_kurang" = kegiatan/bukti PKB (angka kredit) yang masih kurang. Bila besaran angka kredit tidak pasti, nyatakan sebagai [ASUMSI] — jangan mengarang.`,
+    },
   };
   const DEFAULT_WORKROOM_DOMAIN = "tender";
   const workroomDomainCfg = (d?: string | null) =>
@@ -22343,6 +22388,11 @@ MAKNA FIELD: "kelayakan.layak" = apakah rencana/kondisi K3 layak untuk mulai bek
     pengalaman: "Pengalaman",
     proyek: "Proyek",
     lingkup: "Lingkup Pekerjaan",
+    klasifikasi: "Klasifikasi & Subklasifikasi",
+    badanUsaha: "Nama Badan Usaha",
+    periode: "Periode Laporan",
+    skk: "SKK & Jenjang",
+    target: "Tujuan / Target",
     catatan: "Catatan",
   };
 
