@@ -1,22 +1,11 @@
-import * as expressRateLimit from "express-rate-limit";
-import type {
-  Options,
-  Store,
-  ClientRateLimitInfo,
+import {
+  rateLimit,
+  ipKeyGenerator,
+  type Options,
+  type Store,
+  type ClientRateLimitInfo,
 } from "express-rate-limit";
 import type { Request, Response } from "express";
-
-// express-rate-limit v8 adalah paket "type: module". Tergantung cara bundler /
-// Node menyelesaikan modul saat build produksi (esbuild → CJS), namespace bisa
-// mengekspos fungsi lewat named export `rateLimit`, lewat `default`, atau modul
-// itu sendiri yang berupa fungsi (footer `module.exports = rateLimit` di build
-// CJS paket). Impor bintang + resolusi defensif ini mencegah crash boot
-// "(0 , x.default) is not a function" di semua kasus tersebut.
-const _erl = expressRateLimit as any;
-const rateLimit: typeof expressRateLimit.rateLimit =
-  _erl.rateLimit ?? _erl.default?.rateLimit ?? _erl.default ?? _erl;
-const ipKeyGenerator: typeof expressRateLimit.ipKeyGenerator =
-  _erl.ipKeyGenerator ?? _erl.default?.ipKeyGenerator ?? _erl.default;
 
 const ADMIN_USER_IDS = (process.env.ADMIN_USER_IDS || "")
   .split(",")
