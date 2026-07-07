@@ -15,6 +15,7 @@ import {
   ArrowRight, MessageCircle, Headset, CheckCircle2, Clock, Sparkles, Bot,
   TrendingUp, GraduationCap, ShieldQuestion, Star, Send, Heart,
   ShieldCheck, Scale, Users, Landmark,
+  BadgeCheck, Stamp, FileText, UserCheck, ShieldAlert,
 } from "lucide-react";
 
 /*
@@ -50,13 +51,18 @@ const LOKET_BADAN_USAHA: Loket[] = [
 
 // Loket individu profesional — mitra ASDAMKINDO · LSP · PKB
 const LOKET_PROFESIONAL: Loket[] = [
-  { name: "Loket SKK", tag: "Kompetensi & jenjang tenaga ahli", href: "/skk-coach", icon: Award, accent: "text-teal-600 dark:text-teal-400" },
+  { name: "Loket SKK", tag: "Kompetensi & jenjang — semua bidang jasa konstruksi", href: "/skk-coach", icon: Award, accent: "text-teal-600 dark:text-teal-400" },
+  { name: "Loket SKK K3", tag: "SKK Ahli K3 Konstruksi, SMK3 & ISO 45001", href: "/safira-claw", icon: ShieldAlert, accent: "text-amber-600 dark:text-amber-400" },
   { name: "Loket PKB", tag: "Pengembangan keprofesian berkelanjutan", href: "/pkb", icon: GraduationCap, accent: "text-violet-600 dark:text-violet-400" },
+  { name: "Loket ASKOM", tag: "Asesor kompetensi & proses uji kompetensi SKK", href: "/askom", icon: UserCheck, accent: "text-indigo-600 dark:text-indigo-400" },
+  { name: "Loket Lisensi BNSP", tag: "Lisensi & manajemen LSP oleh BNSP", href: "/lisensi-lsp-bnsp", icon: BadgeCheck, accent: "text-rose-600 dark:text-rose-400" },
+  { name: "Loket Akreditasi KAN", tag: "Akreditasi lembaga penilaian kesesuaian (LPK)", href: "/akreditasi-lpk-kan", icon: Stamp, accent: "text-sky-600 dark:text-sky-400" },
+  { name: "Loket AJJ Nirkertas", tag: "Asesmen Jarak Jauh & paperless (BNSP)", href: "/paperless-asesmen", icon: FileText, accent: "text-emerald-600 dark:text-emerald-400" },
 ];
 
 const LOKET_GROUPS = [
   { key: "badan-usaha", title: "Untuk Badan Usaha & Perizinan", partners: "ASPEKINDO · LSBU · PUB", items: LOKET_BADAN_USAHA },
-  { key: "profesional", title: "Untuk Individu Profesional", partners: "ASDAMKINDO · LSP · PKB", items: LOKET_PROFESIONAL },
+  { key: "profesional", title: "Untuk Individu Profesional", partners: "ASDAMKINDO · LSP · BNSP · KAN · ASKOM · PKB", items: LOKET_PROFESIONAL },
 ];
 
 type WorkroomLink = { domain: string; name: string; tag: string; icon: any };
