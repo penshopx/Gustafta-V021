@@ -29150,6 +29150,53 @@ Aturan penting:
     }
   });
 
+  // ==================== KLINIK UJI KOMPETENSI: ASESMEN KESIAPAN (Dialog → Blueprint) ====================
+  // Tahap 1-2 jalur lengkap "Loket Klinik Uji Kompetensi": dari dialog singkat
+  // dihasilkan blueprint kesiapan (tingkat pengetahuan, pengalaman, gap, rencana belajar).
+  app.post("/api/tools/klinik-ujikom/asesmen", async (req: any, res: any) => {
+    try {
+      const { jabatan, jenjang = "", pendidikan = "", pengalamanTahun = "", materiSulit = "", pengalamanRelevan = "", kendala = "" } = req.body || {};
+      if (!jabatan || !String(jabatan).trim()) return res.status(400).json({ error: "Jabatan kerja yang dituju wajib diisi." });
+      const { OpenAI } = await import("openai");
+      const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY, ...(process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ? { baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL } : {}) });
+      const prompt = `Anda asesor senior uji kompetensi SKK Konstruksi Indonesia (BNSP/LPJK, PP 14/2021, SKKNI).
+Lakukan asesmen kesiapan awal kandidat berdasarkan dialog berikut.
+
+Profil kandidat:
+- Jabatan kerja SKK yang dituju: ${jabatan}
+- Jenjang yang dituju: ${jenjang || "belum disebut"}
+- Pendidikan: ${pendidikan || "belum disebut"}
+- Lama pengalaman relevan: ${pengalamanTahun || "belum disebut"}
+- Pengalaman/proyek relevan (cerita kandidat): ${pengalamanRelevan || "belum disebut"}
+- Materi yang dirasa sulit: ${materiSulit || "belum disebut"}
+- Kendala/kekhawatiran lain: ${kendala || "belum disebut"}
+
+Kembalikan JSON PERSIS format ini (tanpa markdown):
+{
+  "ringkasan": "2-3 kalimat posisi kesiapan kandidat saat ini, jujur dan membesarkan hati",
+  "tingkatPengetahuan": { "skor": <0-100 estimasi>, "label": "Dasar|Menengah|Baik|Sangat Baik", "catatan": "1 kalimat dasar penilaian" },
+  "tingkatPengalaman": { "skor": <0-100 estimasi>, "label": "Dasar|Menengah|Baik|Sangat Baik", "catatan": "1 kalimat dasar penilaian" },
+  "gap": ["3-6 hal spesifik yang harus diperbaiki/dilengkapi sebelum uji (materi, bukti portofolio, jam pengalaman, dll)"],
+  "fokusUnitKompetensi": ["3-5 unit kompetensi/topik SKKNI paling relevan untuk jabatan ini yang perlu dikuasai"],
+  "rencanaBelajar": ["4-6 langkah belajar berurutan yang realistis (mingguan) untuk menutup gap"],
+  "asumsi": ["asumsi yang dipakai karena data kandidat belum lengkap, format: [ASUMSI: ... | verifikasi-ke: ...]"]
+}
+
+Aturan: skor estimasi wajar (jangan 0 atau 100), gap harus konkret & bisa ditindaklanjuti, bahasa Indonesia sederhana.`;
+      const c = await openai.chat.completions.create({
+        model: SMART_MODEL,
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.3,
+        response_format: { type: "json_object" },
+        max_tokens: 1800,
+      });
+      return res.json(JSON.parse(c.choices[0]?.message?.content ?? "{}"));
+    } catch (e: any) {
+      console.error("klinik-ujikom-asesmen error:", e);
+      res.status(500).json({ error: "Gagal menyusun blueprint kesiapan. Coba lagi." });
+    }
+  });
+
   // ==================== AI TOOLS: PERSIAPAN ASESMEN SKK ====================
   app.post("/api/tools/persiapan-asesmen", async (req: any, res: any) => {
     try {
