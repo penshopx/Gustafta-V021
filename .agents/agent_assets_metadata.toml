@@ -185,3 +185,9 @@ id = "LaVTdo-TPsT4EDu7AolXX"
 uri = "file://backup/gustafta-migration-20260707-1347.zip"
 type = "unspecified"
 title = "Backup Migrasi Gustafta (Database + Uploads + Panduan)"
+
+[[outputs]]
+id = "cDUVmfarQ38CNLWtFFM0S"
+uri = "file://backup/percakapan-gustafta.md"
+type = "text"
+title = "Transkrip Lengkap Percakapan Gustafta (Markdown)"
