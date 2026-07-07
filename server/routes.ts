@@ -133,6 +133,245 @@ Format: [SUGGEST_ACTION:category|type|label|deskripsi_singkat]
 
 const guestMessageTracker = new Map<string, { count: number; lastReset: string }>();
 
+// ── Store catalog cache ──────────────────────────────────────────────────────
+// GET /api/store/catalog re-fetches & enriches ALL active agents (900+ rows with
+// heavy text/jsonb columns) on every request, then filters/paginates in memory.
+// Under load this makes p95 crawl (~2.5s @ 40 concurrency). The catalog changes
+// rarely, so we cache the fully-computed item list per (category, search) with a
+// short TTL and use single-flight so concurrent cache misses run the expensive
+// query only ONCE instead of stampeding the DB.
+// TTL = how long a cached entry is considered "fresh". Past TTL (but within the
+// stale window) we serve the stale copy INSTANTLY and refresh in the background
+// (stale-while-revalidate) so requests never block on a rebuild once warmed.
+const STORE_CATALOG_TTL_MS = 30_000;
+const STORE_CATALOG_STALE_MS = 10 * 60_000;
+const STORE_CATALOG_MAX_KEYS = 100;
+const storeCatalogCache = new Map<string, { items: any[]; ts: number }>();
+const storeCatalogInflight = new Map<string, Promise<any[]>>();
+
+async function buildStoreCatalogItems(category: string, search: string): Promise<any[]> {
+  const { db } = await import("./db");
+  const { agents: agentsTable, storeProducts } = await import("@shared/schema");
+  const { and, eq, or, ilike, inArray } = await import("drizzle-orm");
+
+  // 1. Fetch from store_products table (primary source)
+  const spConditions: any[] = [eq(storeProducts.isActive, true)];
+  if (category && category !== "Semua") spConditions.push(eq(storeProducts.category, category));
+  if (search) {
+    spConditions.push(or(
+      ilike(storeProducts.name, `%${search}%`),
+      ilike(storeProducts.description, `%${search}%`),
+    )!);
+  }
+  const spWhere = spConditions.length > 1 ? and(...spConditions) : spConditions[0];
+  const spRows = await db.select().from(storeProducts).where(spWhere).orderBy(storeProducts.sortOrder, storeProducts.id);
+
+  // Biaya Lisensi: flat Rp 299.000 (hak pakai, install mandiri)
+  // Biaya Setup oleh tim Gustafta: Rp 999.000 (terpisah, opsional)
+  const calcStorePrice = (_agenticSubAgents: any): number => 299000;
+  const calcOriginalPrice = (_total: number): number => 450000;
+
+  // Pre-fetch agenticSubAgents for store_products that link to an agent
+  const spLinkedAgentIds = spRows.map(p => p.agentId).filter(Boolean) as number[];
+  const agentSubMap = new Map<number, any>();
+  if (spLinkedAgentIds.length > 0) {
+    const linkedAgentRows = await db.select({
+      id: agentsTable.id,
+      agenticSubAgents: agentsTable.agenticSubAgents,
+    }).from(agentsTable).where(inArray(agentsTable.id, spLinkedAgentIds));
+    for (const r of linkedAgentRows) agentSubMap.set(r.id, parseSubAgentsValue(r.agenticSubAgents));
+  }
+
+  const storeProductItems = spRows.map((p) => {
+    const linkedSubAgents = p.agentId != null ? agentSubMap.get(p.agentId) : undefined;
+    const price = linkedSubAgents !== undefined ? calcStorePrice(linkedSubAgents) : p.price;
+    return {
+      id: `sp-${p.id}`,
+      productId: p.id,
+      agentId: p.agentId,
+      name: p.name,
+      category: p.category || "Konstruksi",
+      tagline: p.description?.slice(0, 80) || "",
+      description: p.description || "",
+      productSummary: p.description || "",
+      productFeatures: (p.features as string[]) || [],
+      emoji: p.emoji || "🤖",
+      color: p.color || "#6366f1",
+      price,
+      isGustafta: p.isGustafta ?? false,
+      type: "product",
+    };
+  });
+
+  // 2. Fetch ALL active agents (secondary, no duplicate with store_products)
+  const spAgentIds = new Set(spRows.map(p => p.agentId).filter(Boolean));
+  const agentConditions: any[] = [eq(agentsTable.isActive, true)];
+  if (category && category !== "Semua") agentConditions.push(eq(agentsTable.category, category));
+  if (search) {
+    agentConditions.push(or(
+      ilike(agentsTable.name, `%${search}%`),
+      ilike(agentsTable.tagline, `%${search}%`),
+      ilike(agentsTable.description, `%${search}%`),
+    )!);
+  }
+  const agentWhere = agentConditions.length > 1 ? and(...agentConditions) : agentConditions[0];
+  const agentRows = await db.select({
+    id: agentsTable.id, name: agentsTable.name, category: agentsTable.category,
+    tagline: agentsTable.tagline, description: agentsTable.description,
+    avatar: agentsTable.avatar, widgetColor: agentsTable.widgetColor,
+    isOrchestrator: agentsTable.isOrchestrator, monthlyPrice: agentsTable.monthlyPrice,
+    productSummary: agentsTable.productSummary, productFeatures: agentsTable.productFeatures,
+    agenticSubAgents: agentsTable.agenticSubAgents,
+    parentAgentId: agentsTable.parentAgentId,
+    userId: agentsTable.userId,
+    isListed: agentsTable.isListed,
+    isCertified: agentsTable.isCertified,
+    licenseClass: agentsTable.licenseClass,
+    licensePrice: agentsTable.licensePrice,
+  }).from(agentsTable).where(agentWhere).orderBy(agentsTable.id);
+
+  // Count direct child agents per parent for accurate team-size pricing
+  const allAgentIds = agentRows.map(a => a.id);
+  const childCountMap = new Map<number, number>();
+  if (allAgentIds.length > 0) {
+    const { sql: sqlChild } = await import("drizzle-orm");
+    const childCounts = await db.select({
+      parentId: agentsTable.parentAgentId,
+      cnt: sqlChild<number>`count(*)::int`,
+    }).from(agentsTable)
+      .where(inArray(agentsTable.parentAgentId, allAgentIds))
+      .groupBy(agentsTable.parentAgentId);
+    for (const row of childCounts) {
+      if (row.parentId != null) childCountMap.set(row.parentId, row.cnt);
+    }
+  }
+
+  // Also update store_products' agentSubMap with child counts
+  for (const [agentId] of Array.from(agentSubMap.entries())) {
+    const childCount = childCountMap.get(agentId) ?? 0;
+    if (childCount > 0) {
+      // If child count > agenticSubAgents count, treat child count as the sub count
+      const existingSub = agentSubMap.get(agentId);
+      const existingSubCount = Array.isArray(existingSub) ? existingSub.length : 0;
+      if (childCount > existingSubCount) {
+        // Store as a proxy array length
+        agentSubMap.set(agentId, Array(childCount).fill(null));
+      }
+    }
+  }
+
+  // Re-compute store product prices with updated child counts
+  const storeProductItemsFinal = storeProductItems.map(p => {
+    if (p.agentId != null) {
+      const linkedSub = agentSubMap.get(p.agentId);
+      return { ...p, price: linkedSub !== undefined ? calcStorePrice(linkedSub) : p.price };
+    }
+    return p;
+  });
+
+  const agentItems = agentRows
+    .filter((a) => {
+      if (spAgentIds.has(a.id)) return false;
+      if (a.parentAgentId != null) return false;
+      // Only include chatbot bundles (2+ components) — single agents not sold standalone
+      const subCount = parseSubAgentsValue(a.agenticSubAgents).length;
+      const childCount = childCountMap.get(a.id) ?? 0;
+      if ((1 + Math.max(subCount, childCount)) < 2) return false;
+      // Gerbang persetujuan publikasi: agen buatan kreator independen (punya user_id nyata)
+      // HANYA tayang bila pemiliknya memilih "Terbitkan ke Store" (isListed = true).
+      // Agen resmi/seeded Gustafta (user_id = "") TIDAK terpengaruh — tetap tayang seperti biasa.
+      const isCreator = (a.userId ?? "").trim() !== "";
+      if (isCreator && a.isListed !== true) return false;
+      return true;
+    })
+    .map((a) => {
+      const subCount = parseSubAgentsValue(a.agenticSubAgents).length;
+      const childCount = childCountMap.get(a.id) ?? 0;
+      const effectiveTotal = 1 + Math.max(subCount, childCount);
+      // Harga lisensi efektif: band kelas (berkelas) atau harga bebas / DEFAULT (non-kelas).
+      const price = resolveLicensePrice(a.licenseClass, (a as any).licensePrice);
+      return {
+        id: `ag-${a.id}`,
+        agentId: a.id,
+        name: a.name,
+        category: a.category || "Konstruksi",
+        tagline: a.tagline || "",
+        description: a.description || "",
+        productSummary: a.productSummary || "",
+        productFeatures: (a.productFeatures as string[]) || [],
+        emoji: a.avatar && a.avatar.length <= 4 ? a.avatar : "🤖",
+        color: a.widgetColor || "#6366f1",
+        price,
+        originalPrice: calcOriginalPrice(effectiveTotal),
+        agentCount: effectiveTotal,
+        isGustafta: false,
+        // Kreator independen (punya user_id nyata) vs agen resmi/seeded Gustafta (user_id = "").
+        // Dipakai untuk badge transparansi "Pra-Sertifikasi" di kartu Store.
+        isCreatorMade: (a.userId ?? "").trim() !== "",
+        // Status Bersertifikat (admin-only). Bila true, badge hijau "Bersertifikat"
+        // menggantikan badge amber "Pra-Sertifikasi".
+        isCertified: a.isCertified === true,
+        licenseClass: isPremiumClass(a.licenseClass) ? a.licenseClass : null,
+        type: "agent",
+      };
+    });
+
+  return [...storeProductItemsFinal, ...agentItems];
+}
+
+function refreshStoreCatalog(cacheKey: string, category: string, search: string): Promise<any[]> {
+  let inflight = storeCatalogInflight.get(cacheKey);
+  if (inflight) return inflight;
+  inflight = buildStoreCatalogItems(category, search)
+    .then((items) => {
+      // Evict expired/oldest entries to keep the cache bounded (search terms are
+      // user-supplied and could otherwise grow the map unbounded).
+      if (storeCatalogCache.size >= STORE_CATALOG_MAX_KEYS) {
+        const now = Date.now();
+        for (const [k, v] of Array.from(storeCatalogCache.entries())) {
+          if (now - v.ts >= STORE_CATALOG_STALE_MS) storeCatalogCache.delete(k);
+        }
+        if (storeCatalogCache.size >= STORE_CATALOG_MAX_KEYS) {
+          const oldestKey = storeCatalogCache.keys().next().value;
+          if (oldestKey !== undefined) storeCatalogCache.delete(oldestKey);
+        }
+      }
+      storeCatalogCache.set(cacheKey, { items, ts: Date.now() });
+      return items;
+    })
+    .finally(() => {
+      storeCatalogInflight.delete(cacheKey);
+    });
+  storeCatalogInflight.set(cacheKey, inflight);
+  return inflight;
+}
+
+async function getStoreCatalogItems(category: string, search: string): Promise<any[]> {
+  const cacheKey = `${category}||${search}`;
+  const cached = storeCatalogCache.get(cacheKey);
+  if (cached) {
+    const age = Date.now() - cached.ts;
+    if (age < STORE_CATALOG_TTL_MS) return cached.items;
+    if (age < STORE_CATALOG_STALE_MS) {
+      // Stale-while-revalidate: serve the stale copy instantly, refresh in the
+      // background. Requests never block on a rebuild once warmed. Catalog data is
+      // non-critical and a few extra seconds of staleness is acceptable.
+      void refreshStoreCatalog(cacheKey, category, search).catch(() => {});
+      return cached.items;
+    }
+  }
+  // Cold (never built or fully expired): must block on a single-flight build.
+  return refreshStoreCatalog(cacheKey, category, search);
+}
+
+// Pre-warm the default listing (no filters) so the very first burst of traffic
+// hits a warm cache instead of a cold, expensive query stampede.
+function warmStoreCatalogCache(): void {
+  void refreshStoreCatalog("||", "", "").catch((e) => {
+    console.error("[StoreCatalog] warm failed:", e);
+  });
+}
+
 async function isPublicAgent(agentId: string | number): Promise<boolean> {
   try {
     const agent = await storage.getAgent(String(agentId));
@@ -5904,6 +6143,10 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
     }
   })();
 
+  // Pre-warm the public Store catalog cache so the first burst of shoppers hits a
+  // warm cache instead of a cold, expensive enrich-all-agents query.
+  warmStoreCatalogCache();
+
   // ==================== STORE (MARKETPLACE PRODUK CHATBOT) ====================
 
   // GET /api/store/catalog — store_products + listed agents as purchasable products (paginated)
@@ -5914,178 +6157,16 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
       const search = String(req.query.search || "").trim().toLowerCase();
       const category = String(req.query.category || "").trim();
 
-      const { db } = await import("./db");
-      const { agents: agentsTable, storeProducts } = await import("@shared/schema");
-      const { and, eq, or, ilike, sql: sqlE } = await import("drizzle-orm");
+      // Fully-computed, cached item list per (category, search). Pagination stays
+      // per-request. See buildStoreCatalogItems/getStoreCatalogItems above.
+      const allItems = await getStoreCatalogItems(category, search);
 
-      // 1. Fetch from store_products table (primary source)
-      const spConditions: any[] = [eq(storeProducts.isActive, true)];
-      if (category && category !== "Semua") spConditions.push(eq(storeProducts.category, category));
-      if (search) {
-        spConditions.push(or(
-          ilike(storeProducts.name, `%${search}%`),
-          ilike(storeProducts.description, `%${search}%`),
-        )!);
-      }
-      const spWhere = spConditions.length > 1 ? and(...spConditions) : spConditions[0];
-      const spRows = await db.select().from(storeProducts).where(spWhere).orderBy(storeProducts.sortOrder, storeProducts.id);
-
-      // Biaya Lisensi: flat Rp 299.000 (hak pakai, install mandiri)
-      // Biaya Setup oleh tim Gustafta: Rp 999.000 (terpisah, opsional)
-      const calcStorePrice = (_agenticSubAgents: any): number => 299000;
-      const calcOriginalPrice = (_total: number): number => 450000;
-
-      // Pre-fetch agenticSubAgents for store_products that link to an agent
-      const spLinkedAgentIds = spRows.map(p => p.agentId).filter(Boolean) as number[];
-      const agentSubMap = new Map<number, any>();
-      if (spLinkedAgentIds.length > 0) {
-        const { inArray } = await import("drizzle-orm");
-        const linkedAgentRows = await db.select({
-          id: agentsTable.id,
-          agenticSubAgents: agentsTable.agenticSubAgents,
-        }).from(agentsTable).where(inArray(agentsTable.id, spLinkedAgentIds));
-        for (const r of linkedAgentRows) agentSubMap.set(r.id, parseSubAgentsValue(r.agenticSubAgents));
-      }
-
-      const storeProductItems = spRows.map((p) => {
-        const linkedSubAgents = p.agentId != null ? agentSubMap.get(p.agentId) : undefined;
-        const price = linkedSubAgents !== undefined ? calcStorePrice(linkedSubAgents) : p.price;
-        return {
-          id: `sp-${p.id}`,
-          productId: p.id,
-          agentId: p.agentId,
-          name: p.name,
-          category: p.category || "Konstruksi",
-          tagline: p.description?.slice(0, 80) || "",
-          description: p.description || "",
-          productSummary: p.description || "",
-          productFeatures: (p.features as string[]) || [],
-          emoji: p.emoji || "🤖",
-          color: p.color || "#6366f1",
-          price,
-          isGustafta: p.isGustafta ?? false,
-          type: "product",
-        };
-      });
-
-      // 2. Fetch ALL active agents (secondary, no duplicate with store_products)
-      const spAgentIds = new Set(spRows.map(p => p.agentId).filter(Boolean));
-      const agentConditions: any[] = [eq(agentsTable.isActive, true)];
-      if (category && category !== "Semua") agentConditions.push(eq(agentsTable.category, category));
-      if (search) {
-        agentConditions.push(or(
-          ilike(agentsTable.name, `%${search}%`),
-          ilike(agentsTable.tagline, `%${search}%`),
-          ilike(agentsTable.description, `%${search}%`),
-        )!);
-      }
-      const agentWhere = agentConditions.length > 1 ? and(...agentConditions) : agentConditions[0];
-      const agentRows = await db.select({
-        id: agentsTable.id, name: agentsTable.name, category: agentsTable.category,
-        tagline: agentsTable.tagline, description: agentsTable.description,
-        avatar: agentsTable.avatar, widgetColor: agentsTable.widgetColor,
-        isOrchestrator: agentsTable.isOrchestrator, monthlyPrice: agentsTable.monthlyPrice,
-        productSummary: agentsTable.productSummary, productFeatures: agentsTable.productFeatures,
-        agenticSubAgents: agentsTable.agenticSubAgents,
-        parentAgentId: agentsTable.parentAgentId,
-        userId: agentsTable.userId,
-        isListed: agentsTable.isListed,
-        isCertified: agentsTable.isCertified,
-        licenseClass: agentsTable.licenseClass,
-        licensePrice: agentsTable.licensePrice,
-      }).from(agentsTable).where(agentWhere).orderBy(agentsTable.id);
-
-      // Count direct child agents per parent for accurate team-size pricing
-      const allAgentIds = agentRows.map(a => a.id);
-      const childCountMap = new Map<number, number>();
-      if (allAgentIds.length > 0) {
-        const { inArray: inArrayA, sql: sqlChild } = await import("drizzle-orm");
-        const childCounts = await db.select({
-          parentId: agentsTable.parentAgentId,
-          cnt: sqlChild<number>`count(*)::int`,
-        }).from(agentsTable)
-          .where(inArrayA(agentsTable.parentAgentId, allAgentIds))
-          .groupBy(agentsTable.parentAgentId);
-        for (const row of childCounts) {
-          if (row.parentId != null) childCountMap.set(row.parentId, row.cnt);
-        }
-      }
-
-      // Also update store_products' agentSubMap with child counts
-      for (const [agentId] of Array.from(agentSubMap.entries())) {
-        const childCount = childCountMap.get(agentId) ?? 0;
-        if (childCount > 0) {
-          // If child count > agenticSubAgents count, treat child count as the sub count
-          const existingSub = agentSubMap.get(agentId);
-          const existingSubCount = Array.isArray(existingSub) ? existingSub.length : 0;
-          if (childCount > existingSubCount) {
-            // Store as a proxy array length
-            agentSubMap.set(agentId, Array(childCount).fill(null));
-          }
-        }
-      }
-
-      // Re-compute store product prices with updated child counts
-      const storeProductItemsFinal = storeProductItems.map(p => {
-        if (p.agentId != null) {
-          const linkedSub = agentSubMap.get(p.agentId);
-          return { ...p, price: linkedSub !== undefined ? calcStorePrice(linkedSub) : p.price };
-        }
-        return p;
-      });
-
-      const agentItems = agentRows
-        .filter((a) => {
-          if (spAgentIds.has(a.id)) return false;
-          if (a.parentAgentId != null) return false;
-          // Only include chatbot bundles (2+ components) — single agents not sold standalone
-          const subCount = parseSubAgentsValue(a.agenticSubAgents).length;
-          const childCount = childCountMap.get(a.id) ?? 0;
-          if ((1 + Math.max(subCount, childCount)) < 2) return false;
-          // Gerbang persetujuan publikasi: agen buatan kreator independen (punya user_id nyata)
-          // HANYA tayang bila pemiliknya memilih "Terbitkan ke Store" (isListed = true).
-          // Agen resmi/seeded Gustafta (user_id = "") TIDAK terpengaruh — tetap tayang seperti biasa.
-          const isCreator = (a.userId ?? "").trim() !== "";
-          if (isCreator && a.isListed !== true) return false;
-          return true;
-        })
-        .map((a) => {
-          const subCount = parseSubAgentsValue(a.agenticSubAgents).length;
-          const childCount = childCountMap.get(a.id) ?? 0;
-          const effectiveTotal = 1 + Math.max(subCount, childCount);
-          // Harga lisensi efektif: band kelas (berkelas) atau harga bebas / DEFAULT (non-kelas).
-          const price = resolveLicensePrice(a.licenseClass, (a as any).licensePrice);
-          return {
-            id: `ag-${a.id}`,
-            agentId: a.id,
-            name: a.name,
-            category: a.category || "Konstruksi",
-            tagline: a.tagline || "",
-            description: a.description || "",
-            productSummary: a.productSummary || "",
-            productFeatures: (a.productFeatures as string[]) || [],
-            emoji: a.avatar && a.avatar.length <= 4 ? a.avatar : "🤖",
-            color: a.widgetColor || "#6366f1",
-            price,
-            originalPrice: calcOriginalPrice(effectiveTotal),
-            agentCount: effectiveTotal,
-            isGustafta: false,
-            // Kreator independen (punya user_id nyata) vs agen resmi/seeded Gustafta (user_id = "").
-            // Dipakai untuk badge transparansi "Pra-Sertifikasi" di kartu Store.
-            isCreatorMade: (a.userId ?? "").trim() !== "",
-            // Status Bersertifikat (admin-only). Bila true, badge hijau "Bersertifikat"
-            // menggantikan badge amber "Pra-Sertifikasi".
-            isCertified: a.isCertified === true,
-            licenseClass: isPremiumClass(a.licenseClass) ? a.licenseClass : null,
-            type: "agent",
-          };
-        });
-
-      const allItems = [...storeProductItemsFinal, ...agentItems];
       const total = allItems.length;
       const offset = (page - 1) * limit;
       const pageItems = allItems.slice(offset, offset + limit);
 
+      // Public, non-personalized listing — safe for a short shared cache.
+      res.set("Cache-Control", "public, max-age=30");
       res.json({
         items: pageItems,
         total,
