@@ -1171,7 +1171,7 @@ export default function Landing() {
               <Stethoscope className="w-3.5 h-3.5" /> Dikerjakan AI
             </p>
             <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-3">
-              Bengkel Kerja
+              Ruang Kerja
             </h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed">
               Pilih loket sesuai kebutuhan Anda, lalu biarkan AI langsung mengerjakannya kapan saja — operator manusia hanya untuk kasus khusus. Tersedia loket untuk badan usaha maupun individu profesional, lintas bidang.
@@ -1210,9 +1210,9 @@ export default function Landing() {
           </div>
 
           <div className="text-center">
-            <Button asChild size="lg" className="gap-2 bg-teal-600 hover:bg-teal-700 text-white" data-testid="btn-bengkel-kerja">
+            <Button asChild size="lg" className="gap-2 bg-teal-600 hover:bg-teal-700 text-white" data-testid="btn-ruang-kerja">
               <Link href="/klinik-konsultasi">
-                Masuk Bengkel Kerja <ArrowRight className="w-4 h-4" />
+                Masuk Ruang Kerja <ArrowRight className="w-4 h-4" />
               </Link>
             </Button>
           </div>
