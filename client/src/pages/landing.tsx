@@ -1168,13 +1168,13 @@ export default function Landing() {
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-10">
             <p className="text-xs font-bold text-teal-600 dark:text-teal-400 uppercase tracking-widest mb-2 flex items-center justify-center gap-1.5">
-              <Stethoscope className="w-3.5 h-3.5" /> Konsultasi AI
+              <Stethoscope className="w-3.5 h-3.5" /> Dikerjakan AI
             </p>
             <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-3">
-              Klinik Konsultasi Konstruksi
+              Bengkel Kerja
             </h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed">
-              Pilih loket sesuai kebutuhan Anda, lalu tanya ke AI kapan saja — operator manusia hanya untuk kasus khusus. Tersedia loket untuk badan usaha maupun individu profesional.
+              Pilih loket sesuai kebutuhan Anda, lalu biarkan AI langsung mengerjakannya kapan saja — operator manusia hanya untuk kasus khusus. Tersedia loket untuk badan usaha maupun individu profesional, lintas bidang.
             </p>
           </div>
 
@@ -1210,9 +1210,9 @@ export default function Landing() {
           </div>
 
           <div className="text-center">
-            <Button asChild size="lg" className="gap-2 bg-teal-600 hover:bg-teal-700 text-white" data-testid="btn-klinik-konsultasi">
+            <Button asChild size="lg" className="gap-2 bg-teal-600 hover:bg-teal-700 text-white" data-testid="btn-bengkel-kerja">
               <Link href="/klinik-konsultasi">
-                Masuk Klinik Konsultasi <ArrowRight className="w-4 h-4" />
+                Masuk Bengkel Kerja <ArrowRight className="w-4 h-4" />
               </Link>
             </Button>
           </div>
