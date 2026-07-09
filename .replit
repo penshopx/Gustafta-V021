@@ -51,18 +51,6 @@ integrations = ["javascript_openai_ai_integrations:2.0.0", "javascript_log_in_wi
 stack = "FULLSTACK_JS"
 expertMode = true
 
-[userenv]
-
-[userenv.shared]
-ADMIN_USER_IDS = "58349984,58848919,59024982"
-SUPERADMIN_EMAILS = "penshopx@gmail.com"
-ADMIN_EMAILS = "tutip98@outlook.com"
-SMTP_HOST = "smtp-relay.brevo.com"
-SMTP_PORT = "587"
-BREVO_SENDER_EMAIL = "penshopx@gmail.com"
-SCALEV_API_KEY = "sk_ixJzm4LV0o8K4NkWATTY332WCxmrSQDGc2t4CR4X2jlgV7GOqugRnqZKt9MrUWtb"
-BREVO_API_KEY = "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"
-
 [postMerge]
 path = "scripts/post-merge.sh"
 timeoutMs = 20000

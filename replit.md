@@ -111,3 +111,9 @@ Semua pakai `PremiumPageGuard` feature="advanced_ai_tools" requiredPlan="profesi
 ## User preferences
 - Preferred communication style: Simple, everyday language.
 - Bahasa komunikasi: Bahasa Indonesia (balas ke pengguna dalam Bahasa Indonesia).
+
+## Replit setup (2026-07-09)
+- Re-imported from GitHub `penshopx/Gustafta-V021` (initial import came in empty; content pulled from `main`).
+- Workflow "Start application" runs `npm run dev`, serving on port 5000.
+- Database: using Replit's built-in PostgreSQL; schema pushed via `npx drizzle-kit push`.
+- Not yet configured: `OPENAI_API_KEY`/other AI provider keys, Scalev/Midtrans payment keys — app runs but AI chat and payment features need these.
