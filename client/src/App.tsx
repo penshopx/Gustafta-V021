@@ -411,6 +411,14 @@ import { NewAgentGrantsNotice } from "@/components/new-agent-grants-notice";
 
 const WIDGET_EXCLUDED_PATHS = ["/legal", "/embed/", "/chaesa", "/demo/", "/bot/", "/chat/", "/chatbot/", "/modul/", "/m/", "/mini-app/"];
 
+function DialogGustaftaRedirect() {
+  const [, navigate] = useLocation();
+  useEffect(() => {
+    navigate("/konsultasi", { replace: true });
+  }, []);
+  return null;
+}
+
 function MarketplaceRedirect() {
   const { toast } = useToast();
   const [, navigate] = useLocation();
@@ -1701,8 +1709,8 @@ function Router() {
         <Route path="/multiclaw" component={MultiClawDirectory} />
         <Route path="/paket-bidang" component={PaketBidangPage} />
         <Route path="/konsultasi" component={DialogGustaftaPage} />
-        <Route path="/dialog-gustafta" component={DialogGustaftaPage} />
-        <Route path="/dialog" component={DialogGustaftaPage} />
+        <Route path="/dialog-gustafta" component={DialogGustaftaRedirect} />
+        <Route path="/dialog" component={DialogGustaftaRedirect} />
       <Route component={NotFound} />
     </Switch>
   );
