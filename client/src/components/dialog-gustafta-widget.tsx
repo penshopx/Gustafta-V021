@@ -217,7 +217,7 @@ export function DialogGustaftaWidget() {
                 <span className="text-emerald-300 text-xs font-bold">🎁 Starter Kit — Rp 245.000</span>
               </div>
               <a
-                href="/dialog-gustafta"
+                href="/konsultasi"
                 className="flex items-center justify-center gap-1.5 w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white text-xs font-bold py-2.5 px-4 rounded-xl transition-all"
               >
                 Buka Dialog Penuh <ChevronRight className="w-3.5 h-3.5" />
@@ -313,7 +313,7 @@ export function DialogGustaftaWidget() {
           {!promoDismissed && userMessageCount >= 3 && userMessageCount < PROMO_SHOWN_THRESHOLD && (
             <div className="mx-4 mb-2">
               <a
-                href="/dialog-gustafta"
+                href="/konsultasi"
                 className="flex items-center justify-between gap-2 bg-gradient-to-r from-cyan-900/60 to-blue-900/60 border border-cyan-500/30 rounded-lg px-3 py-2 text-xs text-white/80 hover:text-white transition-colors"
               >
                 <span>✨ Mau blueprint lengkap? Buka <strong className="text-cyan-300">Dialog Penuh</strong></span>

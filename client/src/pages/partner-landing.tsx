@@ -61,7 +61,7 @@ export default function PartnerLanding() {
                 className="gap-2 text-base px-8"
                 style={{ backgroundColor: accent, color: "#fff" }}
               >
-                <Link href="/dialog-gustafta" data-testid="link-partner-start-dialog">
+                <Link href="/konsultasi" data-testid="link-partner-start-dialog">
                   <MessageCircle className="h-5 w-5" />
                   Dialog Blueprint
                 </Link>

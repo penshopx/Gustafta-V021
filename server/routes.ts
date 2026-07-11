@@ -2161,9 +2161,9 @@ export async function registerRoutes(
         if (!subscription) {
           // No subscription — require activation via Dialog Gustafta CTA flow
           return res.status(403).json({
-            error: "Aktifkan akun terlebih dahulu melalui Dialog Gustafta.",
+            error: "Aktifkan akun terlebih dahulu melalui Konsultasi Gustafta.",
             reason: "dialog_required",
-            redirectUrl: "/dialog-gustafta",
+            redirectUrl: "/konsultasi",
           });
         }
 
@@ -5919,8 +5919,8 @@ Sampaikan dengan natural, misalnya: "Untuk jawaban yang lebih lengkap dan pembua
           if (!dialogCompleted) {
             return res.status(403).json({
               error: "dialog_required",
-              message: "Selesaikan Dialog Gustafta terlebih dahulu untuk mengaktifkan trial gratis.",
-              redirectUrl: "/dialog-gustafta",
+              message: "Selesaikan Konsultasi Gustafta terlebih dahulu untuk mengaktifkan trial gratis.",
+              redirectUrl: "/konsultasi",
             });
           }
           const subscription = await storage.createSubscription({
@@ -30672,7 +30672,7 @@ LARANGAN:
       if (count > 0 && count % 7 === 0) {
         const cycle = Math.floor(count / 7);
         const upsellNotes = [
-          "\n\n_Oh ya, kalau mau mendalami topik ini lebih jauh — ada **Starter Kit Gustafta** (panduan digital + lisensi platform + trial 7 hari) yang cocok buat konteks kamu. Bisa dicek di [gustafta.my.id/dialog-gustafta](https://gustafta.my.id/dialog-gustafta) 😊_",
+          "\n\n_Oh ya, kalau mau mendalami topik ini lebih jauh — ada **Starter Kit Gustafta** (panduan digital + lisensi platform + trial 7 hari) yang cocok buat konteks kamu. Bisa dicek di [gustafta.my.id/konsultasi](https://gustafta.my.id/konsultasi) 😊_",
           "\n\n_Btw, ide yang kita diskusikan tadi bisa langsung diwujudkan lho! Platform **Gustafta** punya paket berlangganan yang terjangkau untuk bangun chatbot sendiri — cek di [gustafta.my.id](https://gustafta.my.id) kalau tertarik._",
           "\n\n_Satu langkah konkret yang bisa kamu ambil: langsung wujudkan ide ini lewat **Starter Kit Gustafta** — lisensi platform + panduan digital + trial 7 hari, atau langsung coba bangun di **platform Gustafta** (gustafta.my.id). Dua jalur berbeda, tapi keduanya menuju ke sana._",
         ];

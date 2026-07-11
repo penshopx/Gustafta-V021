@@ -298,7 +298,7 @@ export default function LegacyPage() {
                 <Sparkles className="h-5 w-5" /> Bangun AI Twin Saya
               </Button>
             </Link>
-            <Link href="/dialog-gustafta">
+            <Link href="/konsultasi">
               <Button size="lg" variant="outline" className="border-white/40 text-white hover:bg-white/10 gap-2 px-8 h-12" data-testid="btn-cta-dialog-legacy">
                 Mulai dengan Dialog Dulu <ArrowRight className="h-4 w-4" />
               </Button>
@@ -316,7 +316,7 @@ export default function LegacyPage() {
           </div>
           <div className="flex items-center gap-6 text-xs text-gray-500 dark:text-gray-400">
             <Link href="/" className="hover:text-violet-600">Beranda</Link>
-            <Link href="/dialog-gustafta" className="hover:text-violet-600">Dialog Gustafta</Link>
+            <Link href="/konsultasi" className="hover:text-violet-600">Dialog Gustafta</Link>
             <Link href="/produk" className="hover:text-violet-600">Produk</Link>
             <a href={WA_URL} target="_blank" rel="noopener noreferrer" className="hover:text-violet-600 flex items-center gap-1">
               <MessageCircle className="h-3 w-3" /> WhatsApp

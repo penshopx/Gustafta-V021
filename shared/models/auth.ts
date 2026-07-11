@@ -18,6 +18,8 @@ export const sessions = pgTable(
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: varchar("email").unique(),
+  phone: varchar("phone"),
+  otpChannel: varchar("otp_channel").default("wa"), // "wa" (Fonnte) or "email" (Brevo, Gmail only)
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),

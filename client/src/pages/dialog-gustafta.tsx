@@ -3,7 +3,7 @@ import { MessageContent } from "@/lib/format-message";
 import {
   Send, X, RefreshCw, Share2, Copy, MessageCircle,
   Sparkles, ArrowRight, Check, ChevronRight, RotateCcw, Rocket, Loader2,
-  Mic, MicOff, Paperclip,
+  Mic, MicOff, Paperclip, Phone, PhoneOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -120,7 +120,7 @@ ${b.estimasiDampak}
 ${profil ? `👤 PROFIL AWAL\nBidang: ${profil.bidang}\nPotensi: ${profil.potensi}` : ""}
 
 —
-${partnerMode ? `Dibuat via Dialog ${brand}` : "Dibuat via Dialog Gustafta · gustafta.my.id/dialog-gustafta"}`;
+${partnerMode ? `Dibuat via Konsultasi ${brand}` : "Dibuat via Konsultasi Gustafta · gustafta.my.id/konsultasi"}`;
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -155,6 +155,7 @@ export default function DialogGustaftaPage() {
   const [loading, setLoading] = useState(false);
   const [processing, setProcessing] = useState(false); // gate generation
   const [hasSaved, setHasSaved] = useState(false); // show resume banner
+  const [showSplash, setShowSplash] = useState(true); // intro landing screen
   const [showResume, setShowResume] = useState(false);
   const [savedSession, setSavedSession] = useState<SavedSession | null>(null);
   const [showShareOptions, setShowShareOptions] = useState(false);
@@ -208,6 +209,12 @@ export default function DialogGustaftaPage() {
   const [isListening, setIsListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [phoneMode, setPhoneMode] = useState(false);
+  const [aiSpeaking, setAiSpeaking] = useState(false);
+  const phoneModeRef = useRef(false);
+  const aiSpeakingRef = useRef(false);
+  useEffect(() => { phoneModeRef.current = phoneMode; }, [phoneMode]);
+  useEffect(() => { aiSpeakingRef.current = aiSpeaking; }, [aiSpeaking]);
 
   // ── Speech API ───────────────────────────────────────────────────────────
   useEffect(() => {
@@ -221,6 +228,7 @@ export default function DialogGustaftaPage() {
     let final = "";
     recognition.onstart = () => { setIsListening(true); final = ""; };
     recognition.onresult = (e: any) => {
+      if (aiSpeakingRef.current) return; // ignore anything captured while the AI is speaking
       let interim = "";
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const t = e.results[i][0].transcript;
@@ -240,6 +248,42 @@ export default function DialogGustaftaPage() {
     if (!recognitionRef.current) return;
     if (isListening) { recognitionRef.current.stop(); }
     else { setInput(""); recognitionRef.current.start(); }
+  };
+
+  // ── Mode Telpon: baca balasan AI dengan suara, lalu dengarkan lagi ─────────
+  const speakReply = (text: string) => {
+    const synth = (window as any).speechSynthesis;
+    if (!phoneModeRef.current || !synth || !text) return;
+    if (recognitionRef.current) { try { recognitionRef.current.stop(); } catch { /* noop */ } }
+    synth.cancel();
+    const utter = new SpeechSynthesisUtterance(
+      text.replace(/```[\s\S]*?```/g, " ").replace(/[*_#>~`-]{1,3}/g, " ").replace(/\s{2,}/g, " ").trim()
+    );
+    utter.lang = "id-ID";
+    utter.onstart = () => setAiSpeaking(true);
+    utter.onend = () => {
+      setAiSpeaking(false);
+      if (phoneModeRef.current && recognitionRef.current) {
+        try { recognitionRef.current.start(); } catch { /* already started */ }
+      }
+    };
+    utter.onerror = () => setAiSpeaking(false);
+    synth.speak(utter);
+  };
+
+  const togglePhoneMode = () => {
+    const synth = (window as any).speechSynthesis;
+    setPhoneMode(prev => {
+      const next = !prev;
+      if (!next) {
+        synth?.cancel();
+        setAiSpeaking(false);
+        if (recognitionRef.current && isListening) recognitionRef.current.stop();
+      } else if (recognitionRef.current && !isListening) {
+        try { recognitionRef.current.start(); } catch { /* noop */ }
+      }
+      return next;
+    });
   };
 
   // ── File upload ──────────────────────────────────────────────────────────
@@ -289,6 +333,7 @@ export default function DialogGustaftaPage() {
     if (saved && saved.messages.length > 1) {
       setSavedSession(saved);
       setShowResume(true);
+      setShowSplash(false); // skip splash if resuming
       setHasSaved(true);
     }
   }, []);
@@ -367,6 +412,7 @@ export default function DialogGustaftaPage() {
       const reply = data.reply || "Maaf, ada gangguan sebentar.";
       const updatedMsgs = [...newMsgs, { role: "assistant" as const, content: reply }];
       setMessages(updatedMsgs);
+      speakReply(reply);
 
       const updSession = { stage, messages: updatedMsgs, profil, gambaran, blueprint, s1Count: newS1, s2Count: newS2, s3Count: newS3, s3Unlocked, savedAt: "" };
 
@@ -523,6 +569,73 @@ export default function DialogGustaftaPage() {
   const isInputBlocked = loading || processing ||
     stage === "s1_gate" || stage === "s2_gate" || stage === "blueprint";
 
+  // ── Splash / Intro Screen ────────────────────────────────────────────────
+  if (showSplash && !showResume) {
+    return (
+      <div className="flex flex-col min-h-screen bg-gradient-to-b from-[#0a1628] to-[#0d1f3c] items-center justify-center px-6 py-12">
+        <div className="w-full max-w-md space-y-8">
+          {/* Logo & Brand */}
+          <div className="text-center space-y-3">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-700 flex items-center justify-center mx-auto overflow-hidden">
+              {brandLogo
+                ? <img src={brandLogo} alt={brandName} className="w-12 h-12 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                : <span className="text-white text-2xl font-bold">{brandName.charAt(0)}</span>}
+            </div>
+            <div>
+              <p className="text-xs font-semibold tracking-widest text-cyan-400/70 uppercase mb-1">Konsultasi AI</p>
+              <h1 className="text-2xl font-bold text-white">Selamat Datang di {brandName}</h1>
+            </div>
+          </div>
+
+          {/* Intro Card */}
+          <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur p-6 space-y-5">
+            <div className="space-y-2">
+              <h2 className="text-base font-semibold text-white">Sebelum kita mulai...</h2>
+              <p className="text-sm text-white/60 leading-relaxed">
+                Kami tidak akan langsung menawarkan produk.
+              </p>
+              <p className="text-sm text-white/60 leading-relaxed">
+                Kami ingin memahami tantangan yang sedang Anda hadapi.
+              </p>
+              <p className="text-sm text-cyan-300/80 leading-relaxed">
+                Dalam waktu sekitar <strong className="text-cyan-300">3–5 menit</strong>, AI akan membantu menyusun blueprint awal berdasarkan jawaban Anda.
+              </p>
+            </div>
+
+            <div className="border-t border-white/10 pt-4 space-y-2">
+              <p className="text-xs font-semibold text-white/40 uppercase tracking-wider">Yang akan Anda dapatkan:</p>
+              <ul className="space-y-2">
+                {[
+                  "Identifikasi masalah utama",
+                  "Prioritas perbaikan",
+                  "Blueprint solusi awal",
+                  "Rekomendasi langkah berikutnya",
+                ].map((item) => (
+                  <li key={item} className="flex items-start gap-2.5 text-sm text-white/80">
+                    <span className="mt-0.5 w-4 h-4 rounded-full bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center shrink-0">
+                      <Check className="w-2.5 h-2.5 text-emerald-400" />
+                    </span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          {/* CTA */}
+          <Button
+            className="w-full h-12 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-semibold text-base gap-2 rounded-xl shadow-lg shadow-cyan-900/40"
+            onClick={() => { setShowSplash(false); setTimeout(() => textareaRef.current?.focus(), 100); }}
+          >
+            Mulai Konsultasi <ArrowRight className="w-4 h-4" />
+          </Button>
+
+          <p className="text-center text-xs text-white/25">Gratis · Tanpa daftar · Hasil langsung</p>
+        </div>
+      </div>
+    );
+  }
+
   // ── Resume Banner ────────────────────────────────────────────────────────
   if (showResume && savedSession) {
     const ago = savedSession.savedAt ? new Date(savedSession.savedAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "sebelumnya";
@@ -533,16 +646,16 @@ export default function DialogGustaftaPage() {
             <RotateCcw className="w-8 h-8 text-white" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-white mb-2">Ada Dialog yang Tersimpan</h2>
+            <h2 className="text-xl font-bold text-white mb-2">Ada Konsultasi yang Tersimpan</h2>
             <p className="text-sm text-white/60">Terakhir disimpan {ago}</p>
             <p className="text-sm text-cyan-300 mt-1 font-medium">{stageLabel[savedSession.stage]}</p>
           </div>
           <div className="space-y-3">
             <Button className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white gap-2 h-11 font-semibold" onClick={resumeSession}>
-              <RotateCcw className="w-4 h-4" /> Lanjutkan Dialog
+              <RotateCcw className="w-4 h-4" /> Lanjutkan Konsultasi
             </Button>
             <Button variant="ghost" className="w-full text-white/50 hover:text-white text-sm" onClick={startFresh}>
-              Mulai Dialog Baru
+              Mulai Konsultasi Baru
             </Button>
           </div>
         </div>
@@ -563,7 +676,7 @@ export default function DialogGustaftaPage() {
               : <span className="text-white text-sm font-bold">{brandName.charAt(0)}</span>}
           </div>
           <div>
-            <h1 className="text-sm font-bold text-white tracking-wide" data-testid="text-dialog-title">DIALOG {brandName.toUpperCase()}</h1>
+            <h1 className="text-sm font-bold text-white tracking-wide" data-testid="text-dialog-title">KONSULTASI {brandName.toUpperCase()}</h1>
             <p className="text-[10px] text-cyan-300/70">{stageLabel[stage]}</p>
           </div>
         </div>
@@ -985,6 +1098,21 @@ export default function DialogGustaftaPage() {
               />
               {speechSupported && (
                 <button
+                  onClick={togglePhoneMode}
+                  disabled={loading || processing}
+                  className={`shrink-0 h-12 w-12 rounded-xl transition-all flex items-center justify-center ${
+                    phoneMode
+                      ? "bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30"
+                      : "text-white/40 hover:text-white/70 hover:bg-white/10 disabled:opacity-30"
+                  }`}
+                  title={phoneMode ? "Matikan Mode Telpon" : "Mode Telpon — bicara & dengar seperti telepon"}
+                  data-testid="button-phone-mode-dialog"
+                >
+                  {phoneMode ? <PhoneOff className="w-4 h-4" /> : <Phone className="w-4 h-4" />}
+                </button>
+              )}
+              {speechSupported && (
+                <button
                   onClick={toggleMic}
                   disabled={loading || processing}
                   className={`shrink-0 h-12 w-12 rounded-xl transition-all flex items-center justify-center ${
@@ -997,6 +1125,9 @@ export default function DialogGustaftaPage() {
                 >
                   {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
                 </button>
+              )}
+              {aiSpeaking && (
+                <span className="text-[10px] text-emerald-400 font-medium absolute -top-5 left-0">AI sedang berbicara…</span>
               )}
               <Button
                 size="icon"

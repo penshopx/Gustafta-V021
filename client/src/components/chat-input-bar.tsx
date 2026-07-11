@@ -1,5 +1,18 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Paperclip, Send, Loader2, X, FileText, Image as ImageIcon, Copy, Check, ThumbsUp, ThumbsDown, Mic, MicOff, Music, Video, File } from "lucide-react";
+import { Paperclip, Send, Loader2, X, FileText, Image as ImageIcon, Copy, Check, ThumbsUp, ThumbsDown, Mic, MicOff, Music, Video, File, Phone, PhoneOff } from "lucide-react";
+
+/** Strip markdown symbols so text-to-speech doesn't read "asterisk asterisk" etc. */
+export function stripMarkdownForSpeech(text: string): string {
+  return text
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/[*_#>~-]{1,3}/g, " ")
+    .replace(/\|/g, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
 
 export interface ChatAttachment {
   fileName: string;
@@ -18,6 +31,8 @@ interface ChatInputBarProps {
   footerText?: string;
   showClear?: boolean;
   onClear?: () => void;
+  /** Latest assistant reply text — when provided, enables "Mode Telpon" (phone call voice loop). */
+  lastAIMessage?: string;
 }
 
 export function ChatInputBar({
@@ -28,16 +43,62 @@ export function ChatInputBar({
   footerText,
   showClear = false,
   onClear,
+  lastAIMessage,
 }: ChatInputBarProps) {
   const [input, setInput] = useState("");
   const [pendingFiles, setPendingFiles] = useState<ChatAttachment[]>([]);
   const [uploading, setUploading] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
+  const [phoneMode, setPhoneMode] = useState(false);
+  const [aiSpeaking, setAiSpeaking] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
   const sendRef = useRef<() => void>(() => {});
+  const phoneModeRef = useRef(false);
+  const aiSpeakingRef = useRef(false);
+  const lastSpokenRef = useRef<string | undefined>(undefined);
+
+  useEffect(() => { phoneModeRef.current = phoneMode; }, [phoneMode]);
+  useEffect(() => { aiSpeakingRef.current = aiSpeaking; }, [aiSpeaking]);
+
+  // Mode Telpon: baca balasan AI dengan suara, lalu otomatis dengarkan lagi.
+  // Mic is explicitly stopped before speaking (defense against the mic picking up
+  // the AI's own voice through speakers and self-triggering a reply loop).
+  useEffect(() => {
+    const synth = (window as any).speechSynthesis;
+    if (!phoneMode || !synth || !lastAIMessage || lastAIMessage === lastSpokenRef.current) return;
+    lastSpokenRef.current = lastAIMessage;
+    if (recognitionRef.current) { try { recognitionRef.current.stop(); } catch { /* noop */ } }
+    synth.cancel();
+    const utter = new SpeechSynthesisUtterance(stripMarkdownForSpeech(lastAIMessage));
+    utter.lang = "id-ID";
+    utter.onstart = () => setAiSpeaking(true);
+    utter.onend = () => {
+      setAiSpeaking(false);
+      if (phoneModeRef.current && recognitionRef.current) {
+        try { recognitionRef.current.start(); } catch { /* already started */ }
+      }
+    };
+    utter.onerror = () => setAiSpeaking(false);
+    synth.speak(utter);
+  }, [lastAIMessage, phoneMode]);
+
+  const togglePhoneMode = () => {
+    const synth = (window as any).speechSynthesis;
+    setPhoneMode(prev => {
+      const next = !prev;
+      if (!next) {
+        synth?.cancel();
+        setAiSpeaking(false);
+        if (recognitionRef.current && isListening) recognitionRef.current.stop();
+      } else if (recognitionRef.current && !isListening) {
+        try { recognitionRef.current.start(); } catch { /* noop */ }
+      }
+      return next;
+    });
+  };
 
   const autoResize = useCallback(() => {
     const el = textareaRef.current;
@@ -67,6 +128,7 @@ export function ChatInputBar({
     };
 
     recognition.onresult = (event: any) => {
+      if (aiSpeakingRef.current) return; // ignore anything captured while the AI is speaking
       let interim = "";
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const t = event.results[i][0].transcript;
@@ -200,6 +262,23 @@ export function ChatInputBar({
         </div>
       )}
 
+      {aiSpeaking && (
+        <div className="flex items-center gap-2 mb-2 px-1">
+          <span className="flex h-2 w-2 relative">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+          </span>
+          <span className="text-xs text-green-400 font-medium">AI sedang berbicara…</span>
+        </div>
+      )}
+
+      {phoneMode && !isListening && !aiSpeaking && (
+        <div className="flex items-center gap-2 mb-2 px-1">
+          <Phone className="h-3 w-3 text-emerald-400" />
+          <span className="text-xs text-emerald-400 font-medium">Mode Telpon aktif — tekan mic atau bicara saat siap</span>
+        </div>
+      )}
+
       <div className="flex items-end gap-2 rounded-xl border border-white/15 bg-white/5 px-3 py-2 focus-within:border-white/30 focus-within:ring-1 focus-within:ring-white/10 transition-all max-w-3xl mx-auto">
         {/* Attach file */}
         <button
@@ -235,6 +314,23 @@ export function ChatInputBar({
           className="flex-1 bg-transparent border-0 outline-none resize-none text-white placeholder:text-white/30 text-sm leading-relaxed py-0.5 max-h-[160px] overflow-y-auto"
           data-testid="input-message"
         />
+
+        {/* Mode Telpon */}
+        {speechSupported && lastAIMessage !== undefined && (
+          <button
+            onClick={togglePhoneMode}
+            disabled={disabled || uploading}
+            className={`shrink-0 mb-0.5 p-1.5 rounded-lg transition-all ${
+              phoneMode
+                ? "bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30"
+                : "text-white/40 hover:text-white/70 hover:bg-white/10 disabled:opacity-30"
+            }`}
+            title={phoneMode ? "Matikan Mode Telpon" : "Mode Telpon — bicara & dengar seperti telepon"}
+            data-testid="button-phone-mode"
+          >
+            {phoneMode ? <PhoneOff className="h-4 w-4" /> : <Phone className="h-4 w-4" />}
+          </button>
+        )}
 
         {/* Microphone */}
         {speechSupported && (

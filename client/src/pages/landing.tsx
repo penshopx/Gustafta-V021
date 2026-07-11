@@ -558,23 +558,23 @@ export default function Landing() {
         <div className="max-w-4xl mx-auto relative text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/20 text-white text-xs font-semibold mb-6 backdrop-blur-sm">
             <Wrench className="h-3.5 w-3.5" />
-            Platform Perakit AI — No Code
+            Platform Penyelesaian Masalah
           </div>
 
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4 leading-tight" data-testid="text-hero-title">
-            Semua Orang Punya Pengetahuan.
+            Punya Masalah yang Berulang Setiap Hari?
             <br />
-            <span className="text-yellow-300">Kini Saatnya Merakitnya Menjadi AI.</span>
+            <span className="text-yellow-300">Dari Masalah, Menjadi Hasil Nyata.</span>
           </h1>
 
           <p className="text-base md:text-lg text-blue-100 mb-2 font-semibold tracking-wide">
-            Belajar · Merakit · Menggunakan · Menghasilkan · Berkembang
+            Dialog · Blueprint · Kolaborasi · Workroom · Hasil
           </p>
 
           <p className="text-sm md:text-base text-blue-200 mb-8 leading-relaxed max-w-2xl mx-auto">
-            Ubah pengetahuan, pengalaman, kompetensi, SOP, regulasi, maupun ide Anda menjadi{" "}
-            <strong className="text-white">Teman Berpikir Digital</strong> — bahkan{" "}
-            <strong className="text-white">satu tim AI yang saling bekerja sama</strong> untuk pekerjaan, bisnis, organisasi, dan pelanggan Anda. Tanpa harus bisa coding.
+            Pekerjaan yang menumpuk, pertanyaan yang berulang, SOP yang tak sempat dibaca — semua itu masalah nyata. Gustafta bukan cuma menjawab lalu selesai: kami mengubah pengetahuan, pengalaman, dan SOP Anda menjadi{" "}
+            <strong className="text-white">Cetak Biru AI (Blueprint)</strong>, lalu mengawal Anda mengerjakannya di{" "}
+            <strong className="text-white">Workroom</strong> — sendiri atau bersama satu tim AI — sampai dokumen, proposal, atau produk benar-benar selesai. Tanpa harus bisa coding.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center mb-4">
@@ -1078,6 +1078,13 @@ export default function Landing() {
                 desc: "Kumpulan alat AI siap pakai — Kalkulator RAB, Inspektor K3 Vision, Generator Proposal, dan lainnya — langsung pakai tanpa merakit.",
                 cta: "Buka AI Tools", href: "/ai-tools",
               },
+              {
+                emoji: "🏗️",
+                accent: "border-sky-200 dark:border-sky-800 bg-sky-50 dark:bg-sky-950/20",
+                title: "Workroom",
+                desc: "Bukan cuma jawaban di layar — kerjakan masalah Anda bertahap per bidang lewat Ruang Tender, Ruang Perizinan, Ruang Sertifikasi SKK, Ruang K3, dst sampai gerbang persetujuan ◆ dan hasil nyata.",
+                cta: "Buka Workroom", href: "/workroom",
+              },
             ].map((f) => (
               <div key={f.title} className={`rounded-2xl border ${f.accent} p-6 flex flex-col`}>
                 <div className="text-3xl mb-3">{f.emoji}</div>
@@ -1171,7 +1178,7 @@ export default function Landing() {
               <Stethoscope className="w-3.5 h-3.5" /> Dikerjakan AI
             </p>
             <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-3">
-              Ruang Kerja
+              Klinik Konsultasi
             </h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed">
               Pilih loket sesuai kebutuhan Anda, lalu biarkan AI langsung mengerjakannya kapan saja — operator manusia hanya untuk kasus khusus. Tersedia loket untuk badan usaha maupun individu profesional, lintas bidang.
@@ -1212,7 +1219,7 @@ export default function Landing() {
           <div className="text-center">
             <Button asChild size="lg" className="gap-2 bg-teal-600 hover:bg-teal-700 text-white" data-testid="btn-ruang-kerja">
               <Link href="/klinik-konsultasi">
-                Masuk Ruang Kerja <ArrowRight className="w-4 h-4" />
+                Masuk Klinik Konsultasi <ArrowRight className="w-4 h-4" />
               </Link>
             </Button>
           </div>
@@ -1452,13 +1459,13 @@ export default function Landing() {
       {/* ── CTA FINAL ── */}
       <section className="py-20 px-4 bg-gradient-to-br from-blue-600 to-violet-700 text-center">
         <div className="max-w-2xl mx-auto">
-          <p className="text-blue-200 text-sm font-semibold uppercase tracking-widest mb-4">GUSTAFTA — Platform Perakit AI No-Code</p>
+          <p className="text-blue-200 text-sm font-semibold uppercase tracking-widest mb-4">GUSTAFTA — Platform Penyelesaian Masalah</p>
           <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">
-            Ubah Pengetahuan Anda Menjadi<br />
-            <span className="text-yellow-300">Aset AI yang Menciptakan Nilai.</span>
+            Ubah Masalah Anda Menjadi<br />
+            <span className="text-yellow-300">Hasil Nyata.</span>
           </h2>
           <p className="text-blue-200 text-sm mb-8">
-            Belajar · Merakit · Menggunakan · Menghasilkan · Berkembang
+            Dialog · Blueprint · Kolaborasi · Workroom · Hasil
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link href="/persona">
@@ -1491,7 +1498,7 @@ export default function Landing() {
               },
               {
                 q: "Apa bedanya Gustafta dengan ChatGPT atau platform chatbot lain?",
-                a: "Mereka menjual chatbot siap pakai. Gustafta menjual platform untuk merakit ekosistem AI dari pengetahuan Anda sendiri — chatbot, mini apps, e-course, document generator, dan multi-agent dalam satu sistem yang bisa dimonetisasi.",
+                a: "ChatGPT menjawab pertanyaan lalu selesai di situ. Gustafta mengawal seluruh alurnya: masalah Anda → Dialog (memahami) → Blueprint (cetak biru solusi) → Workroom (dikerjakan bertahap per bidang, dengan gerbang persetujuan ◆) → hasil nyata berupa dokumen, proposal, atau produk — bukan cuma jawaban di layar.",
               },
               {
                 q: "Saya sudah profesional tapi tidak tahu AI — bisa pakai Gustafta?",
@@ -1532,9 +1539,9 @@ export default function Landing() {
                 <span className="text-lg font-bold text-gray-900 dark:text-white">GUSTAFTA</span>
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
-                Platform Perakit AI — No Code
+                Platform Penyelesaian Masalah Berbasis AI
               </p>
-              <p className="text-xs text-gray-400 mt-2 italic">Belajar · Merakit · Menggunakan · Menghasilkan · Berkembang</p>
+              <p className="text-xs text-gray-400 mt-2 italic">Dialog · Blueprint · Kolaborasi · Workroom · Hasil</p>
             </div>
             <div>
               <p className="text-xs font-bold text-gray-700 dark:text-gray-300 mb-3 uppercase tracking-wide">Platform</p>
@@ -1575,7 +1582,7 @@ export default function Landing() {
             </div>
           </div>
           <div className="border-t pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <p className="text-xs text-gray-400">© 2026 Gustafta. Platform Perakit AI — No Code.</p>
+            <p className="text-xs text-gray-400">© 2026 Gustafta. Platform Penyelesaian Masalah Berbasis AI.</p>
             <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
               <Link href="/syarat-ketentuan" className="text-xs text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400" data-testid="link-syarat-ketentuan">Syarat &amp; Ketentuan</Link>
               <Link href="/kebijakan-privasi" className="text-xs text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400" data-testid="link-kebijakan-privasi">Kebijakan Privasi</Link>

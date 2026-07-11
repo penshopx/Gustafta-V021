@@ -663,6 +663,7 @@ export default function TenderAiChat() {
 
       {/* Input */}
       <ChatInputBar
+        lastAIMessage={[...messages].reverse().find((m) => m.role === "assistant")?.content}
         onSend={sendMessage}
         disabled={!ready || streaming}
         streaming={streaming}

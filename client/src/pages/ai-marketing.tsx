@@ -140,7 +140,7 @@ export default function AiMarketingLanding() {
             </Link>
           </Button>
           <Button asChild size="lg" variant="outline" className="border-white/15 text-white hover:bg-white/5 w-full sm:w-auto" data-testid="button-free-consult">
-            <Link href="/dialog-gustafta">
+            <Link href="/konsultasi">
               <MessageCircle className="h-4 w-4 mr-2" /> Konsultasi gratis dulu
             </Link>
           </Button>
@@ -241,7 +241,7 @@ export default function AiMarketingLanding() {
               <Link href="/store"><Store className="h-4 w-4 mr-2" /> Mulai dari Store</Link>
             </Button>
             <Button asChild size="lg" variant="outline" className="border-white/15 text-white hover:bg-white/5 w-full sm:w-auto" data-testid="button-cta-consult">
-              <Link href="/dialog-gustafta">Tanya dulu ke asisten</Link>
+              <Link href="/konsultasi">Tanya dulu ke asisten</Link>
             </Button>
           </div>
         </div>

@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 
 /*
- * Flier cetak untuk kegiatan "Klinik Konsultasi" di booth Indobuildtech 2026.
+ * Flier cetak untuk kegiatan "Klinik Konstruksi" di booth Indobuildtech 2026.
  * Fokus 4 loket: SBU / SKK / PUB / PKB. Didesain untuk dicetak / di-screenshot
  * (tombol Cetak disembunyikan saat print). Menaut ke rute nyata /klinik-konsultasi.
  */
@@ -30,7 +30,7 @@ export default function FlierKlinikKonsultasiPage() {
 
   useEffect(() => {
     const prevTitle = document.title;
-    document.title = "Flier — Klinik Konsultasi SBU/SKK/PUB/PKB | Gustafta";
+    document.title = "Flier — Klinik Konstruksi SBU/SKK/PUB/PKB | Gustafta";
     const url = `${window.location.origin}/klinik-konsultasi`;
     setPageUrl(url);
     setQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=0&data=${encodeURIComponent(url)}`);

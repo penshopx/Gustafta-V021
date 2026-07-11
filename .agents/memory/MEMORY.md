@@ -1,3 +1,4 @@
+- [OTP dual-channel](otp-dual-channel.md) — WhatsApp (Fonnte) is default OTP channel; email (Brevo) kept only for @gmail.com; register must block overwrite on any emailVerified row.
 - [Ebook 2 collaboration model](ebook2-collaboration-model.md) — TRILOGI Buku II (KOLABORASI) is the spec the Teams/Organization Builder implements: ◆ human-gate named per workflow, narrow roles, ~3 starter agents, log+escalation, success = time/judgment not headcount.
 - [Lucide Map icon crash](lucide-map-crash.md) — `{ Map }` from lucide-react (no alias) → global Map in prod build → blank screen crash.
 - [Orchestrator lookup pattern](orchestrator-lookup.md) — never trust hardcoded agent IDs; resolve via slug → ID-validated → word-boundary name fallback. Audit must mirror runtime, not raw ID lookup.
@@ -54,3 +55,5 @@
 - [Rate limiter shared store](rate-limit-shared-store.md) — autoscale rate caps must count in a shared store, not per-process Map; new tables need dev DDL + committed migration (push is avoided/blocked); guard silent fallback with a real-DB test.
 - [Import can reveal plaintext secrets](import-reveals-plaintext-secrets.md) — re-imported `.replit` can carry real API keys under `[userenv.shared]`; move to Replit Secrets and tell user to rotate.
 - [Bot demo stream contract](bot-demo-stream-contract.md) — the 9 vertical "bot" chat pages hand-roll SSE and drift from `/api/messages/stream` (right URL/body/`chunk` event/`MessageContent text=` prop); login-gated, agents stay private.
+- [Voice "Mode Telpon" mic/TTS feedback guard](voice-mode-phone-loop.md) — phone-call voice loops (STT+TTS) need explicit stop-mic-before-speak + ignore-while-speaking guards or they can self-trigger reply loops.
+- [Gustafta 3-layer terminology](gustafta-3layer-terminology.md) — Produk uses "Ruang X" (domain), Engine's generic execution stage is "Workroom" (not "Ruang Kerja" — collides with domain names).

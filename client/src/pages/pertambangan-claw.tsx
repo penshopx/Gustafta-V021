@@ -172,6 +172,7 @@ export default function PertambanganClawChat() {
         )}
       </ScrollArea>
       <ChatInputBar
+        lastAIMessage={[...messages].reverse().find((m) => m.role === "assistant")?.content}
         onSend={sendMessage}
         disabled={!ready || streaming}
         streaming={streaming}

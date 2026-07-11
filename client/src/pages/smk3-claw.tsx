@@ -271,6 +271,7 @@ export default function Smk3ClawChat() {
       </ScrollArea>
 
       <ChatInputBar
+        lastAIMessage={[...messages].reverse().find((m) => m.role === "assistant")?.content}
         onSend={sendMessage}
         disabled={!ready || streaming}
         streaming={streaming}

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { parseBrainUpdates, BrainChip } from "@/lib/brain-utils";
 import { MessageContent } from "@/lib/format-message";
+import { useVoiceMode } from "@/hooks/use-voice-mode";
 import { useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   ArrowLeft, Send, Loader2, Zap, CheckCircle2, Clock, AlertCircle,
-  Bot, ChevronDown, ChevronUp, Users, Mic, BookText, Headphones,
+  Bot, ChevronDown, ChevronUp, Users, Mic, MicOff, Phone, PhoneOff, BookText, Headphones,
   MessageSquare, Search, Edit3, Calendar, FileText, Scissors,
   Globe, Radio, Archive, Eye, Shield, Heart, ClipboardList,
   BarChart2, Target, BookOpen, Scale, Sparkles,
@@ -285,6 +286,8 @@ export default function TrilogiChat() {
   const [streaming, setStreaming] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const sendRef = useRef<(text: string) => void>(() => {});
+  const voice = useVoiceMode((transcript) => { setInput(transcript); setTimeout(() => sendRef.current(transcript), 50); });
 
   const { data: agentConfig, isLoading } = useQuery<AgentConfig>({
     queryKey: ["/api/chat/config", orchestratorId],
@@ -417,6 +420,7 @@ export default function TrilogiChat() {
         }
         return updated;
       });
+      voice.speak(fullContent);
     } catch {
       setMessages(prev => {
         const updated = [...prev];
@@ -431,6 +435,7 @@ export default function TrilogiChat() {
       inputRef.current?.focus();
     }
   }
+  sendRef.current = sendMessage;
 
   const ready = !isLoading && !!orchestratorId;
   const agentName = agentConfig?.name ?? "Tim Agen Trilogi";
@@ -570,6 +575,24 @@ export default function TrilogiChat() {
 
       {/* Input */}
       <div className="shrink-0 border-t border-white/10 px-4 py-3" style={{ background: theme.header + "cc" }}>
+        {voice.isListening && (
+          <div className="flex items-center gap-2 mb-2 max-w-3xl mx-auto px-1">
+            <span className="flex h-2 w-2 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+            </span>
+            <span className="text-xs text-red-400 font-medium">Mendengarkan… bicara sekarang</span>
+          </div>
+        )}
+        {voice.aiSpeaking && (
+          <div className="flex items-center gap-2 mb-2 max-w-3xl mx-auto px-1">
+            <span className="flex h-2 w-2 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+            </span>
+            <span className="text-xs text-green-400 font-medium">AI sedang berbicara…</span>
+          </div>
+        )}
         <div className="flex gap-2 max-w-3xl mx-auto">
           <Input
             ref={inputRef}
@@ -577,14 +600,41 @@ export default function TrilogiChat() {
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(input); } }}
             placeholder={
+              voice.isListening ? "Mendengarkan suara Anda…" :
               ready
                 ? `Kirim pesan ke ${agentName}…`
                 : "Menghubungkan ke orchestrator…"
             }
-            disabled={!ready || streaming}
+            disabled={!ready || streaming || voice.isListening}
             className={`flex-1 bg-white/5 border-white/20 text-white placeholder:text-white/30 text-sm h-10 ${cls.ring}`}
             data-testid="input-message"
           />
+          {voice.speechSupported && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={voice.togglePhoneMode}
+              disabled={!ready}
+              className={`h-10 w-10 p-0 shrink-0 border-white/20 ${voice.phoneMode ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40" : "text-white/50"}`}
+              title={voice.phoneMode ? "Matikan Mode Telpon" : "Mode Telpon"}
+              data-testid="button-phone-mode"
+            >
+              {voice.phoneMode ? <PhoneOff className="h-4 w-4" /> : <Phone className="h-4 w-4" />}
+            </Button>
+          )}
+          {voice.speechSupported && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={voice.toggleMic}
+              disabled={!ready}
+              className={`h-10 w-10 p-0 shrink-0 border-white/20 ${voice.isListening ? "bg-red-500/20 text-red-400 border-red-500/40" : "text-white/50"}`}
+              title={voice.isListening ? "Berhenti mendengarkan" : "Rekam suara"}
+              data-testid="button-mic"
+            >
+              {voice.isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+            </Button>
+          )}
           <Button
             onClick={() => sendMessage(input)}
             disabled={!ready || streaming || !input.trim()}

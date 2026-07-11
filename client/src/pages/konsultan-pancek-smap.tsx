@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 
 const WA_URL = "https://wa.me/6282299417818?text=Halo%20Gustafta%2C%20saya%20ingin%20konsultasi%20AI%20untuk%20SMAP%20ISO%2037001%20dan%20PancekClaw";
-const CHECKOUT_URL = "https://dialog.gustafta.my.id/c/checkout?variant_ids=533206&qty=1";
+const CHECKOUT_URL = "https://bayar.gustafta.my.id/c/checkout?variant_ids=533206&qty=1";
 
 const STATS_SMAP = [
   { icon: Gavel, value: "37/100", label: "Skor Indeks Persepsi Korupsi (IPK) Indonesia 2024 — peringkat 99 dari 180 negara", source: "Transparency International, CPI 2024" },

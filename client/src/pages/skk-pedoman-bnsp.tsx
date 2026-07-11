@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 
 const WA_URL = "https://wa.me/6282299417818?text=Halo%20Gustafta%2C%20saya%20ingin%20konsultasi%20AI%20untuk%20SKK%20dan%20Pedoman%20BNSP";
-const CHECKOUT_URL = "https://dialog.gustafta.my.id/c/checkout?variant_ids=533206&qty=1";
+const CHECKOUT_URL = "https://bayar.gustafta.my.id/c/checkout?variant_ids=533206&qty=1";
 
 const JENJANG = [
   { level: "Jenjang 3", nama: "Operator / Pelaksana", desc: "SKK untuk tenaga kerja lapangan (tukang, operator alat berat)", contoh: ["Tukang Batu Konstruksi", "Operator Alat Berat", "Tukang Las Konstruksi", "Tukang Besi Beton"] },

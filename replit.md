@@ -1,5 +1,14 @@
 # Gustafta
-Gustafta is an AI chatbot builder platform that enables users to create, configure, and deploy intelligent conversational assistants, including the integrated LexCom Legal AI system.
+Gustafta adalah **platform penyelesaian masalah berbasis AI** — bukan sekadar "AI chatbot builder". Termasuk sistem LexCom Legal AI terintegrasi.
+
+Arsitektur dipisah menjadi 3 lapisan (jangan campur istilahnya):
+1. **Layanan/Produk** (apa yang dipakai pengguna) — istilah membumi berbentuk "Ruang X" atau nama produk: Klinik Konsultasi, Akademi, Ruang Tender, Ruang Perizinan, Ruang Sertifikasi SKK, Ruang K3, dst. Lihat `client/src/lib/workroom-domains.ts` untuk daftar domain.
+2. **Engine Gustafta** (bagaimana Gustafta bekerja, istilah teknis konsisten di semua produk): Dialog (memahami masalah) → Blueprint (cetak biru solusi) → Konfigurasi AI → Kolaborasi (tim AI/manusia menyempurnakan) → **Workroom** (eksekusi bertahap sampai tuntas, dengan gerbang persetujuan manusia ◆).
+3. **Output** — dokumen, keputusan, AI, SOP, proposal, produk digital, pengetahuan baru.
+
+Penting: **"Workroom" (istilah teknis engine) ≠ "Ruang X" (nama produk/domain)**. Jangan sebut tahap engine sebagai "Ruang Kerja" — itu bertabrakan makna dengan "Ruang Tender"/"Ruang Perizinan" dkk yang adalah produk, bukan tahapan proses.
+
+Peta siklus 9 tahap jangka panjang (tidak semua tahap sudah diimplementasi): Masalah → Kesadaran → Dialog → Blueprint → Kolaborasi → Workroom → Produksi → Refleksi → Knowledge Baru.
 
 ## Run & Operate
 - **Run Development Server**: `npm run dev`
@@ -51,8 +60,8 @@ Peta ringkas (rute → file → fungsi + endpoint utama). Detail mendalam ada di
 - **Kode Akses (voucher)**: tabel `access_codes` + `access_code_redemptions` (unique `(code_id,user_id)`). Peserta `kode-akses.tsx` (`/kode-akses`) → `POST /api/access-codes/redeem`; admin `admin-access-codes.tsx` (`/admin/access-codes`). Redeem ATOMIK di `db-storage.ts` `redeemAccessCode()`, **TIDAK menyentuh `users.isActive`**. Kode ter-seed idempotent (`server/seed-event-access-codes.ts`): `INDOBUILDTECH-HADIR`/`INDOBUILDTECH-ONLINE`. Detail: `.agents/memory/access-code-voucher.md`.
 - **Paket/Preset Konstruksi**: `paket-konstruksi.tsx` (`/paket-konstruksi`, kurasi claw); preset `?preset=konstruksi` di blueprint-builder (pre-fill saja).
 
-**Klinik Konsultasi**
-- Etalase loket: `klinik-konsultasi.tsx` (`/klinik-konsultasi`).
+**Klinik Konsultasi** (nama generik/pintu masuk umbrella; landing page & CTA navigasi antar-halaman tetap pakai "Klinik Konsultasi". Begitu masuk ke halaman domain spesifik, namanya jadi "Klinik + Domain" tanpa kata "Konsultasi" — mis. **Klinik Konstruksi** untuk `klinik-konsultasi.tsx`, dan pola sama untuk domain lain: Klinik Sertifikasi, Klinik Perijinan, dst.)
+- Etalase loket: `klinik-konsultasi.tsx` (`/klinik-konsultasi`) — domain konstruksi, tampil sebagai "Klinik Konstruksi".
 - **Loket Klinik Uji Kompetensi (jalur lengkap pertama)**: `klinik-uji-kompetensi.tsx` (`/klinik-uji-kompetensi`) — pipeline Dialog → Blueprint kesiapan (`POST /api/tools/klinik-ujikom/asesmen`, publik) → Chatbot teman belajar (handoff `gustafta_blueprint_prefill_v1` → blueprint-builder) → Ruang Ujian (reuse `/api/tools/simulator-uji-kompetensi/{soal,evaluasi}`) → skor kesiapan gabungan + ◆ keputusan manusia. Progres di localStorage `gustafta_klinik_ujikom_v1` (termasuk jawaban ujian), tanpa tabel baru.
 
 **Tracker**: `test-tracker.tsx` (`/test-tracker`) — 6 tab (Tender/Federation/Pilot/KONSTRA/AI Tutor/SBUClaw)

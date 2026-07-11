@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
-import { Eye, EyeOff, Mail, Lock, User, ArrowLeft, CheckCircle2, LogOut, AlertTriangle, KeyRound } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, User, ArrowLeft, CheckCircle2, LogOut, AlertTriangle, KeyRound, Phone } from "lucide-react";
 import { trackCompleteRegistration, trackLead } from "@/lib/meta-pixel";
 import { usePartnerBranding } from "@/hooks/use-partner-branding";
 
@@ -27,6 +27,8 @@ export default function LoginPage() {
 
   // Fields
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [otpChannel, setOtpChannel] = useState<"wa" | "email">("wa");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -72,8 +74,10 @@ export default function LoginPage() {
       const msg = err?.message || "";
       if (msg.includes("needsVerification") || msg.includes("belum diverifikasi")) {
         setPendingEmail(email);
+        if (msg.includes('"otpChannel":"email"')) setOtpChannel("email");
+        else setOtpChannel("wa");
         setMode("verify");
-        toast({ title: "Email belum diverifikasi", description: "Masukkan kode OTP yang dikirim ke email Anda." });
+        toast({ title: "Email belum diverifikasi", description: "Selesaikan verifikasi akun terlebih dahulu." });
       } else {
         toast({ title: "Login gagal", description: msg.replace(/^\d+: /, ""), variant: "destructive" });
       }
@@ -87,6 +91,14 @@ export default function LoginPage() {
       toast({ title: "Nama, email, dan password wajib diisi", variant: "destructive" });
       return;
     }
+    if (otpChannel === "wa" && !phone) {
+      toast({ title: "Nomor WhatsApp wajib diisi", variant: "destructive" });
+      return;
+    }
+    if (otpChannel === "email" && !/@gmail\.com$/i.test(email.trim())) {
+      toast({ title: "Verifikasi email hanya untuk Gmail", description: "Gunakan alamat @gmail.com, atau pilih verifikasi via WhatsApp.", variant: "destructive" });
+      return;
+    }
     if (password.length < 8) {
       toast({ title: "Password minimal 8 karakter", variant: "destructive" });
       return;
@@ -97,23 +109,24 @@ export default function LoginPage() {
     }
     setLoading(true);
     try {
-      const res = await apiRequest("POST", "/api/auth/register", { email, password, firstName, lastName });
+      const res = await apiRequest("POST", "/api/auth/register", { email, phone, password, firstName, lastName, otpChannel });
       setPendingEmail(email);
       setOtpFallback(res?.otpFallback);
       setEmailSendError(undefined);
       setMode("verify");
+      const channelLabel = otpChannel === "email" ? `email ${email}` : `WhatsApp ${phone}`;
       if (res?.otpFallback) {
-        toast({ title: "OTP dibuat", description: "Lihat kode OTP yang tampil di layar (email belum dikonfigurasi)." });
+        toast({ title: "OTP dibuat", description: "Lihat kode OTP yang tampil di layar (layanan pengiriman belum dikonfigurasi)." });
       } else {
-        toast({ title: "Kode OTP dikirim!", description: `Cek email ${email} untuk kode verifikasi.` });
+        toast({ title: "Kode OTP dikirim!", description: `Cek ${channelLabel} untuk kode verifikasi.` });
       }
     } catch (err: any) {
       const msg = (err?.message || "").replace(/^\d+: /, "");
-      const isEmailError = msg.toLowerCase().includes("gagal terkirim") || msg.toLowerCase().includes("email");
-      if (isEmailError) {
+      const isSendError = msg.toLowerCase().includes("gagal terkirim") || msg.toLowerCase().includes("whatsapp") || msg.toLowerCase().includes("email");
+      if (isSendError) {
         // OTP was created on the server — move to verify screen with error banner
         setPendingEmail(email);
-        setEmailSendError(msg || "Email gagal terkirim. Coba lagi dalam beberapa menit.");
+        setEmailSendError(msg || "Kode OTP gagal terkirim. Coba lagi dalam beberapa menit.");
         setOtpFallback(undefined);
         setMode("verify");
       } else {
@@ -156,7 +169,7 @@ export default function LoginPage() {
       if (res?.otpFallback) {
         toast({ title: "Kode reset dibuat", description: "Lihat kode OTP di layar." });
       } else {
-        toast({ title: "Kode reset dikirim!", description: `Cek email ${resetEmail}.` });
+        toast({ title: "Kode reset dikirim!", description: "Cek WhatsApp yang terdaftar pada akun Anda." });
       }
     } catch (err: any) {
       toast({ title: "Gagal", description: (err?.message || "").replace(/^\d+: /, ""), variant: "destructive" });
@@ -202,11 +215,11 @@ export default function LoginPage() {
       if (res?.otpFallback) {
         toast({ title: "OTP baru dibuat", description: "Lihat kode OTP yang tampil di layar." });
       } else {
-        toast({ title: "Kode OTP baru dikirim", description: `Cek email ${pendingEmail}.` });
+        toast({ title: "Kode OTP baru dikirim", description: otpChannel === "email" ? "Cek email Anda." : "Cek WhatsApp Anda." });
       }
     } catch (err: any) {
       const msg = (err?.message || "").replace(/^\d+: /, "");
-      setEmailSendError(msg || "Email gagal terkirim. Coba lagi dalam beberapa menit.");
+      setEmailSendError(msg || (otpChannel === "email" ? "Kode OTP gagal terkirim ke email. Coba lagi dalam beberapa menit." : "Kode OTP gagal terkirim ke WhatsApp. Coba lagi dalam beberapa menit."));
     } finally {
       setLoading(false);
     }
@@ -404,6 +417,47 @@ export default function LoginPage() {
                   </div>
                 </div>
                 <div className="space-y-1.5">
+                  <Label>Kirim kode OTP via *</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setOtpChannel("wa")}
+                      className={`flex items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-sm font-medium transition-colors ${otpChannel === "wa" ? "border-primary bg-primary/10 text-primary" : "border-input text-muted-foreground hover:bg-muted"}`}
+                      data-testid="button-otp-channel-wa"
+                    >
+                      <Phone className="h-4 w-4" /> WhatsApp
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setOtpChannel("email")}
+                      className={`flex items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-sm font-medium transition-colors ${otpChannel === "email" ? "border-primary bg-primary/10 text-primary" : "border-input text-muted-foreground hover:bg-muted"}`}
+                      data-testid="button-otp-channel-email"
+                    >
+                      <Mail className="h-4 w-4" /> Email (Gmail)
+                    </button>
+                  </div>
+                  {otpChannel === "email" && (
+                    <p className="text-xs text-muted-foreground">Verifikasi via email hanya didukung untuk alamat @gmail.com. Untuk penyedia email lain (Outlook, Yahoo, dll), gunakan WhatsApp.</p>
+                  )}
+                </div>
+                {otpChannel === "wa" && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="reg-phone">Nomor WhatsApp * <span className="text-muted-foreground font-normal">(kode OTP dikirim ke sini)</span></Label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="reg-phone"
+                        type="tel"
+                        placeholder="08123456789"
+                        className="pl-9"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        data-testid="input-reg-phone"
+                      />
+                    </div>
+                  </div>
+                )}
+                <div className="space-y-1.5">
                   <Label htmlFor="reg-password">Password * <span className="text-muted-foreground font-normal">(min. 8 karakter)</span></Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -471,33 +525,33 @@ export default function LoginPage() {
                     : <CheckCircle2 className="h-6 w-6 text-primary" />
                   }
                 </div>
-                <h1 className="text-lg font-bold">Verifikasi Email</h1>
+                <h1 className="text-lg font-bold">{otpChannel === "email" ? "Verifikasi Email" : "Verifikasi WhatsApp"}</h1>
                 <p className="text-sm text-muted-foreground">
                   {otpFallback ? (
-                    <>Email server belum dikonfigurasi.</>
+                    <>Layanan pengiriman OTP belum dikonfigurasi.</>
                   ) : emailSendError ? (
                     <>Akun berhasil dibuat untuk<br /><span className="font-medium text-foreground">{pendingEmail}</span></>
                   ) : (
-                    <>Kode OTP dikirim ke<br />
-                    <span className="font-medium text-foreground">{pendingEmail}</span></>
+                    <>Kode OTP dikirim ke {otpChannel === "email" ? "email" : "WhatsApp"} Anda<br />
+                    <span className="font-medium text-foreground">{otpChannel === "email" ? pendingEmail : phone}</span></>
                   )}
                 </p>
               </div>
 
-              {/* Email send error banner */}
+              {/* Send error banner */}
               {emailSendError && (
                 <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-4 space-y-2" data-testid="banner-email-send-error">
                   <div className="flex items-start gap-2">
                     <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
                     <div className="space-y-1 min-w-0">
-                      <p className="text-sm font-medium text-destructive">Email gagal terkirim</p>
+                      <p className="text-sm font-medium text-destructive">{otpChannel === "email" ? "Kode OTP gagal terkirim ke email" : "Kode OTP gagal terkirim ke WhatsApp"}</p>
                       <p className="text-xs text-muted-foreground">{emailSendError}</p>
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground pl-6">
                     Klik <span className="font-medium">"Kirim ulang kode OTP"</span> di bawah untuk mencoba lagi. Jika masalah berlanjut, hubungi{" "}
                     <a
-                      href={`https://wa.me/6282299417818?text=${encodeURIComponent(`Halo, email OTP saya gagal terkirim di ${partner?.brandName || "Gustafta"}`)}`}
+                      href={`https://wa.me/6282299417818?text=${encodeURIComponent(`Halo, kode OTP saya gagal terkirim di ${partner?.brandName || "Gustafta"}`)}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-primary underline"
@@ -509,7 +563,7 @@ export default function LoginPage() {
                 </div>
               )}
 
-              {/* OTP Fallback Display — shown when SMTP not configured */}
+              {/* OTP Fallback Display — shown when Fonnte not configured */}
               {otpFallback && (
                 <div className="rounded-xl border-2 border-dashed border-amber-400 bg-amber-50 dark:bg-amber-950/30 p-4 text-center space-y-1">
                   <p className="text-xs font-medium text-amber-700 dark:text-amber-400 uppercase tracking-wide">Kode OTP Anda</p>
@@ -558,7 +612,7 @@ export default function LoginPage() {
                 </button>
                 <div>
                   <h1 className="text-lg font-bold">Lupa Password</h1>
-                  <p className="text-xs text-muted-foreground">Masukkan email untuk menerima kode reset</p>
+                  <p className="text-xs text-muted-foreground">Masukkan email akun Anda — kode reset dikirim via WhatsApp atau email sesuai preferensi akun</p>
                 </div>
               </div>
 
