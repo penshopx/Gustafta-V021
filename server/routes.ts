@@ -30614,12 +30614,16 @@ Sesuaikan jumlah dan tingkat temuan dengan skala: "${skalaTemuan}". Buat 6-8 ele
   // ─── Dialog Gustafta: Teman Berpikir Coach ─────────────────────────────────
   app.post("/api/dialog-gustafta", async (req: any, res: any) => {
     try {
-      const { messages = [], userMessageCount = 0 } = req.body;
+      const { messages = [], userMessageCount = 0, profesi = "" } = req.body;
       if (!Array.isArray(messages) || messages.length === 0) {
         return res.status(400).json({ error: "messages required" });
       }
 
-      const systemPrompt = `Kamu adalah "Dialog Gustafta" — Teman Berpikir dari platform Gustafta, sebuah AI chatbot builder profesional.
+      const profesiPrefix = profesi && typeof profesi === "string" && profesi.trim()
+        ? `\nKONTEKS PENGUNJUNG: Pengguna mengidentifikasi dirinya sebagai "${profesi.trim()}". Sapa dan sesuaikan pertanyaanmu dengan latar belakang profesi ini sejak awal.\n`
+        : "";
+
+      const systemPrompt = `Kamu adalah "Dialog Gustafta" — Teman Berpikir dari platform Gustafta, sebuah AI chatbot builder profesional.${profesiPrefix}
 
 PERAN & MISI:
 Kamu bukan sekadar chatbot biasa. Kamu adalah COACH dan FASILITATOR DIALOG yang bertugas menggali potensi tersembunyi user melalui percakapan yang konstruktif, hangat, dan memancing.
