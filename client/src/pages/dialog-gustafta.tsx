@@ -163,6 +163,12 @@ export default function DialogGustaftaPage() {
   const [showShareOptions, setShowShareOptions] = useState(false);
   const [trialActivated, setTrialActivated] = useState(false);
 
+  // Progressive Lead Capture
+  const [leadName, setLeadName] = useState("");
+  const [leadPhone, setLeadPhone] = useState("");
+  const [leadSubmitted, setLeadSubmitted] = useState(false);
+  const [leadSubmitting, setLeadSubmitting] = useState(false);
+
   const { data: trialStatus } = useQuery<{
     dialogCompleted: boolean;
     hasActiveTrial: boolean;
@@ -954,8 +960,75 @@ export default function DialogGustaftaPage() {
                 <div className="text-white/80">{gambaran.peluang}</div>
               </div>
 
+              {/* ── Progressive Lead Capture ── */}
+              {!leadSubmitted ? (
+                <div className="rounded-2xl border border-amber-400/30 bg-gradient-to-br from-amber-900/30 to-orange-900/20 p-5 space-y-4 animate-in fade-in duration-500">
+                  <div className="space-y-1">
+                    <div className="text-sm font-bold text-white">📋 Blueprint Anda hampir selesai dibuat</div>
+                    <p className="text-xs text-white/60 leading-relaxed">
+                      Masukkan nama dan nomor WhatsApp agar blueprint dapat dipersonalisasi dan dikirimkan langsung ke Anda.
+                    </p>
+                  </div>
+                  <div className="space-y-2.5">
+                    <input
+                      type="text"
+                      placeholder="Nama lengkap Anda"
+                      value={leadName}
+                      onChange={e => setLeadName(e.target.value)}
+                      className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-amber-400/60"
+                    />
+                    <input
+                      type="tel"
+                      placeholder="Nomor WhatsApp (contoh: 08123456789)"
+                      value={leadPhone}
+                      onChange={e => setLeadPhone(e.target.value)}
+                      className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-amber-400/60"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold gap-2 h-10 text-sm"
+                      disabled={leadSubmitting || (!leadName.trim() && !leadPhone.trim())}
+                      onClick={async () => {
+                        setLeadSubmitting(true);
+                        try {
+                          await fetch("/api/dialog-gustafta/lead", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              name: leadName.trim(),
+                              phone: leadPhone.trim(),
+                              profesi: profesiDipilih,
+                              profilBidang: profil?.bidang || "",
+                              gambaranJudul: gambaran?.judul || "",
+                            }),
+                          });
+                        } catch { /* abaikan */ }
+                        setLeadSubmitted(true);
+                        setLeadSubmitting(false);
+                      }}
+                    >
+                      {leadSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
+                      {leadSubmitting ? "Menyimpan..." : "Kirim & Lihat Langkah Selanjutnya"}
+                    </Button>
+                  </div>
+                  <button
+                    className="w-full text-center text-xs text-white/25 hover:text-white/50 transition-colors"
+                    onClick={() => setLeadSubmitted(true)}
+                  >
+                    Lewati →
+                  </button>
+                </div>
+              ) : (
+                leadName.trim() && (
+                  <div className="rounded-xl bg-emerald-900/20 border border-emerald-500/20 px-4 py-2.5 text-sm text-emerald-300 text-center">
+                    ✅ Terima kasih, {leadName.trim().split(" ")[0]}! Blueprint Anda sedang disiapkan.
+                  </div>
+                )
+              )}
+
               {/* Payment Gate */}
-              <div className="border-t border-white/10 pt-4 space-y-3">
+              <div className={`border-t border-white/10 pt-4 space-y-3 ${!leadSubmitted ? "opacity-40 pointer-events-none select-none" : ""}`}>
                 {/* Free Trial CTA at Stage 2 */}
                 {user && !trialStatus?.hasActiveTrial && !trialActivated && (
                   <div className="rounded-xl bg-gradient-to-r from-emerald-900/50 to-teal-900/50 border border-emerald-500/30 p-3 space-y-2 text-center">
