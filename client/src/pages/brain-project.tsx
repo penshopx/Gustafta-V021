@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 
 const WA_URL = "https://wa.me/6282299417818?text=Halo%20Gustafta%2C%20saya%20ingin%20konsultasi%20solusi%20AI%20Brain%20Project";
-const CHECKOUT_URL = "https://dialog.gustafta.my.id/c/checkout?variant_ids=533206&qty=1";
+const CHECKOUT_URL = "https://bayar.gustafta.my.id/c/checkout?variant_ids=533206&qty=1";
 
 const SUB_AGENTS = [
   { role: "INTELLIGENCE-CORE", color: "cyan", desc: "Sintesis data proyek menjadi intelligence yang actionable untuk pengambilan keputusan strategis" },

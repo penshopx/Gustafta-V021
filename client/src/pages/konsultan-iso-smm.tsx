@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 
 const WA_URL = "https://wa.me/6282299417818?text=Halo%20Gustafta%2C%20saya%20ingin%20konsultasi%20AI%20untuk%20ISO%209001%20Sistem%20Manajemen%20Mutu";
-const CHECKOUT_URL = "https://dialog.gustafta.my.id/c/checkout?variant_ids=533206&qty=1";
+const CHECKOUT_URL = "https://bayar.gustafta.my.id/c/checkout?variant_ids=533206&qty=1";
 
 const PDCA = [
   { phase: "PLAN", color: "blue", items: ["Gap analysis ISO 9001:2015 vs kondisi saat ini", "Identifikasi konteks organisasi & isu internal-eksternal", "Penetapan kebijakan mutu & tujuan mutu terukur", "Desain Sistem Manajemen Mutu & mapping proses bisnis", "Rencana penanganan risiko & peluang (Risk-Based Thinking)"] },

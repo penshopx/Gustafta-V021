@@ -51,7 +51,7 @@ const PILLARS: Pillar[] = [
       { href: "/skk-coach/chat", label: "SKK Coach", desc: "Pendamping sertifikasi kompetensi konstruksi (SKK).", icon: <GraduationCap className="h-5 w-5" /> },
       { href: "/legal/chat", label: "LexCom Hukum", desc: "Asisten hukum untuk kontrak, regulasi, dan sengketa.", icon: <ShieldCheck className="h-5 w-5" /> },
       { href: "/askom/chat", label: "ASKOM Coach", desc: "Pendamping asesor kompetensi & uji BNSP.", icon: <Award className="h-5 w-5" /> },
-      { href: "/dialog-gustafta", label: "Dialog Konsultasi", desc: "Ngobrol dulu — temukan solusi AI yang pas untuk Anda.", icon: <MessageSquare className="h-5 w-5" /> },
+      { href: "/konsultasi", label: "Dialog Konsultasi", desc: "Ngobrol dulu — temukan solusi AI yang pas untuk Anda.", icon: <MessageSquare className="h-5 w-5" /> },
     ],
   },
   {
@@ -88,7 +88,7 @@ const PILLARS: Pillar[] = [
     icon: <Briefcase className="h-6 w-6" />,
     status: "aktif",
     destinations: [
-      { href: "/workroom", label: "Workroom Tender", desc: "Garap tender bertahap: kelayakan → strategi → gerbang ◆ → submit.", icon: <Briefcase className="h-5 w-5" /> },
+      { href: "/workroom", label: "Workroom", desc: "Garap masalah bertahap per bidang (Ruang Tender, Ruang Perizinan, Ruang Sertifikasi, Ruang K3, dll): kelayakan → strategi → gerbang ◆ → submit.", icon: <Briefcase className="h-5 w-5" /> },
       { href: "/organization-builder", label: "Rakit Tim Agen", desc: "Susun tim agen berperan dengan gerbang manusia ◆.", icon: <Users className="h-5 w-5" /> },
       { href: "/blueprint-builder", label: "Rancang Agen (Blueprint)", desc: "Wizard merancang agen/tim dari kebutuhan Anda.", icon: <Brain className="h-5 w-5" /> },
       { href: "/brain-project", label: "Otak Proyek", desc: "Pusat konteks & memori untuk proyek yang berjalan.", icon: <ClipboardList className="h-5 w-5" /> },

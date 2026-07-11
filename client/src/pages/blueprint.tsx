@@ -62,7 +62,7 @@ export default function BlueprintPage() {
           </p>
           <p className="text-sm text-cyan-200 mb-8 font-semibold">Dari ide abstrak menjadi rencana konkret. Dari "punya pengetahuan" menjadi "punya ekosistem".</p>
           <div className="flex flex-col sm:flex-row flex-wrap gap-3 justify-center">
-            <Link href="/dialog-gustafta">
+            <Link href="/konsultasi">
               <Button size="lg" className="bg-white text-indigo-700 hover:bg-indigo-50 font-bold gap-2 px-8 h-12" data-testid="btn-hero-buat-blueprint">
                 <Sparkles className="h-5 w-5" /> Buat Blueprint Saya
               </Button>
@@ -201,7 +201,7 @@ export default function BlueprintPage() {
               <MapIcon className="h-8 w-8 text-indigo-500" />
               <h3 className="text-sm font-bold text-gray-900 dark:text-white">Blueprint Lengkap Anda</h3>
               <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">Dokumen strategis terstruktur yang jadi panduan membangun ekosistem AI Anda.</p>
-              <Link href="/dialog-gustafta">
+              <Link href="/konsultasi">
                 <Button className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs h-8 gap-1.5 mt-1" data-testid="btn-komponen-mulai">
                   <Sparkles className="h-3.5 w-3.5" /> Mulai Sekarang
                 </Button>
@@ -260,7 +260,7 @@ export default function BlueprintPage() {
                 title: "BLUEPRINT = Perencanaan", subtitle: "Arsitek menggambar blueprint rumah",
                 items: ["Fokus: Strategi & perencanaan", "Output: Dokumen strategis", "Waktu: 3–5 jam", "Pertanyaan: Apa yang harus saya bangun?"],
                 when: ["Belum punya rencana yang jelas", "Belum tahu target audience", "Ingin bangun ekosistem kompleks", "Ingin maksimalkan ROI"],
-                cta: "Mulai Blueprint", href: "/dialog-gustafta",
+                cta: "Mulai Blueprint", href: "/konsultasi",
               },
               {
                 icon: Zap, color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950/30", border: "border-blue-200 dark:border-blue-500/30",
@@ -351,7 +351,7 @@ export default function BlueprintPage() {
           </p>
           <p className="text-blue-200 text-sm mb-8">Gratis untuk memulai. Tanpa perlu daftar.</p>
           <div className="flex flex-col sm:flex-row flex-wrap gap-3 justify-center">
-            <Link href="/dialog-gustafta">
+            <Link href="/konsultasi">
               <Button size="lg" className="bg-white text-indigo-700 hover:bg-indigo-50 font-bold gap-2 px-8 h-12" data-testid="btn-cta-final-blueprint">
                 <Sparkles className="h-5 w-5" /> Buat Blueprint via Dialog
               </Button>
@@ -379,7 +379,7 @@ export default function BlueprintPage() {
           </div>
           <div className="flex items-center gap-6 text-xs text-gray-500 dark:text-gray-400">
             <Link href="/" className="hover:text-indigo-600">Beranda</Link>
-            <Link href="/dialog-gustafta" className="hover:text-indigo-600">Dialog Gustafta</Link>
+            <Link href="/konsultasi" className="hover:text-indigo-600">Dialog Gustafta</Link>
             <Link href="/produk" className="hover:text-indigo-600">Produk</Link>
             <a href={WA_URL} target="_blank" rel="noopener noreferrer" className="hover:text-indigo-600 flex items-center gap-1">
               <MessageCircle className="h-3 w-3" /> WhatsApp

@@ -10,8 +10,8 @@ import {
 } from "lucide-react";
 
 const WA_URL = "https://wa.me/6282299417818?text=Halo%20Gustafta%2C%20saya%20ingin%20konsultasi%20solusi%20AI%20untuk%20tender%20dan%20pengadaan%20proyek";
-const CHECKOUT_URL = "https://dialog.gustafta.my.id/c/checkout?variant_ids=533206&qty=1";
-const CHECKOUT_BASIC = "https://dialog.gustafta.my.id/c/checkout?variant_ids=533205&qty=1";
+const CHECKOUT_URL = "https://bayar.gustafta.my.id/c/checkout?variant_ids=533206&qty=1";
+const CHECKOUT_BASIC = "https://bayar.gustafta.my.id/c/checkout?variant_ids=533205&qty=1";
 
 const PAIN_POINTS = [
   { icon: <Target className="h-6 w-6 text-red-500" />, title: "Win Rate Tender di Bawah 20%", desc: "Ikut banyak tender tapi yang menang sedikit. Tidak ada sistem untuk menghitung peluang menang secara objektif sebelum memutuskan bid." },

@@ -265,7 +265,7 @@ export default function IndobuildtechPage() {
           </div>
           <div className="flex flex-wrap justify-center gap-3 mt-8">
             <Button asChild className="bg-indigo-600 hover:bg-indigo-500 text-white gap-2" data-testid="button-flow-dialog">
-              <Link href="/dialog-gustafta">
+              <Link href="/konsultasi">
                 <MessageSquare className="h-4 w-4" /> Coba Dialog Gustafta
               </Link>
             </Button>

@@ -1,5 +1,5 @@
 /**
- * Loket Klinik Uji Kompetensi — jalur lengkap pertama Klinik Konsultasi.
+ * Loket Klinik Uji Kompetensi — jalur lengkap pertama Klinik Konstruksi.
  * Pipeline standar produk: Dialog → Blueprint → Chatbot → Ruang Ujian → ◆ manusia memutuskan.
  * - Tahap 1 Dialog: form cerita singkat (jabatan, pengalaman, materi sulit).
  * - Tahap 2 Blueprint: POST /api/tools/klinik-ujikom/asesmen → peta kesiapan.
@@ -185,7 +185,7 @@ export default function KlinikUjiKompetensiPage() {
       {/* Hero */}
       <section className="bg-gradient-to-br from-teal-700 via-teal-800 to-emerald-900 text-white">
         <div className="max-w-4xl mx-auto px-4 py-10 space-y-3">
-          <Badge className="bg-white/15 text-white border-white/20 gap-1"><Stethoscope className="h-3.5 w-3.5" /> Klinik Konsultasi · Jalur Lengkap</Badge>
+          <Badge className="bg-white/15 text-white border-white/20 gap-1"><Stethoscope className="h-3.5 w-3.5" /> Klinik Konstruksi · Jalur Lengkap</Badge>
           <h1 className="text-3xl md:text-4xl font-black" data-testid="text-judul-klinik-ujikom">Klinik Uji Kompetensi</h1>
           <p className="text-teal-100 max-w-2xl">
             Dialog → Blueprint kesiapan → Chatbot teman belajar → Ruang Ujian → skor kesiapan.
@@ -464,7 +464,7 @@ export default function KlinikUjiKompetensiPage() {
         )}
 
         <p className="text-center text-xs text-muted-foreground">
-          Bagian dari <Link href="/klinik-konsultasi" className="underline" data-testid="link-kembali-klinik">Klinik Konsultasi Konstruksi</Link> · pola jalur: Dialog → Blueprint → Chatbot → Ruang Ujian → keputusan Anda
+          Bagian dari <Link href="/klinik-konsultasi" className="underline" data-testid="link-kembali-klinik">Klinik Konstruksi</Link> · pola jalur: Dialog → Blueprint → Chatbot → Ruang Ujian → keputusan Anda
         </p>
       </main>
     </div>

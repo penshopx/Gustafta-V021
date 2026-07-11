@@ -87,7 +87,7 @@ export default function OnboardingPage() {
       return;
     }
     // Redirect to Dialog Gustafta — user must complete dialog to activate trial
-    navigate("/dialog-gustafta");
+    navigate("/konsultasi");
   }
 
   if (!isAuthenticated) {

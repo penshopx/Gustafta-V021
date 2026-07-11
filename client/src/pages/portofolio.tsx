@@ -70,7 +70,7 @@ export default function Portofolio() {
 
   const statCards = [
     { label: "Kursus Selesai", value: stats.completedCount, icon: <GraduationCap className="h-4 w-4" />, testid: "stat-completed" },
-    { label: "Ruang Kerja", value: stats.workroomCount, icon: <Briefcase className="h-4 w-4" />, testid: "stat-workrooms" },
+    { label: "Workroom", value: stats.workroomCount, icon: <Briefcase className="h-4 w-4" />, testid: "stat-workrooms" },
     { label: "Hasil Kerja", value: stats.deliverableCount, icon: <Rocket className="h-4 w-4" />, testid: "stat-deliverables" },
     { label: "Sertifikat", value: stats.certCount, icon: <FileCheck className="h-4 w-4" />, testid: "stat-certs" },
   ];
@@ -163,7 +163,7 @@ export default function Portofolio() {
         {/* Workrooms */}
         {workrooms.length > 0 && (
           <section>
-            <h2 className="font-bold text-lg mb-3 flex items-center gap-2"><Briefcase className="h-5 w-5 text-sky-400" /> Ruang Kerja & Hasil Praktik</h2>
+            <h2 className="font-bold text-lg mb-3 flex items-center gap-2"><Briefcase className="h-5 w-5 text-sky-400" /> Workroom & Hasil Praktik</h2>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {workrooms.map((w) => (
                 <Link key={w.id} href={`/workroom/${w.id}`} className="block" data-testid={`workroom-item-${w.id}`}>

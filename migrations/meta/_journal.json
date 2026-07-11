@@ -64,6 +64,13 @@
       "when": 1783401600000,
       "tag": "0008_rate_limit_buckets",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1752192000000,
+      "tag": "0009_otp_channel_phone",
+      "breakpoints": true
     }
   ]
 }

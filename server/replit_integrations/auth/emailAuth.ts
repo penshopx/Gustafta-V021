@@ -74,7 +74,72 @@ type SendEmailResult =
   | { sent: true }
   | { sent: false; reason: "not_configured" | "api_error" | "network_error"; detail?: string };
 
-async function sendVerificationEmail(email: string, code: string, firstName: string): Promise<SendEmailResult> {
+// Email OTP channel is restricted to Gmail — other providers (Outlook/Yahoo/etc.)
+// reject third-party "From" domains and silently drop the OTP. WhatsApp is the
+// default/recommended channel; Gmail-only email remains as an alternative.
+function isGmail(email: string): boolean {
+  return /@gmail\.com$/i.test(email.trim());
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+function isValidEmail(email: unknown): email is string {
+  return typeof email === "string" && EMAIL_RE.test(email.trim()) && email.length <= 254;
+}
+
+// Normalize Indonesian phone numbers to Fonnte's expected format (62xxxxxxxxxx, digits only).
+function normalizePhone(raw: string): string {
+  let digits = raw.replace(/[^\d]/g, "");
+  if (digits.startsWith("0")) digits = "62" + digits.slice(1);
+  else if (digits.startsWith("8")) digits = "62" + digits;
+  return digits;
+}
+
+// ── OTP delivery via WhatsApp (Fonnte) — primary channel, replaces email OTP ──
+async function sendOtpWhatsapp(phone: string, code: string, firstName: string, purpose: "register" | "reset" = "register"): Promise<SendEmailResult> {
+  const fonnteApiKey = process.env.FONNTE_API_KEY;
+  if (!fonnteApiKey) {
+    console.log(`[EmailAuth] FONNTE_API_KEY not set — OTP for ${phone}: ${code}`);
+    return { sent: false, reason: "not_configured" };
+  }
+  const target = normalizePhone(phone);
+  const safeName = sanitizePlainText(firstName);
+  const message =
+    purpose === "reset"
+      ? `*Gustafta*\nHalo ${safeName},\n\nKode reset password Anda: *${code}*\n\nBerlaku 10 menit. Jangan bagikan kode ini kepada siapapun.`
+      : `*Gustafta*\nHalo ${safeName},\n\nKode verifikasi akun Anda: *${code}*\n\nBerlaku 10 menit. Jangan bagikan kode ini kepada siapapun, termasuk tim Gustafta.`;
+
+  try {
+    const resp = await fetch("https://api.fonnte.com/send", {
+      method: "POST",
+      headers: { Authorization: fonnteApiKey },
+      body: new URLSearchParams({ target, message }),
+    });
+    const body: any = await resp.json().catch(() => ({}));
+    if (!resp.ok || body?.status === false) {
+      console.error(`[EmailAuth] Fonnte API error sending to ${target}: HTTP ${resp.status} — ${JSON.stringify(body).slice(0, 300)}`);
+      return { sent: false, reason: "api_error", detail: JSON.stringify(body).slice(0, 300) };
+    }
+    console.log(`[EmailAuth] OTP sent to ${target} via Fonnte WhatsApp`);
+    return { sent: true };
+  } catch (err: any) {
+    const detail = err?.message || String(err);
+    console.error(`[EmailAuth] Fonnte network error for ${target}: ${detail}`);
+    return { sent: false, reason: "network_error", detail };
+  }
+}
+
+// Escape HTML so an untrusted firstName can never break out of the markup or
+// spoof extra content in the outbound OTP email/WhatsApp message.
+function escapeHtml(input: string): string {
+  return input.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
+}
+// Strip newlines/control chars from names before interpolating into a plain-text
+// WhatsApp message, so a crafted name can't inject extra lines into the OTP text.
+function sanitizePlainText(input: string): string {
+  return (input || "").replace(/[\r\n\t]+/g, " ").trim().slice(0, 80);
+}
+
+async function sendVerificationEmail(email: string, code: string, firstNameRaw: string, purpose: "register" | "reset" = "register"): Promise<SendEmailResult> {
   const brevoApiKey = process.env.BREVO_API_KEY;
   if (!brevoApiKey) {
     console.log(`[EmailAuth] BREVO_API_KEY not set — OTP for ${email}: ${code}`);
@@ -83,6 +148,15 @@ async function sendVerificationEmail(email: string, code: string, firstName: str
   // Use custom sender domain (must be verified in Brevo dashboard).
   // Set BREVO_SENDER_EMAIL env var to override (e.g. noreply@gustafta.com).
   const senderEmail = process.env.BREVO_SENDER_EMAIL || "noreply@gustafta.com";
+  const firstName = escapeHtml(sanitizePlainText(firstNameRaw));
+  const isReset = purpose === "reset";
+  const subject = isReset ? "Kode Reset Password Gustafta Anda" : "Kode Verifikasi Akun Gustafta Anda";
+  const intro = isReset
+    ? "Gunakan kode berikut untuk reset password akun Gustafta kamu:"
+    : "Gunakan kode berikut untuk menyelesaikan pendaftaran akun Gustafta kamu:";
+  const footerNote = isReset
+    ? "Jika kamu tidak meminta reset password, abaikan email ini — password kamu tidak akan berubah."
+    : "Jika kamu tidak mendaftar di Gustafta, abaikan email ini — tidak ada tindakan yang diperlukan.";
 
   try {
     const html = `<!DOCTYPE html>
@@ -96,14 +170,14 @@ async function sendVerificationEmail(email: string, code: string, firstName: str
           <p style="margin:0 0 4px;font-size:22px;font-weight:700;color:#6366f1">Gustafta</p>
           <hr style="border:none;border-top:1px solid #e5e7eb;margin:16px 0">
           <p style="font-size:16px;margin:0 0 8px">Halo <b>${firstName}</b>,</p>
-          <p style="font-size:15px;color:#374151;margin:0 0 24px">Gunakan kode berikut untuk menyelesaikan pendaftaran akun Gustafta kamu:</p>
+          <p style="font-size:15px;color:#374151;margin:0 0 24px">${intro}</p>
           <div style="font-size:40px;font-weight:700;letter-spacing:10px;color:#111;text-align:center;padding:24px 16px;background:#f9fafb;border-radius:8px;border:2px solid #e5e7eb;margin:0 0 24px">
             ${code}
           </div>
           <p style="font-size:14px;color:#6b7280;margin:0 0 8px">Kode ini berlaku selama <b>10 menit</b>.</p>
           <p style="font-size:14px;color:#6b7280;margin:0 0 24px">Jangan bagikan kode ini kepada siapapun, termasuk tim Gustafta.</p>
           <hr style="border:none;border-top:1px solid #e5e7eb;margin:0 0 16px">
-          <p style="font-size:12px;color:#9ca3af;margin:0">Jika kamu tidak mendaftar di Gustafta, abaikan email ini — tidak ada tindakan yang diperlukan.</p>
+          <p style="font-size:12px;color:#9ca3af;margin:0">${footerNote}</p>
           <p style="font-size:12px;color:#9ca3af;margin:8px 0 0">© 2025 Gustafta. Seluruh hak dilindungi.</p>
         </td></tr>
       </table>
@@ -112,15 +186,15 @@ async function sendVerificationEmail(email: string, code: string, firstName: str
 </body>
 </html>`;
 
-    const textContent = `Halo ${firstName},
+    const textContent = `Halo ${sanitizePlainText(firstNameRaw)},
 
-Kode verifikasi Gustafta kamu:
+Kode ${isReset ? "reset password" : "verifikasi"} Gustafta kamu:
 
   ${code}
 
 Kode berlaku 10 menit. Jangan bagikan kepada siapapun.
 
-Jika kamu tidak mendaftar di Gustafta, abaikan email ini.
+${footerNote}
 
 — Tim Gustafta`;
 
@@ -134,11 +208,11 @@ Jika kamu tidak mendaftar di Gustafta, abaikan email ini.
       body: JSON.stringify({
         sender: { name: "Gustafta", email: senderEmail },
         replyTo: { name: "Gustafta Support", email: "support@gustafta.com" },
-        to: [{ email, name: firstName }],
-        subject: "Kode Verifikasi Akun Gustafta Anda",
+        to: [{ email, name: sanitizePlainText(firstNameRaw) }],
+        subject,
         htmlContent: html,
         textContent,
-        tags: ["otp", "transactional"],
+        tags: [isReset ? "reset-password" : "otp", "transactional"],
       }),
     });
     if (!resp.ok) {
@@ -159,17 +233,42 @@ export function registerEmailAuthRoutes(app: Express): void {
   // ── REGISTER: Step 1 — send OTP ─────────────────────────────────────────────
   app.post("/api/auth/register", registerLimiter, async (req, res) => {
     try {
-      const { email, password, firstName, lastName } = req.body;
+      const { email, phone, password, firstName, lastName } = req.body;
+      const otpChannel: "wa" | "email" = req.body.otpChannel === "email" ? "email" : "wa";
+
       if (!email || !password || !firstName) {
         return res.status(400).json({ error: "Email, password, dan nama wajib diisi." });
+      }
+      if (!isValidEmail(email)) {
+        return res.status(400).json({ error: "Format email tidak valid." });
       }
       if (password.length < 8) {
         return res.status(400).json({ error: "Password minimal 8 karakter." });
       }
 
-      // Check if email already registered
+      let normalizedPhone = "";
+      if (otpChannel === "email") {
+        if (!isGmail(email)) {
+          return res.status(400).json({
+            error: "Verifikasi via email hanya didukung untuk alamat Gmail (@gmail.com). Gunakan verifikasi WhatsApp untuk email lain (Outlook, Yahoo, dll).",
+          });
+        }
+      } else {
+        if (!phone) {
+          return res.status(400).json({ error: "Nomor WhatsApp wajib diisi." });
+        }
+        normalizedPhone = normalizePhone(phone);
+        if (normalizedPhone.length < 10 || normalizedPhone.length > 15) {
+          return res.status(400).json({ error: "Nomor WhatsApp tidak valid." });
+        }
+      }
+
+      // Check if email already registered. Block re-registration over ANY verified
+      // account (even ones without a passwordHash, e.g. Replit OAuth-linked emails) —
+      // otherwise an attacker could overwrite phone/otpChannel/passwordHash on an
+      // account they don't own and hijack it via a WA/email OTP they control.
       const existing = await db.select().from(users).where(eq(users.email, email)).limit(1);
-      if (existing.length > 0 && existing[0].emailVerified && existing[0].passwordHash) {
+      if (existing.length > 0 && existing[0].emailVerified) {
         return res.status(409).json({ error: "Email ini sudah terdaftar. Silakan login." });
       }
 
@@ -182,6 +281,8 @@ export function registerEmailAuthRoutes(app: Express): void {
         .values({
           id: randomUUID(),
           email,
+          phone: normalizedPhone || null,
+          otpChannel,
           firstName,
           lastName: lastName || "",
           passwordHash,
@@ -192,7 +293,7 @@ export function registerEmailAuthRoutes(app: Express): void {
         })
         .onConflictDoUpdate({
           target: users.email,
-          set: { firstName, lastName: lastName || "", passwordHash, authProvider: "email", updatedAt: new Date() },
+          set: { phone: normalizedPhone || null, otpChannel, firstName, lastName: lastName || "", passwordHash, authProvider: "email", updatedAt: new Date() },
         });
 
       // Invalidate old OTPs
@@ -205,33 +306,40 @@ export function registerEmailAuthRoutes(app: Express): void {
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 min
       await db.insert(emailVerifications).values({ id: randomUUID(), email, code, expiresAt });
 
-      const emailResult = await sendVerificationEmail(email, code, firstName);
+      const waResult = otpChannel === "email"
+        ? await sendVerificationEmail(email, code, firstName)
+        : await sendOtpWhatsapp(normalizedPhone, code, firstName, "register");
 
-      if (!emailResult.sent) {
-        if (emailResult.reason === "not_configured") {
+      if (!waResult.sent) {
+        if (waResult.reason === "not_configured") {
           if (isProduction) {
             return res.status(503).json({
-              error: "Layanan email belum dikonfigurasi. Hubungi administrator.",
+              error: otpChannel === "email" ? "Layanan email belum dikonfigurasi. Hubungi administrator." : "Layanan WhatsApp belum dikonfigurasi. Hubungi administrator.",
             });
           }
           // Dev/staging: expose OTP fallback
           return res.json({
             success: true,
-            message: "Kode OTP berhasil dibuat. Email belum dikonfigurasi — lihat kode di bawah.",
+            message: otpChannel === "email"
+              ? "Kode OTP berhasil dibuat. Email belum dikonfigurasi — lihat kode di bawah."
+              : "Kode OTP berhasil dibuat. WhatsApp belum dikonfigurasi — lihat kode di bawah.",
             otpFallback: code,
           });
         }
-        // api_error or network_error — email IS configured but send failed
-        console.error(`[EmailAuth] Register email send failed (${emailResult.reason}) for ${email}: ${emailResult.detail ?? ""}`);
+        // api_error or network_error — channel IS configured but send failed
+        const target = otpChannel === "email" ? email : normalizedPhone;
+        console.error(`[EmailAuth] Register ${otpChannel} send failed (${waResult.reason}) for ${target}: ${waResult.detail ?? ""}`);
         return res.status(503).json({
-          error: "Email gagal terkirim. Coba lagi dalam beberapa menit, atau hubungi administrator jika masalah berlanjut.",
-          errorCode: emailResult.reason,
+          error: otpChannel === "email"
+            ? "Email gagal terkirim. Coba lagi dalam beberapa menit, atau hubungi administrator jika masalah berlanjut."
+            : "Kode OTP gagal terkirim ke WhatsApp. Coba lagi dalam beberapa menit, atau hubungi administrator jika masalah berlanjut.",
+          errorCode: waResult.reason,
         });
       }
 
       res.json({
         success: true,
-        message: "Kode OTP telah dikirim ke email Anda.",
+        message: otpChannel === "email" ? "Kode OTP telah dikirim ke email Anda." : "Kode OTP telah dikirim ke WhatsApp Anda.",
       });
     } catch (err) {
       console.error("[EmailAuth] Register error:", err);
@@ -351,10 +459,15 @@ export function registerEmailAuthRoutes(app: Express): void {
   app.post("/api/auth/resend-otp", otpLimiter, async (req, res) => {
     try {
       const { email } = req.body;
-      if (!email) return res.status(400).json({ error: "Email wajib diisi." });
+      if (!isValidEmail(email)) return res.status(400).json({ error: "Email wajib diisi dan valid." });
 
       const [userRow] = await db.select().from(users).where(eq(users.email, email)).limit(1);
       if (!userRow) return res.status(404).json({ error: "Email tidak terdaftar." });
+
+      const channel: "wa" | "email" = userRow.otpChannel === "email" ? "email" : "wa";
+      if (channel === "wa" && !userRow.phone) {
+        return res.status(400).json({ error: "Akun ini belum memiliki nomor WhatsApp terdaftar. Hubungi administrator." });
+      }
 
       await db.update(emailVerifications).set({ used: true }).where(eq(emailVerifications.email, email));
 
@@ -362,32 +475,35 @@ export function registerEmailAuthRoutes(app: Express): void {
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
       await db.insert(emailVerifications).values({ id: randomUUID(), email, code, expiresAt });
 
-      const emailResult = await sendVerificationEmail(email, code, userRow.firstName || "");
+      const waResult = channel === "email"
+        ? await sendVerificationEmail(email, code, userRow.firstName || "")
+        : await sendOtpWhatsapp(userRow.phone!, code, userRow.firstName || "", "register");
 
-      if (!emailResult.sent) {
-        if (emailResult.reason === "not_configured") {
+      if (!waResult.sent) {
+        if (waResult.reason === "not_configured") {
           if (isProduction) {
             return res.status(503).json({
-              error: "Layanan email belum dikonfigurasi. Hubungi administrator.",
+              error: channel === "email" ? "Layanan email belum dikonfigurasi. Hubungi administrator." : "Layanan WhatsApp belum dikonfigurasi. Hubungi administrator.",
             });
           }
           return res.json({
             success: true,
-            message: "Kode OTP baru dibuat. Email belum dikonfigurasi — lihat kode di bawah.",
+            message: channel === "email" ? "Kode OTP baru dibuat. Email belum dikonfigurasi — lihat kode di bawah." : "Kode OTP baru dibuat. WhatsApp belum dikonfigurasi — lihat kode di bawah.",
             otpFallback: code,
           });
         }
         // api_error or network_error
-        console.error(`[EmailAuth] Resend email send failed (${emailResult.reason}) for ${email}: ${emailResult.detail ?? ""}`);
+        const target = channel === "email" ? email : userRow.phone;
+        console.error(`[EmailAuth] Resend ${channel} send failed (${waResult.reason}) for ${target}: ${waResult.detail ?? ""}`);
         return res.status(503).json({
-          error: "Email gagal terkirim. Coba lagi dalam beberapa menit, atau hubungi administrator jika masalah berlanjut.",
-          errorCode: emailResult.reason,
+          error: channel === "email" ? "Email gagal terkirim. Coba lagi dalam beberapa menit, atau hubungi administrator jika masalah berlanjut." : "Kode OTP gagal terkirim ke WhatsApp. Coba lagi dalam beberapa menit, atau hubungi administrator jika masalah berlanjut.",
+          errorCode: waResult.reason,
         });
       }
 
       res.json({
         success: true,
-        message: "Kode OTP baru telah dikirim ke email Anda.",
+        message: channel === "email" ? "Kode OTP baru telah dikirim ke email Anda." : "Kode OTP baru telah dikirim ke WhatsApp Anda.",
       });
     } catch (err) {
       console.error("[EmailAuth] Resend error:", err);
@@ -409,7 +525,7 @@ export function registerEmailAuthRoutes(app: Express): void {
       }
 
       if (!userRow.emailVerified) {
-        return res.status(403).json({ error: "Email belum diverifikasi.", needsVerification: true, email });
+        return res.status(403).json({ error: "Email belum diverifikasi.", needsVerification: true, email, otpChannel: userRow.otpChannel === "email" ? "email" : "wa" });
       }
 
       if (userRow.isActive === false) {
@@ -461,7 +577,7 @@ export function registerEmailAuthRoutes(app: Express): void {
   app.post("/api/auth/request-reset", otpLimiter, async (req, res) => {
     try {
       const { email } = req.body;
-      if (!email) return res.status(400).json({ error: "Email wajib diisi." });
+      if (!isValidEmail(email)) return res.status(400).json({ error: "Email wajib diisi dan valid." });
 
       const [userRow] = await db.select().from(users).where(eq(users.email, email)).limit(1);
       if (!userRow || !userRow.passwordHash) {
@@ -471,6 +587,10 @@ export function registerEmailAuthRoutes(app: Express): void {
       if (!userRow.emailVerified) {
         return res.status(400).json({ error: "Email belum diverifikasi. Selesaikan verifikasi akun terlebih dahulu." });
       }
+      const channel: "wa" | "email" = userRow.otpChannel === "email" ? "email" : "wa";
+      if (channel === "wa" && !userRow.phone) {
+        return res.status(400).json({ error: "Akun ini belum memiliki nomor WhatsApp terdaftar. Hubungi administrator." });
+      }
 
       // Invalidate old OTPs and create new one
       await db.update(emailVerifications).set({ used: true }).where(eq(emailVerifications.email, email));
@@ -479,62 +599,23 @@ export function registerEmailAuthRoutes(app: Express): void {
       await db.insert(emailVerifications).values({ id: randomUUID(), email, code, expiresAt });
 
       const firstName = userRow.firstName || "Pengguna";
-      const brevoApiKey = process.env.BREVO_API_KEY;
+      const waResult = channel === "email"
+        ? await sendVerificationEmail(email, code, firstName, "reset")
+        : await sendOtpWhatsapp(userRow.phone!, code, firstName, "reset");
 
-      if (!brevoApiKey) {
-        if (isProduction) {
-          return res.status(503).json({ error: "Layanan email belum dikonfigurasi. Hubungi administrator." });
+      if (!waResult.sent) {
+        if (waResult.reason === "not_configured") {
+          if (isProduction) {
+            return res.status(503).json({ error: channel === "email" ? "Layanan email belum dikonfigurasi. Hubungi administrator." : "Layanan WhatsApp belum dikonfigurasi. Hubungi administrator." });
+          }
+          return res.json({ success: true, message: channel === "email" ? "Kode reset dibuat (email belum dikonfigurasi)." : "Kode reset dibuat (WhatsApp belum dikonfigurasi).", otpFallback: code });
         }
-        return res.json({ success: true, message: "Kode reset dibuat (email belum dikonfigurasi).", otpFallback: code });
+        const target = channel === "email" ? email : userRow.phone;
+        console.error(`[EmailAuth] Reset ${channel} send failed (${waResult.reason}) for ${target}: ${waResult.detail ?? ""}`);
+        return res.status(503).json({ error: channel === "email" ? "Email gagal terkirim. Coba lagi atau hubungi support." : "Kode OTP gagal terkirim ke WhatsApp. Coba lagi atau hubungi support." });
       }
 
-      const senderEmail = process.env.BREVO_SENDER_EMAIL || "noreply@gustafta.com";
-      const html = `<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8"></head>
-<body style="margin:0;padding:0;background:#f3f4f6">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:32px 0">
-    <tr><td align="center">
-      <table width="480" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;padding:40px;font-family:Arial,sans-serif;color:#111">
-        <tr><td>
-          <p style="margin:0 0 4px;font-size:22px;font-weight:700;color:#6366f1">Gustafta</p>
-          <hr style="border:none;border-top:1px solid #e5e7eb;margin:16px 0">
-          <p style="font-size:16px;margin:0 0 8px">Halo <b>${firstName}</b>,</p>
-          <p style="font-size:15px;color:#374151;margin:0 0 24px">Gunakan kode berikut untuk reset password akun Gustafta kamu:</p>
-          <div style="font-size:40px;font-weight:700;letter-spacing:10px;color:#111;text-align:center;padding:24px 16px;background:#f9fafb;border-radius:8px;border:2px solid #e5e7eb;margin:0 0 24px">
-            ${code}
-          </div>
-          <p style="font-size:14px;color:#6b7280;margin:0 0 8px">Kode ini berlaku selama <b>10 menit</b>.</p>
-          <p style="font-size:14px;color:#6b7280;margin:0 0 24px">Jika kamu tidak meminta reset password, abaikan email ini — password kamu tidak akan berubah.</p>
-          <hr style="border:none;border-top:1px solid #e5e7eb;margin:0 0 16px">
-          <p style="font-size:12px;color:#9ca3af;margin:0">© 2025 Gustafta. Seluruh hak dilindungi.</p>
-        </td></tr>
-      </table>
-    </td></tr>
-  </table>
-</body></html>`;
-
-      try {
-        const resp = await fetch("https://api.brevo.com/v3/smtp/email", {
-          method: "POST",
-          headers: { "accept": "application/json", "api-key": brevoApiKey, "content-type": "application/json" },
-          body: JSON.stringify({
-            sender: { name: "Gustafta", email: senderEmail },
-            to: [{ email, name: firstName }],
-            subject: "Kode Reset Password Gustafta",
-            htmlContent: html,
-            tags: ["reset-password", "transactional"],
-          }),
-        });
-        if (!resp.ok) {
-          const errBody = await resp.text();
-          console.error(`[EmailAuth] Reset email send failed for ${email}: HTTP ${resp.status} — ${errBody}`);
-          return res.status(503).json({ error: "Email gagal terkirim. Coba lagi atau hubungi support." });
-        }
-      } catch (emailErr: any) {
-        console.error(`[EmailAuth] Reset email network error for ${email}:`, emailErr?.message);
-        return res.status(503).json({ error: "Email gagal terkirim. Coba lagi atau hubungi support." });
-      }
-
-      res.json({ success: true, message: "Jika email terdaftar, kode reset dikirim ke email Anda." });
+      res.json({ success: true, message: channel === "email" ? "Jika email terdaftar, kode reset dikirim ke email Anda." : "Jika email terdaftar, kode reset dikirim ke WhatsApp Anda." });
     } catch (err) {
       console.error("[EmailAuth] Request reset error:", err);
       res.status(500).json({ error: "Terjadi kesalahan. Silakan coba lagi." });

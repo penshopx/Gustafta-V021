@@ -235,7 +235,7 @@ export default function BlueprintSayaPage() {
 
                 {/* CTAs */}
                 <div className="px-5 pb-5 space-y-2">
-                  <a href="https://dialog.gustafta.my.id/c/checkout?variant_ids=533205&qty=1" target="_blank" rel="noopener noreferrer" className="block">
+                  <a href="https://bayar.gustafta.my.id/c/checkout?variant_ids=533205&qty=1" target="_blank" rel="noopener noreferrer" className="block">
                     <Button className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white h-11 font-bold gap-2 shadow-md">
                       <ShoppingBag className="h-4 w-4" /> Beli Starter Kit — Rp 245.000
                     </Button>

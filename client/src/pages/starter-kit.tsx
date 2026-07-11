@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 
 const WA_URL = "https://wa.me/6282299417818?text=Halo%20Gustafta%2C%20saya%20mau%20tanya%20tentang%20Starter%20Kit";
-const CHECKOUT_URL = "https://dialog.gustafta.my.id/c/checkout?variant_ids=533205&qty=1";
+const CHECKOUT_URL = "https://bayar.gustafta.my.id/c/checkout?variant_ids=533205&qty=1";
 
 // Data riset/lembaga (konteks umum, bukan janji hasil produk). Diverifikasi via sumber publik.
 const STATS_STARTER = [

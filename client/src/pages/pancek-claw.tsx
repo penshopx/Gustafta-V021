@@ -419,6 +419,7 @@ export default function PancekClawChat() {
 
       {/* Input */}
       <ChatInputBar
+        lastAIMessage={[...messages].reverse().find((m) => m.role === "assistant")?.content}
         onSend={sendMessage}
         disabled={!ready || streaming}
         streaming={streaming}

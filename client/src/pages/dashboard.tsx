@@ -132,7 +132,7 @@ function TrialQuotaBanner() {
             <Sparkles className="h-4 w-4 text-cyan-500 shrink-0" />
             <span className="text-muted-foreground">Selesaikan <strong>{partner ? "Dialog Blueprint" : "Dialog Gustafta"}</strong> untuk aktifkan trial gratis (75 pesan)</span>
           </div>
-          <Link href="/dialog-gustafta">
+          <Link href="/konsultasi">
             <Button size="sm" variant="outline" className="h-7 text-xs gap-1 border-cyan-500/40 text-cyan-600 dark:text-cyan-400">
               <MessageSquare className="h-3 w-3" /> Mulai Dialog
             </Button>
@@ -1015,7 +1015,7 @@ export default function Dashboard() {
               </div>
               <h2 className="text-xl font-semibold">Selamat Datang di {partner ? partner.brandName : "Gustafta"}</h2>
               <p className="text-sm text-muted-foreground">
-                {partner ? (partner.tagline || "Asisten AI untuk kebutuhan Anda.") : "Platform AI Chatbot Builder untuk sektor konstruksi & profesional Indonesia."}
+                {partner ? (partner.tagline || "Asisten AI untuk kebutuhan Anda.") : "Platform Penyelesaian Masalah untuk sektor konstruksi & profesional Indonesia — mulai dari masalah Anda."}
               </p>
             </div>
 
@@ -3209,7 +3209,7 @@ export default function Dashboard() {
             {!sidebarCollapsed && (
               <div className="min-w-0">
                 <h1 className="font-semibold text-sidebar-foreground truncate">{partner ? partner.brandName : "Gustafta"}</h1>
-                <p className="text-xs text-muted-foreground">{partner ? (partner.tagline || "Asisten AI") : "AI Chatbot Builder"}</p>
+                <p className="text-xs text-muted-foreground">{partner ? (partner.tagline || "Asisten AI") : "Platform Penyelesaian Masalah"}</p>
               </div>
             )}
           </div>
@@ -3240,7 +3240,7 @@ export default function Dashboard() {
                     </div>
                     <div>
                       <h1 className="font-semibold text-sidebar-foreground">{partner ? partner.brandName : "Gustafta"}</h1>
-                      <p className="text-xs text-muted-foreground">{partner ? (partner.tagline || "Asisten AI") : "AI Chatbot Builder"}</p>
+                      <p className="text-xs text-muted-foreground">{partner ? (partner.tagline || "Asisten AI") : "Platform Penyelesaian Masalah"}</p>
                     </div>
                   </div>
                 </div>

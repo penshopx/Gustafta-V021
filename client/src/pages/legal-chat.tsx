@@ -6,9 +6,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Scale, Send, Loader2, ArrowLeft, Plus, Trash2, Bot, User, ChevronRight, Copy, Check, Menu, X, FileDown, FileText, ChevronDown, ChevronUp, Search, BookOpen, ShieldCheck, ExternalLink, Database, FileCode2 } from "lucide-react";
+import { Scale, Send, Loader2, ArrowLeft, Plus, Trash2, Bot, User, ChevronRight, Copy, Check, Menu, X, FileDown, FileText, ChevronDown, ChevronUp, Search, BookOpen, ShieldCheck, ExternalLink, Database, FileCode2, Mic, MicOff, Phone, PhoneOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
+import { useVoiceMode } from "@/hooks/use-voice-mode";
 import { MessageContent } from "@/lib/format-message";
 import { parseBrainUpdates, BrainChip } from "@/lib/brain-utils";
 import { marked } from "marked";
@@ -210,6 +211,8 @@ export default function LegalChat() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const sendMsgRef = useRef<(text?: string) => void>(() => {});
+  const voice = useVoiceMode((transcript) => { setInput(transcript); setTimeout(() => sendMsgRef.current(transcript), 50); });
 
   const { data: agents = [] } = useQuery<LegalAgent[]>({
     queryKey: ["/api/legal/agents"],
@@ -458,6 +461,7 @@ export default function LegalChat() {
           } catch {}
         }
       }
+      voice.speak(assistantContent);
     } catch (err: any) {
       if (err?.name === "AbortError") return;
       setMessages(prev =>
@@ -471,6 +475,7 @@ export default function LegalChat() {
       setIsStreaming(false);
     }
   }, [input, isStreaming, selectedAgentId, currentSessionId, refetchSessions, guestLimitReached, isAuthenticated]);
+  sendMsgRef.current = sendMessage;
 
   const generateLegalOpinion = async () => {
     if (!legalOpinionForm.facts.trim() || isGeneratingOpinion) return;
@@ -1250,6 +1255,24 @@ export default function LegalChat() {
                 </Link>
               </div>
             ) : null}
+            {voice.isListening && (
+              <div className="flex items-center gap-2 mb-2 px-1">
+                <span className="flex h-2 w-2 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+                </span>
+                <span className="text-xs text-red-400 font-medium">Mendengarkan… bicara sekarang</span>
+              </div>
+            )}
+            {voice.aiSpeaking && (
+              <div className="flex items-center gap-2 mb-2 px-1">
+                <span className="flex h-2 w-2 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+                </span>
+                <span className="text-xs text-green-400 font-medium">AI sedang berbicara…</span>
+              </div>
+            )}
             <div className="flex gap-3 items-end">
               <div className="flex-1 relative">
                 <Textarea
@@ -1257,13 +1280,39 @@ export default function LegalChat() {
                   value={input}
                   onChange={e => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder={guestLimitReached && !isAuthenticated ? "Login untuk melanjutkan percakapan..." : `Tanyakan tentang ${selectedAgent.domain}...`}
+                  placeholder={voice.isListening ? "Mendengarkan suara Anda…" : guestLimitReached && !isAuthenticated ? "Login untuk melanjutkan percakapan..." : `Tanyakan tentang ${selectedAgent.domain}...`}
                   className="resize-none border-white/20 bg-white/5 text-white placeholder:text-white/40 rounded-xl pr-4 focus:border-purple-500/50 focus:ring-purple-500/20 min-h-[52px] max-h-32"
                   rows={1}
-                  disabled={isStreaming || (guestLimitReached && !isAuthenticated)}
+                  disabled={isStreaming || voice.isListening || (guestLimitReached && !isAuthenticated)}
                   data-testid="input-message"
                 />
               </div>
+              {voice.speechSupported && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={voice.togglePhoneMode}
+                  disabled={guestLimitReached && !isAuthenticated}
+                  className={`h-[52px] w-12 p-0 shrink-0 border-white/20 ${voice.phoneMode ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40" : "text-white/50"}`}
+                  title={voice.phoneMode ? "Matikan Mode Telpon" : "Mode Telpon"}
+                  data-testid="button-phone-mode"
+                >
+                  {voice.phoneMode ? <PhoneOff className="w-5 h-5" /> : <Phone className="w-5 h-5" />}
+                </Button>
+              )}
+              {voice.speechSupported && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={voice.toggleMic}
+                  disabled={guestLimitReached && !isAuthenticated}
+                  className={`h-[52px] w-12 p-0 shrink-0 border-white/20 ${voice.isListening ? "bg-red-500/20 text-red-400 border-red-500/40" : "text-white/50"}`}
+                  title={voice.isListening ? "Berhenti mendengarkan" : "Rekam suara"}
+                  data-testid="button-mic"
+                >
+                  {voice.isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+                </Button>
+              )}
               <Button
                 onClick={() => sendMessage()}
                 disabled={!input.trim() || isStreaming || (guestLimitReached && !isAuthenticated)}

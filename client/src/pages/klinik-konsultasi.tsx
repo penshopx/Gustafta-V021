@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 
 /*
- * Klinik Konsultasi Konstruksi — "ruang tunggu" konsultasi berbasis AI.
+ * Klinik Konstruksi — "ruang tunggu" konsultasi berbasis AI.
  * Pengunjung masuk, memilih loket (chatbot yang SUDAH ADA), AI menjawab lebih
  * dulu; operator manusia hanya menangani hal yang tak bisa dijawab AI (fallback
  * WhatsApp memakai kontak konsultasi resmi yang sudah dipakai di seluruh app).
@@ -28,7 +28,7 @@ import {
 const OPERATOR_WA =
   "https://wa.me/6282299417818?text=" +
   encodeURIComponent(
-    "Halo Operator Gustafta, pertanyaan saya di Klinik Konsultasi belum terjawab AI. Mohon bantuannya.",
+    "Halo Operator Gustafta, pertanyaan saya di Klinik Konstruksi belum terjawab AI. Mohon bantuannya.",
   );
 
 type Loket = { name: string; tag: string; href: string; icon: any; accent: string };
@@ -71,12 +71,12 @@ const LOKET_GROUPS = [
 type WorkroomLink = { domain: string; name: string; tag: string; icon: any };
 
 const WORKROOM_LINKS: WorkroomLink[] = [
-  { domain: "sbu", name: "Workroom SBU", tag: "Kesiapan Sertifikat Badan Usaha", icon: Building2 },
-  { domain: "skk", name: "Workroom SKK", tag: "Kesiapan sertifikasi kompetensi", icon: Award },
-  { domain: "pub", name: "Workroom PUB (LKUT)", tag: "Laporan kegiatan usaha tahunan", icon: TrendingUp },
-  { domain: "pkb", name: "Workroom PKB", tag: "Pengembangan keprofesian berkelanjutan", icon: GraduationCap },
-  { domain: "perizinan", name: "Workroom Perizinan", tag: "Kesiapan izin berusaha (OSS)", icon: FileCheck2 },
-  { domain: "tender", name: "Workroom Tender", tag: "Kelayakan & win probability tender", icon: Gavel },
+  { domain: "sbu", name: "Ruang SBU", tag: "Kesiapan Sertifikat Badan Usaha", icon: Building2 },
+  { domain: "skk", name: "Ruang SKK", tag: "Kesiapan sertifikasi kompetensi", icon: Award },
+  { domain: "pub", name: "Ruang PUB (LKUT)", tag: "Laporan kegiatan usaha tahunan", icon: TrendingUp },
+  { domain: "pkb", name: "Ruang PKB", tag: "Pengembangan keprofesian berkelanjutan", icon: GraduationCap },
+  { domain: "perizinan", name: "Ruang Perizinan", tag: "Kesiapan izin berusaha (OSS)", icon: FileCheck2 },
+  { domain: "tender", name: "Ruang Tender", tag: "Kelayakan & win probability tender", icon: Gavel },
 ];
 
 const STEPS = [
@@ -94,10 +94,10 @@ const SERVICES: Service[] = [
   {
     step: "1", icon: Bot, name: "Dialog Gustafta", tag: "Merancang → dapat chatbot",
     desc: "Ceritakan kebutuhan Anda. Sistem menyusun blueprint, hasilnya chatbot / agen AI siap pakai.",
-    href: "/dialog-gustafta", cta: "Mulai merancang",
+    href: "/konsultasi", cta: "Mulai merancang",
   },
   {
-    step: "2", icon: Stethoscope, name: "Klinik Konsultasi", tag: "Bertanya → dapat pengetahuan",
+    step: "2", icon: Stethoscope, name: "Klinik Konstruksi", tag: "Bertanya → dapat pengetahuan",
     desc: "Pilih loket, tanya ke AI kapan saja. Operator manusia hanya untuk kasus khusus.",
     href: "#loket", cta: "Pilih loket", current: true,
   },
@@ -226,7 +226,7 @@ function KlinikFeedbackForm() {
 export default function KlinikKonsultasiPage() {
   useEffect(() => {
     const prevTitle = document.title;
-    document.title = "Klinik Konsultasi Konstruksi — Tanya AI Dulu, Operator Bila Perlu | Gustafta";
+    document.title = "Klinik Konstruksi — Tanya AI Dulu, Operator Bila Perlu | Gustafta";
     return () => { document.title = prevTitle; };
   }, []);
 
@@ -239,14 +239,14 @@ export default function KlinikKonsultasiPage() {
         <div className="max-w-5xl mx-auto space-y-4">
           <div className="flex flex-wrap items-center gap-2">
             <Badge className="bg-teal-500 hover:bg-teal-500 text-white border-0" data-testid="badge-klinik">
-              <Stethoscope className="h-3.5 w-3.5 mr-1" /> Klinik Konsultasi
+              <Stethoscope className="h-3.5 w-3.5 mr-1" /> Klinik Konstruksi
             </Badge>
             <Badge variant="outline" className="border-white/40 text-white bg-white/10">
               <Clock className="h-3.5 w-3.5 mr-1" /> Buka 24 jam
             </Badge>
           </div>
           <h1 className="text-3xl md:text-4xl font-black text-white leading-tight">
-            Klinik Konsultasi Konstruksi
+            Klinik Konstruksi
           </h1>
           <p className="text-teal-50 text-base md:text-lg max-w-2xl">
             Masuk, pilih loket, dan berkonsultasi dengan chatbot AI yang siap menjawab kapan saja.
@@ -264,7 +264,7 @@ export default function KlinikKonsultasiPage() {
             </Button>
           </div>
           <p className="text-teal-100/90 text-xs md:text-sm leading-relaxed pt-4 mt-2 border-t border-white/15" data-testid="text-kemitraan-aspekindo">
-            Klinik Konsultasi <span className="font-semibold text-white">SBU · SKK · PKB · PUB</span> ini terselenggara
+            Klinik Konstruksi <span className="font-semibold text-white">SBU · SKK · PKB · PUB</span> ini terselenggara
             atas kerja sama <span className="font-semibold text-white">ASPEKINDO</span> · ASDAMKINDO · WarneyTech Co.,Ltd —
             bersama LSBU · LSP · <span className="font-semibold text-white">PUB</span> · PKB.
             <br className="hidden sm:block" />

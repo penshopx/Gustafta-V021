@@ -188,7 +188,7 @@ export default function BonusIndobuildtechPage() {
             desc="Ngobrol dengan asisten AI untuk menggali ide, lalu susun blueprint chatbot Anda."
             testid="step-2"
             action={
-              <Link href="/dialog-gustafta">
+              <Link href="/konsultasi">
                 <Button
                   variant={step2Done ? "outline" : "default"}
                   className={step2Done ? "gap-2" : "bg-indigo-600 hover:bg-indigo-500 text-white gap-2"}

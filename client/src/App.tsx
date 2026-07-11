@@ -1700,7 +1700,9 @@ function Router() {
         <Route path="/multiclaw-admin" component={MultiClawAdmin} />
         <Route path="/multiclaw" component={MultiClawDirectory} />
         <Route path="/paket-bidang" component={PaketBidangPage} />
+        <Route path="/konsultasi" component={DialogGustaftaPage} />
         <Route path="/dialog-gustafta" component={DialogGustaftaPage} />
+        <Route path="/dialog" component={DialogGustaftaPage} />
       <Route component={NotFound} />
     </Switch>
   );

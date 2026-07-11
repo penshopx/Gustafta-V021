@@ -27,7 +27,7 @@ export function TrialLockOverlay({ feature, description }: TrialLockOverlayProps
             <Rocket className="w-4 h-4" /> Lihat Paket
           </Button>
         </Link>
-        <Link href="/dialog-gustafta">
+        <Link href="/konsultasi">
           <Button size="sm" variant="outline" className="gap-2">
             <MessageCircle className="w-4 h-4" /> Coba Trial Gratis
           </Button>

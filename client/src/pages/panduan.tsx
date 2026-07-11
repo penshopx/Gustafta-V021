@@ -179,7 +179,7 @@ const MODULES: Module[] = [
           {
             title: "Hasil Dialog: Blueprint",
             content: "Ujung dari Dialog adalah BLUEPRINT — yaitu rancangan 'tim AI' yang sesuai kebutuhan Anda: siapa Ketua Timnya, spesialis apa saja yang diperlukan, dan bagaimana mereka bekerja.\n\nBlueprint ini bisa langsung dilanjutkan untuk membangun chatbot/tim AI Anda. Jadi Dialog adalah PINTU MASUK sebelum punya Chatbot.",
-            action: { label: "Coba Dialog Gustafta", href: "/dialog-gustafta" }
+            action: { label: "Coba Dialog Gustafta", href: "/konsultasi" }
           }
         ]
       },
