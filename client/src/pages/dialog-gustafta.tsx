@@ -156,6 +156,8 @@ export default function DialogGustaftaPage() {
   const [processing, setProcessing] = useState(false); // gate generation
   const [hasSaved, setHasSaved] = useState(false); // show resume banner
   const [showSplash, setShowSplash] = useState(true); // intro landing screen
+  const [showProfesi, setShowProfesi] = useState(false); // profesi selection step
+  const [profesiDipilih, setProfesiDipilih] = useState(""); // selected profession
   const [showResume, setShowResume] = useState(false);
   const [savedSession, setSavedSession] = useState<SavedSession | null>(null);
   const [showShareOptions, setShowShareOptions] = useState(false);
@@ -406,7 +408,7 @@ export default function DialogGustaftaPage() {
       const res = await fetch("/api/dialog-gustafta", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: newMsgs, userMessageCount: newMsgs.filter(m => m.role === "user").length }),
+        body: JSON.stringify({ messages: newMsgs, userMessageCount: newMsgs.filter(m => m.role === "user").length, profesi: profesiDipilih }),
       });
       const data = await res.json();
       const reply = data.reply || "Maaf, ada gangguan sebentar.";
@@ -548,7 +550,8 @@ export default function DialogGustaftaPage() {
     setStage("s1_chat"); setProfil(null); setGambaran(null); setBlueprint(null);
     setS1Count(0); setS2Count(0); setS3Count(0); setS3Unlocked(false);
     setShowShareOptions(false); setHasSaved(false);
-    setTimeout(() => textareaRef.current?.focus(), 100);
+    setProfesiDipilih("");
+    setShowSplash(true);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -568,6 +571,68 @@ export default function DialogGustaftaPage() {
 
   const isInputBlocked = loading || processing ||
     stage === "s1_gate" || stage === "s2_gate" || stage === "blueprint";
+
+  // ── Profesi selection screen ─────────────────────────────────────────────
+  const PROFESI_OPTIONS = [
+    { value: "Konsultan Perencana / Pengawas", emoji: "📐" },
+    { value: "Kontraktor / Pelaksana Proyek", emoji: "🏗️" },
+    { value: "Konsultan Hukum / Legal", emoji: "⚖️" },
+    { value: "Dosen / Trainer / Pengajar", emoji: "🎓" },
+    { value: "Pengusaha / Wirausaha", emoji: "💼" },
+    { value: "ASN / Aparatur Sipil Negara", emoji: "🏛️" },
+    { value: "Profesional Lainnya", emoji: "✨" },
+  ];
+
+  const handleProfesiPilih = (p: string) => {
+    setProfesiDipilih(p);
+    const greeting = `Halo, ${p}! Saya Dialog ${brandName} — Teman Berpikir kamu. 🌟\n\nSaya hadir bukan untuk menjawab, tapi untuk *menggali* — karena saya yakin kamu punya potensi dan pengalaman luar biasa yang belum sempat diartikulasikan.\n\nSebagai ${p}, ceritakan padaku — tantangan apa yang ingin kamu selesaikan, atau ada peluang yang belum sempat kamu kejar?`;
+    setMessages([{ role: "assistant", content: greeting }]);
+    setShowProfesi(false);
+    setTimeout(() => textareaRef.current?.focus(), 100);
+  };
+
+  if (showProfesi && !showResume) {
+    return (
+      <div className="flex flex-col min-h-screen bg-gradient-to-b from-[#0a1628] to-[#0d1f3c] items-center justify-center px-6 py-12">
+        <div className="w-full max-w-md space-y-6">
+          {/* Header */}
+          <div className="text-center space-y-2">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-700 flex items-center justify-center mx-auto overflow-hidden">
+              {brandLogo
+                ? <img src={brandLogo} alt={brandName} className="w-10 h-10 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                : <span className="text-white text-xl font-bold">{brandName.charAt(0)}</span>}
+            </div>
+            <h2 className="text-xl font-bold text-white">Sebelum kita mulai...</h2>
+            <p className="text-sm text-white/60 leading-relaxed">
+              Agar konsultasi lebih tepat sasaran, boleh tahu profesi kamu?
+            </p>
+          </div>
+
+          {/* Profesi Grid */}
+          <div className="space-y-2">
+            {PROFESI_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => handleProfesiPilih(opt.value)}
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-cyan-400/40 transition-all text-left group"
+              >
+                <span className="text-xl shrink-0">{opt.emoji}</span>
+                <span className="text-sm font-medium text-white/80 group-hover:text-white transition-colors">{opt.value}</span>
+                <ChevronRight className="w-4 h-4 text-white/20 group-hover:text-cyan-400 ml-auto transition-colors" />
+              </button>
+            ))}
+          </div>
+
+          <button
+            onClick={() => { setShowProfesi(false); setTimeout(() => textareaRef.current?.focus(), 100); }}
+            className="w-full text-center text-xs text-white/30 hover:text-white/50 transition-colors py-1"
+          >
+            Lewati →
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // ── Splash / Intro Screen ────────────────────────────────────────────────
   if (showSplash && !showResume) {
@@ -625,7 +690,7 @@ export default function DialogGustaftaPage() {
           {/* CTA */}
           <Button
             className="w-full h-12 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-semibold text-base gap-2 rounded-xl shadow-lg shadow-cyan-900/40"
-            onClick={() => { setShowSplash(false); setTimeout(() => textareaRef.current?.focus(), 100); }}
+            onClick={() => { setShowSplash(false); setShowProfesi(true); }}
           >
             Mulai Konsultasi <ArrowRight className="w-4 h-4" />
           </Button>
