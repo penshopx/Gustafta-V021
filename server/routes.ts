@@ -30696,14 +30696,15 @@ LARANGAN:
   // ─── Dialog Gustafta: Generate Profil Awal (Gate 1) ───────────────────────
   app.post("/api/dialog-gustafta/profil", async (req: any, res: any) => {
     try {
-      const { messages = [] } = req.body;
+      const { messages = [], profesi = "" } = req.body;
 
       const safeMessages = (messages as any[])
         .filter((m: any) => m && typeof m.content === "string" && ["user", "assistant"].includes(m.role))
         .slice(-20)
         .map((m: any) => ({ role: m.role as "user" | "assistant", content: m.content.slice(0, 2000) }));
 
-      const prompt = `Berdasarkan percakapan berikut, buat profil awal pengguna dalam format JSON.
+      const profesiContext = profesi ? `\nProfesi/latar belakang pengguna: ${profesi}` : "";
+      const prompt = `Berdasarkan percakapan berikut, buat profil awal pengguna dalam format JSON.${profesiContext}
 
 Percakapan:
 ${safeMessages.map((m: any) => `${m.role === "user" ? "User" : "Dialog"}: ${m.content}`).join("\n")}
@@ -30743,14 +30744,15 @@ Gunakan bahasa Indonesia yang hangat dan menyemangati.`;
   // ─── Dialog Gustafta: Generate Gambaran Tajam (Gate 2) ────────────────────
   app.post("/api/dialog-gustafta/gambaran", async (req: any, res: any) => {
     try {
-      const { messages = [] } = req.body;
+      const { messages = [], profesi = "" } = req.body;
 
       const safeMessages = (messages as any[])
         .filter((m: any) => m && typeof m.content === "string" && ["user", "assistant"].includes(m.role))
         .slice(-30)
         .map((m: any) => ({ role: m.role as "user" | "assistant", content: m.content.slice(0, 2000) }));
 
-      const prompt = `Berdasarkan percakapan berikut (Stage 1 + Stage 2), buat "Gambaran Tajam" potensi ekosistem AI pengguna dalam format JSON.
+      const profesiContext = profesi ? `\nProfesi/latar belakang pengguna: ${profesi}` : "";
+      const prompt = `Berdasarkan percakapan berikut (Stage 1 + Stage 2), buat "Gambaran Tajam" potensi ekosistem AI pengguna dalam format JSON.${profesiContext}
 
 Percakapan:
 ${safeMessages.map((m: any) => `${m.role === "user" ? "User" : "Dialog"}: ${m.content}`).join("\n")}
@@ -30803,14 +30805,15 @@ Buat terasa personal dan berdasarkan detail nyata dari dialog. Bahasa Indonesia 
   // ─── Dialog Gustafta: Generate Blueprint Ekosistem (Gate 2) ───────────────
   app.post("/api/dialog-gustafta/blueprint", async (req: any, res: any) => {
     try {
-      const { messages = [] } = req.body;
+      const { messages = [], profesi = "" } = req.body;
 
       const safeMessages = (messages as any[])
         .filter((m: any) => m && typeof m.content === "string" && ["user", "assistant"].includes(m.role))
         .slice(-30)
         .map((m: any) => ({ role: m.role as "user" | "assistant", content: m.content.slice(0, 2000) }));
 
-      const prompt = `Berdasarkan percakapan mendalam berikut, buat Blueprint Ekosistem AI untuk pengguna dalam format JSON.
+      const profesiContext = profesi ? `\nProfesi/latar belakang pengguna: ${profesi}` : "";
+      const prompt = `Berdasarkan percakapan mendalam berikut, buat Blueprint Ekosistem AI untuk pengguna dalam format JSON.${profesiContext}
 
 Percakapan:
 ${safeMessages.map((m: any) => `${m.role === "user" ? "User" : "Dialog"}: ${m.content}`).join("\n")}

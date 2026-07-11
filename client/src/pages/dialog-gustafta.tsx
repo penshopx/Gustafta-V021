@@ -63,6 +63,7 @@ interface SavedSession {
   s2Count: number;
   s3Count: number;
   s3Unlocked: boolean;
+  profesi: string;
   savedAt: string;
 }
 
@@ -362,10 +363,11 @@ export default function DialogGustaftaPage() {
     saveSession({
       stage, messages, profil, gambaran, blueprint,
       s1Count, s2Count, s3Count, s3Unlocked,
+      profesi: profesiDipilih,
       savedAt: new Date().toISOString(),
       ...overrides,
     });
-  }, [stage, messages, profil, gambaran, blueprint, s1Count, s2Count, s3Count, s3Unlocked]);
+  }, [stage, messages, profil, gambaran, blueprint, s1Count, s2Count, s3Count, s3Unlocked, profesiDipilih]);
 
   // ── Resume session ───────────────────────────────────────────────────────
   const resumeSession = () => {
@@ -379,6 +381,7 @@ export default function DialogGustaftaPage() {
     setS2Count(savedSession.s2Count);
     setS3Count(savedSession.s3Count);
     setS3Unlocked(savedSession.s3Unlocked);
+    if (savedSession.profesi) setProfesiDipilih(savedSession.profesi);
     setShowResume(false);
     setTimeout(() => textareaRef.current?.focus(), 100);
   };
@@ -447,7 +450,7 @@ export default function DialogGustaftaPage() {
     try {
       const res = await fetch("/api/dialog-gustafta/profil", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: msgs }),
+        body: JSON.stringify({ messages: msgs, profesi: profesiDipilih }),
       });
       const data = await res.json();
       const p = data.profil ?? { bidang: "Bidang Anda", tantangan: "Tantangan yang dihadapi", potensi: "Potensi besar teridentifikasi", rekomendasiChatbot: "Chatbot spesialis untuk bidang Anda" };
@@ -465,7 +468,7 @@ export default function DialogGustaftaPage() {
     try {
       const res = await fetch("/api/dialog-gustafta/gambaran", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: msgs }),
+        body: JSON.stringify({ messages: msgs, profesi: profesiDipilih }),
       });
       const data = await res.json();
       const g = data.gambaran ?? { judul: "Gambaran Ekosistem Anda", ringkasan: "Sudah terbentuk gambaran yang menarik.", kekuatan: ["Pengetahuan mendalam", "Pengalaman nyata"], peluang: "Chatbot spesialis di bidang Anda" };
@@ -483,7 +486,7 @@ export default function DialogGustaftaPage() {
     try {
       const res = await fetch("/api/dialog-gustafta/blueprint", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: msgs }),
+        body: JSON.stringify({ messages: msgs, profesi: profesiDipilih }),
       });
       const data = await res.json();
       const bp = data.blueprint ?? { judul: "Blueprint Ekosistem AI Anda", ringkasan: "Roadmap personal berdasarkan dialog.", langkahAwal: [`Daftar di ${brandName}`, "Konfigurasi chatbot pertama", "Upload knowledge base", "Rakit tim AI & bagikan ke rekan"], namaChatbot: "Chatbot Spesialis", persona: "Konsultan yang hangat", targetPengguna: "Profesional di bidang Anda", estimasiDampak: "Melayani ratusan klien otomatis 24/7" };
