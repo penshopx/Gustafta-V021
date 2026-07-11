@@ -641,6 +641,23 @@ function Router() {
             description="10 agen spesialis yang memandu proses pengurusan SBU Konstruksi end-to-end: mapping subklasifikasi, gap analysis, dokumen, SKK, hingga walkthrough OSS-RBA."
             highlights={["Smart mapping subklasifikasi BS/BG/IL/IM/KO","Checklist dokumen & gap analysis kualifikasi","Draft surat & estimasi biaya + timeline","Walkthrough OSS-RBA & LPJK step-by-step"]}
             icon={<HardHat className="h-12 w-12 text-amber-400" />}
+            pas={{
+              problemTitle: "Ngurus SBU sendiri? Ini yang biasa bikin mentok",
+              problemBody: "Subklasifikasi BS/BG/IL/IM/KO membingungkan, syarat SKK tiap jabatan kerja beda-beda, dan alur OSS-RBA sering berubah. Banyak BUJK harus bolak-balik revisi karena salah pilih subklasifikasi atau dokumen kualifikasi kurang — padahal itu semua bisa dicek dari awal.",
+              agitateBody: "Setiap revisi berarti antre ulang di LPJK dan waktu terbuang berminggu-minggu. Kalau SBU belum terbit saat masa pendaftaran tender dibuka, perusahaan Anda otomatis tersisih — proyek melayang ke kompetitor yang lebih siap.",
+              desireBody: "Dengan SBUClaw, Anda tinggal ceritakan bidang usaha dan pengalaman proyek — 10 agen spesialis langsung memetakan subklasifikasi yang tepat, mengecek gap kualifikasi & SKK yang masih kurang, menyiapkan checklist dokumen, sampai memandu Anda submit di OSS-RBA tanpa tebak-tebakan.",
+              stats: [
+                { value: "10", label: "Agen Spesialis" },
+                { value: "5", label: "Subklasifikasi BS/BG/IL/IM/KO" },
+                { value: "OSS-RBA", label: "Walkthrough Resmi" },
+              ],
+              proofNote: "Mengacu pada regulasi LPJK & alur perizinan berusaha berbasis risiko (OSS-RBA) yang berlaku untuk sertifikasi Badan Usaha Jasa Konstruksi (BUJK).",
+              faqs: [
+                { q: "Apakah SBUClaw menerbitkan SBU untuk saya?", a: "Tidak. SBUClaw adalah asisten AI yang memandu persiapan Anda — mapping subklasifikasi, gap analysis, dan checklist dokumen — sementara penerbitan SBU tetap melalui LPJK/lembaga sertifikasi berwenang." },
+                { q: "Saya belum tahu subklasifikasi apa yang cocok, bagaimana?", a: "Ceritakan bidang usaha dan pengalaman proyek Anda di chat — agen mapping akan merekomendasikan subklasifikasi BS/BG/IL/IM/KO yang paling sesuai beserta jenjang kualifikasinya." },
+                { q: "Apakah SBUClaw juga membahas keterkaitan dengan SKK tenaga kerja?", a: "Ya. Salah satu agen khusus menganalisis ketergantungan antara SKK penanggung jawab teknis dan persyaratan SBU yang Anda tuju." },
+              ],
+            }}
           ><SbuClawChat /></PremiumPageGuard>
         )} />
         <Route path="/edu-counsel" component={() => (
