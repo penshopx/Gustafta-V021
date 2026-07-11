@@ -64,9 +64,7 @@ timeoutMs = 20000
 [userenv.shared]
 ADMIN_EMAILS = "tutip98@outlook.com"
 ADMIN_USER_IDS = "58349984,58848919,59024982"
-BREVO_API_KEY = "REDACTED_BREVO_KEY"
 BREVO_SENDER_EMAIL = "penshopx@gmail.com"
-SCALEV_API_KEY = "REDACTED_SCALEV_KEY"
 SMTP_HOST = "smtp-relay.brevo.com"
 SMTP_PORT = "587"
 SUPERADMIN_EMAILS = "penshopx@gmail.com"
