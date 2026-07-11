@@ -30862,6 +30862,50 @@ Buat blueprint yang terasa personal, didasarkan pada detail nyata dari dialog. G
     }
   });
 
+  // POST /api/dialog-gustafta/lead — Progressive Lead Capture
+  // Menyimpan nama + WA yang diisi pengguna di tengah dialog (setelah AI tunjukkan nilai)
+  app.post("/api/dialog-gustafta/lead", async (req: any, res: any) => {
+    try {
+      const { name, phone, profesi, profilBidang, gambaranJudul } = req.body || {};
+      if (!name && !phone) return res.status(400).json({ error: "Nama atau nomor WA harus diisi." });
+
+      // Simpan ke tabel leads (agentId 0 = dialog publik, source = dialog)
+      const lead = await storage.createLead({
+        agentId: 0,
+        name: String(name || "").trim(),
+        phone: String(phone || "").trim(),
+        source: "chat" as any,
+        status: "new" as any,
+        metadata: { profesi: profesi || "", profilBidang: profilBidang || "", gambaranJudul: gambaranJudul || "", capturedAt: new Date().toISOString() },
+      });
+
+      // Notifikasi ke admin via WA (fire-and-forget)
+      const fonnteKey = process.env.FONNTE_API_KEY;
+      if (fonnteKey) {
+        const adminPhone = "6282299417818";
+        const msgParts = [
+          `📋 *Lead Baru dari Konsultasi*`,
+          `Nama: ${name || "-"}`,
+          `WA: ${phone || "-"}`,
+          profesi ? `Profesi: ${profesi}` : null,
+          profilBidang ? `Bidang: ${profilBidang}` : null,
+          gambaranJudul ? `Gambaran: ${gambaranJudul}` : null,
+          `Waktu: ${new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" })}`,
+        ].filter(Boolean).join("\n");
+        fetch("https://api.fonnte.com/send", {
+          method: "POST",
+          headers: { Authorization: fonnteKey, "Content-Type": "application/json" },
+          body: JSON.stringify({ target: adminPhone, message: msgParts, countryCode: "62" }),
+        }).catch(() => {/* abaikan error notif */});
+      }
+
+      return res.json({ ok: true, leadId: lead.id });
+    } catch (e: any) {
+      console.error("dialog-gustafta/lead error:", e);
+      return res.status(500).json({ error: "Gagal menyimpan data." });
+    }
+  });
+
   // GET /api/trial/status — trial quota and status for current user
   app.get("/api/trial/status", isAuthenticated, async (req: any, res) => {
     try {
