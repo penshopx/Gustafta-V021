@@ -18761,6 +18761,65 @@ Return HANYA JSON berikut (tanpa penjelasan lain):
             }
           }
           console.log(`[Scalev Bundle] Created ${created.length}/${bundleAgentIds.length} subscriptions for ${customerEmail}: agents [${created.join(", ")}]`);
+        } else if (matchedMapping.type === "ebook") {
+          // ── Ebook Buku I — DIALOG (Rp79rb): kirim email fulfillment + trial 7 hari ──
+          await storage.createStoreOrder({
+            productId: 0,
+            customerName: customerName || "Customer",
+            customerEmail: customerEmail,
+            customerPhone: customerPhone,
+            amount: Math.round(grossRevenue),
+            midtransOrderId: `scalev_${orderId}`,
+            accessToken,
+            status: "paid",
+          });
+
+          let trialGranted = false;
+          if (customerEmail) {
+            try {
+              const buyer = await storage.getUserByEmail(customerEmail);
+              if (buyer) {
+                const now = new Date();
+                const endDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+                await storage.createSubscription({
+                  userId: buyer.id,
+                  plan: "free_trial",
+                  status: "active",
+                  amount: 0,
+                  currency: "IDR",
+                  chatbotLimit: 1,
+                  mayarOrderId: `scalev_ebook_${orderId}`,
+                  startDate: now.toISOString(),
+                  endDate: endDate.toISOString(),
+                } as any);
+                trialGranted = true;
+                console.log(`[Scalev] Ebook trial 7 hari diaktifkan untuk ${customerEmail} (user ${buyer.id})`);
+              } else {
+                console.log(`[Scalev] Ebook: belum ada akun untuk ${customerEmail}, trial menunggu registrasi manual.`);
+              }
+            } catch (trialErr: any) {
+              console.error(`[Scalev] Gagal aktivasi trial ebook untuk ${customerEmail}:`, trialErr?.message);
+            }
+          }
+
+          if (customerEmail) {
+            const { sendEbookFulfillmentEmail } = await import("./lib/email");
+            const downloadUrl = `${baseUrl}/ebooks/trilogi-buku-1-dialog.pdf`;
+            sendEbookFulfillmentEmail({
+              to: customerEmail,
+              customerName,
+              downloadUrl,
+              bonuses: [
+                "Ebook Buku I — DIALOG (PDF, 160+ halaman)",
+                "Prompt Khusus Buku I (paket prompt siap pakai)",
+                "Modul pendamping Buku I",
+                "Video pembelajaran (NotebookLM)",
+                "Trial 7 Hari coba merakit chatbot AI pertamamu",
+              ],
+              trialGranted,
+            }).catch((emailErr: any) => console.error(`[Scalev] Gagal kirim email ebook ke ${customerEmail}:`, emailErr?.message));
+          }
+          console.log(`[Scalev] Ebook Buku I — DIALOG order diproses untuk ${customerEmail}`);
         }
       } else {
         // No mapping found — create a generic store order as placeholder (productId=0)

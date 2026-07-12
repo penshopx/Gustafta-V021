@@ -57,6 +57,8 @@ import AccountPage from "@/pages/account";
 import MiniAppPublic from "@/pages/mini-app-public";
 import LegalLanding from "@/pages/legal-landing";
 import TrilogiLanding from "@/pages/trilogi-landing";
+import EbookDialog from "@/pages/ebook-dialog";
+import EbookTerimaKasih from "@/pages/ebook-terima-kasih";
 import MitraPage from "@/pages/mitra";
 import LegacyPage from "@/pages/legacy";
 import BlueprintPage from "@/pages/blueprint";
@@ -501,6 +503,8 @@ function Router() {
       <Route path="/admin/system-load" component={AdminSystemLoadPage} />
       <Route path="/legal" component={LegalLanding} />
       <Route path="/trilogi" component={TrilogiLanding} />
+      <Route path="/ebook-dialog" component={EbookDialog} />
+      <Route path="/ebook-terima-kasih" component={EbookTerimaKasih} />
       <Route path="/mitra" component={MitraPage} />
       <Route path="/legacy" component={LegacyPage} />
       <Route path="/blueprint" component={BlueprintPage} />
