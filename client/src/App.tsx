@@ -609,6 +609,16 @@ function Router() {
             description="Pendamping proyek konstruksi berbasis AI multi-agen — analisis LHP, EVM, NCR, K3, lingkungan, dan klaim FIDIC dalam satu sesi."
             highlights={["6 spesialis paralel: PROXIMA, EVM, MUTU, SAFIRA, ENVIRA, KONTRAK","Output ABD-7: analisis Q-C-T+K3 + Early Warning + Confidence%","Klaim EOT & VO berbasis FIDIC Red/Yellow Book","Review NCR, uji beton, insiden K3, dan laporan lingkungan B3"]}
             icon={<Brain className="h-12 w-12 text-indigo-500" />}
+            pas={{
+              problemTitle: "LHP, EVM, NCR, K3, lingkungan, klaim — semua perlu dibaca terpisah",
+              problemBody: "Membaca Laporan Harian Proyek, menghitung EVM, meninjau NCR, memantau K3 dan lingkungan, lalu menilai posisi klaim FIDIC biasanya dikerjakan oleh orang atau tim berbeda — sulit melihat gambaran kesehatan proyek secara utuh dan cepat.",
+              agitateBody: "Tanpa early warning yang terintegrasi, masalah kecil di satu aspek (misal NCR mutu atau insiden K3) bisa terlewat sampai berdampak ke jadwal dan biaya proyek secara keseluruhan.",
+              desireBody: "Brain Project menyatukan 6 spesialis — PROXIMA, EVM, MUTU, SAFIRA, ENVIRA, KONTRAK — dalam satu sesi, menghasilkan analisis Q-C-T+K3 dengan early warning dan confidence score, plus bantuan klaim EOT/VO berbasis FIDIC — semua dari data LHP yang Anda masukkan.",
+              faqs: [
+                { q: "Data apa yang perlu saya siapkan untuk dianalisis?", a: "Cukup ceritakan atau lampirkan isi Laporan Harian Proyek (LHP), data progress, dan catatan insiden — Brain Project akan mengolahnya jadi analisis 6 dimensi." },
+                { q: "Apa itu output ABD-7?", a: "Ringkasan analisis proyek mencakup Quality-Cost-Time plus K3, early warning, dan tingkat keyakinan (confidence%) atas rekomendasi yang diberikan." },
+              ],
+            }}
           ><BrainProjectChat /></PremiumPageGuard>
         )} />
         <Route path="/data-master" component={() => (
@@ -710,6 +720,20 @@ function Router() {
             description="5 agen spesialis bekerja paralel: panduan PJBU, PJTBU, PJKBU, SIP-PJBU kontraktor, dan SIP-PJBU konsultan — lengkap dengan kompetensi, persyaratan SKK, dan prosedur pendaftaran LPJK."
             highlights={["Panduan PJBU, PJTBU & PJKBU sesuai PP 14/2021","Persyaratan SKK manajerial per kualifikasi BUJK","Prosedur pendaftaran & update SIP LPJK","Panduan PJBU kontraktor & konsultan berbeda"]}
             icon={<Users className="h-12 w-12 text-violet-500" />}
+            pas={{
+              problemTitle: "PJBU, PJTBU, PJKBU — siapa harus punya SKK apa, sering tertukar",
+              problemBody: "Menentukan personel manajerial BUJK yang tepat itu rumit: beda kualifikasi BUJK, beda syarat SKK; beda pula aturan untuk kontraktor dan konsultan. Salah menunjuk PJBU/PJTBU/PJKBU bisa membuat SIP ditolak saat pendaftaran atau update di LPJK.",
+              agitateBody: "Kesalahan struktur personel manajerial baru ketahuan saat pendaftaran SIP ditolak — dan itu berarti balik lagi menyiapkan dokumen dari awal sambil jadwal tender terus berjalan.",
+              desireBody: "PJBUClaw memandu Anda menentukan PJBU, PJTBU, dan PJKBU yang sesuai kualifikasi BUJK — lengkap dengan syarat SKK per posisi dan langkah pendaftaran/update SIP di LPJK — sehingga struktur personel manajerial Anda benar sejak awal.",
+              stats: [
+                { value: "5", label: "Agen Spesialis" },
+                { value: "PP 14/2021", label: "Acuan Regulasi" },
+              ],
+              faqs: [
+                { q: "Apa beda PJBU untuk kontraktor dan konsultan?", a: "Syarat kompetensi dan tanggung jawabnya berbeda — PJBUClaw punya panduan terpisah untuk masing-masing jenis BUJK." },
+                { q: "Apakah PJBUClaw membantu proses update SIP di LPJK?", a: "Ya, ada panduan langkah demi langkah untuk prosedur pendaftaran dan pembaruan SIP-PJBU." },
+              ],
+            }}
           ><PjbuClawChat /></PremiumPageGuard>
         )} />
         <Route path="/keuangan-claw" component={() => (
@@ -719,6 +743,20 @@ function Router() {
             description="4 agen spesialis bekerja paralel: analisis rasio keuangan BUJK, panduan manager keuangan & KPI, toolkit manajerial (cash flow, anggaran proyek), dan matriks kompetensi & JD tim keuangan."
             highlights={["Analisis rasio keuangan BUJK + PSAK 34 konstruksi","Cash flow proyeksi & working capital management","KPI keuangan & dashboard monitoring proyek","JD & matriks kompetensi tim keuangan"]}
             icon={<TrendingUp className="h-12 w-12 text-emerald-500" />}
+            pas={{
+              problemTitle: "Kondisi keuangan BUJK sehat atau tidak? Sering baru ketahuan saat sudah telat",
+              problemBody: "Rasio keuangan BUJK punya standar sendiri (PSAK 34 konstruksi) yang berbeda dari bisnis umum — tanpa analisis rutin, masalah cash flow atau working capital yang menumpuk sering baru terasa saat proyek sudah berjalan dan sulit dibenahi.",
+              agitateBody: "Cash flow yang tidak terpantau bisa membuat proyek berhenti di tengah jalan karena kehabisan modal kerja — padahal itu bisa dideteksi lebih awal.",
+              desireBody: "KeuanganClaw menganalisis rasio keuangan BUJK Anda sesuai PSAK 34, memproyeksikan cash flow dan working capital, memberi KPI keuangan untuk monitoring proyek, hingga menyusun JD tim keuangan — supaya kondisi finansial BUJK Anda selalu terpantau, bukan baru disadari saat krisis.",
+              stats: [
+                { value: "4", label: "Agen Spesialis" },
+                { value: "PSAK 34", label: "Standar Akuntansi Konstruksi" },
+              ],
+              faqs: [
+                { q: "Apakah KeuanganClaw menggantikan akuntan/auditor?", a: "Tidak. KeuanganClaw membantu analisis dan panduan manajerial — laporan keuangan resmi tetap disusun dan diaudit oleh akuntan berwenang." },
+                { q: "Bisakah dipakai untuk proyeksi satu proyek spesifik?", a: "Bisa — ceritakan data proyek Anda dan agen akan membantu proyeksi cash flow serta working capital untuk proyek tersebut." },
+              ],
+            }}
           ><KeuanganClawChat /></PremiumPageGuard>
         )} />
         <Route path="/tendera-claw" component={() => (
@@ -777,6 +815,16 @@ function Router() {
             description="9 spesialis ruang lingkup BG001–BG009 bekerja paralel: panduan lengkap jenis pekerjaan yang tercakup, batasan teknis, irisan antar subklasifikasi, dan KBLI 2020 berdasarkan Permen PU 6/2025."
             highlights={["9 subklasifikasi BG001–BG009 paralel","Ruang lingkup pekerjaan & batas teknis","Irisan & overlap antar subklasifikasi","KBLI 2020 · Permen PU 6/2025"]}
             icon={<Building2 className="h-12 w-12 text-stone-400" />}
+            pas={{
+              problemTitle: "BG001–BG009 mirip-mirip, salah pilih bisa berakibat SBU tidak sesuai lingkup proyek",
+              problemBody: "Sembilan subklasifikasi Bangunan Gedung punya batasan teknis dan irisan pekerjaan yang halus — salah menentukan subklasifikasi bisa membuat SBU Anda tidak mencakup lingkup proyek yang sebenarnya ingin dikerjakan.",
+              agitateBody: "Ketidaksesuaian ini biasanya baru ketahuan saat verifikasi tender atau audit SBU — saat itu memperbaikinya berarti mengulang proses dari LPJK lagi.",
+              desireBody: "BGClaw memetakan ke-9 subklasifikasi BG001–BG009 sekaligus — menjelaskan ruang lingkup, batas teknis, dan irisan antar subklasifikasi sesuai KBLI 2020 & Permen PU 6/2025 — sehingga Anda yakin memilih subklasifikasi yang tepat sejak awal.",
+              stats: [{ value: "9", label: "Subklasifikasi BG001–BG009" }, { value: "Permen PU 6/2025", label: "Acuan Regulasi" }],
+              faqs: [
+                { q: "Bagaimana kalau proyek saya mencakup lebih dari satu subklasifikasi BG?", a: "BGClaw membantu mengidentifikasi irisan/overlap antar subklasifikasi sehingga Anda tahu kombinasi SBU yang perlu dimiliki." },
+              ],
+            }}
           ><BgClawChat /></PremiumPageGuard>
         )} />
         <Route path="/bs-claw" component={() => (
@@ -786,6 +834,16 @@ function Router() {
             description="10 spesialis BS001–BS010 bekerja paralel: jalan raya, jembatan, irigasi, drainase, pelabuhan, pipeline, rel kereta, bandara, pembangkit listrik, dan sipil lainnya — berdasarkan Permen PU 6/2025."
             highlights={["10 subklasifikasi BS001–BS010 paralel","Ruang lingkup infrastruktur sipil lengkap","Irisan teknis antar subklasifikasi BS","KBLI 2020 Kelompok 42xxx · Permen PU 6/2025"]}
             icon={<HardHat className="h-12 w-12 text-sky-400" />}
+            pas={{
+              problemTitle: "Infrastruktur sipil luas cakupannya — dari jalan sampai pembangkit listrik, mudah salah klasifikasi",
+              problemBody: "Sepuluh subklasifikasi Bangunan Sipil mencakup bidang yang sangat beragam — jalan, jembatan, irigasi, pelabuhan, rel kereta, hingga pembangkit listrik. Tanpa panduan yang jelas, BUJK mudah salah menentukan BS mana yang benar-benar sesuai lingkup proyeknya.",
+              agitateBody: "SBU yang tidak tepat cakupannya bisa membuat perusahaan gagal memenuhi syarat kualifikasi saat tender infrastruktur besar dibuka.",
+              desireBody: "BSClaw memetakan ke-10 subklasifikasi BS001–BS010 sesuai KBLI 2020 Kelompok 42xxx dan Permen PU 6/2025 — lengkap dengan irisan teknis antar subklasifikasi — sehingga Anda tahu persis BS mana yang perlu dimiliki untuk jenis infrastruktur yang digarap.",
+              stats: [{ value: "10", label: "Subklasifikasi BS001–BS010" }, { value: "KBLI 42xxx", label: "Kelompok Konstruksi Sipil" }],
+              faqs: [
+                { q: "Proyek saya gabungan jalan dan drainase, perlu berapa SBU?", a: "BSClaw akan menjelaskan subklasifikasi mana saja yang relevan dan apakah keduanya perlu SBU terpisah atau tercakup dalam satu subklasifikasi." },
+              ],
+            }}
           ><BsClawChat /></PremiumPageGuard>
         )} />
         <Route path="/im-claw" component={() => (
@@ -795,6 +853,16 @@ function Router() {
             description="9 spesialis IM001–IM009 bekerja paralel: listrik gedung, HVAC, plambing, proteksi kebakaran, lift, gas, telekomunikasi/IT, mekanikal pabrik, dan panel surya — berdasarkan Permen PU 6/2025."
             highlights={["9 subklasifikasi IM001–IM009 paralel","Ruang lingkup MEP & utiliti gedung lengkap","Irisan teknis antar subklasifikasi IM","KBLI 2020 Kelompok 43xxx · Permen PU 6/2025"]}
             icon={<Wrench className="h-12 w-12 text-emerald-400" />}
+            pas={{
+              problemTitle: "MEP mencakup 9 bidang berbeda — listrik sampai panel surya, gampang tertukar",
+              problemBody: "Instalasi Mekanikal-Elektrikal mencakup listrik gedung, HVAC, plambing, proteksi kebakaran, lift, gas, telekomunikasi/IT, mekanikal pabrik, hingga panel surya — sembilan bidang teknis berbeda yang sering dianggap satu klasifikasi saja.",
+              agitateBody: "Kalau BUJK hanya punya SBU untuk sebagian bidang MEP tapi menggarap lingkup di luar itu, risiko ketidaksesuaian kualifikasi bisa muncul saat verifikasi proyek.",
+              desireBody: "IMClaw menjelaskan ke-9 subklasifikasi IM001–IM009 sesuai KBLI 2020 Kelompok 43xxx dan Permen PU 6/2025, termasuk irisan teknis antar subklasifikasi — sehingga Anda tahu persis cakupan SBU MEP yang dibutuhkan untuk proyek Anda.",
+              stats: [{ value: "9", label: "Subklasifikasi IM001–IM009" }, { value: "KBLI 43xxx", label: "Kelompok Instalasi" }],
+              faqs: [
+                { q: "Apakah panel surya termasuk subklasifikasi tersendiri?", a: "Ya, panel surya masuk salah satu dari 9 subklasifikasi IM — IMClaw akan menjelaskan posisinya beserta batasan teknisnya." },
+              ],
+            }}
           ><ImClawChat /></PremiumPageGuard>
         )} />
         <Route path="/ko-claw" component={() => (
@@ -804,6 +872,16 @@ function Router() {
             description="8 spesialis KO001–KO008 bekerja paralel: penyiapan lahan, pondasi dalam, baja, finishing, waterproofing, pengeboran, pengaspalan, dan konstruksi khusus — berdasarkan Permen PU 6/2025."
             highlights={["8 subklasifikasi KO001–KO008 paralel","Ruang lingkup konstruksi spesialis/khusus lengkap","Irisan teknis antar subklasifikasi KO","KBLI 2020 Kelompok 43xxx · Permen PU 6/2025"]}
             icon={<HardHat className="h-12 w-12 text-violet-400" />}
+            pas={{
+              problemTitle: "Pekerjaan konstruksi khusus sering dianggap 'bisa dikerjakan siapa saja' — padahal butuh SBU sendiri",
+              problemBody: "Penyiapan lahan, pondasi dalam, pekerjaan baja, waterproofing, pengeboran, hingga pengaspalan masing-masing masuk subklasifikasi konstruksi spesialis tersendiri (KO001–KO008) — banyak BUJK tidak sadar butuh SBU terpisah untuk pekerjaan-pekerjaan ini.",
+              agitateBody: "Mengerjakan pekerjaan spesialis tanpa SBU yang sesuai bisa jadi temuan saat audit kualifikasi, bahkan menggagalkan pencairan termin proyek.",
+              desireBody: "KOClaw memetakan ke-8 subklasifikasi KO001–KO008 sesuai KBLI 2020 dan Permen PU 6/2025, lengkap dengan irisan teknis antar subklasifikasi — supaya Anda tahu SBU spesialis apa saja yang perlu dilengkapi sebelum mengerjakan pekerjaan tersebut.",
+              stats: [{ value: "8", label: "Subklasifikasi KO001–KO008" }, { value: "Permen PU 6/2025", label: "Acuan Regulasi" }],
+              faqs: [
+                { q: "Pekerjaan waterproofing masuk subklasifikasi apa?", a: "KOClaw akan menunjukkan kode KO spesifik untuk waterproofing beserta batasan teknis dan irisannya dengan subklasifikasi lain." },
+              ],
+            }}
           ><KoClawChat /></PremiumPageGuard>
         )} />
         <Route path="/kk-claw" component={() => (
@@ -813,6 +891,16 @@ function Router() {
             description="7 spesialis KK001–KK007 bekerja paralel: perencana arsitektur, struktur/sipil, MEP, lingkungan, pengawas & MK, inspeksi teknis, dan PMO/penilaian — berdasarkan Permen PU 6/2025."
             highlights={["7 subklasifikasi KK001–KK007 paralel","Perencana · Pengawas · MK · PMO · Penilaian","Irisan teknis antar subklasifikasi KK","UU 2/2017 · Permen PU 6/2025"]}
             icon={<Scale className="h-12 w-12 text-rose-400" />}
+            pas={{
+              problemTitle: "Konsultan perencana, pengawas, MK, PMO — batasnya sering tidak jelas",
+              problemBody: "Jasa konsultansi konstruksi mencakup 7 subklasifikasi berbeda: perencana arsitektur, struktur/sipil, MEP, lingkungan, pengawas & MK, inspeksi teknis, sampai PMO/penilaian — perusahaan konsultan sering hanya fokus di satu bidang tanpa sadar peluang atau kewajiban SBU di bidang lain.",
+              agitateBody: "Menjalankan peran pengawas atau MK tanpa SBU KK yang sesuai bisa menimbulkan masalah legal saat serah terima pekerjaan atau klaim proyek.",
+              desireBody: "KKClaw memetakan ke-7 subklasifikasi KK001–KK007 sesuai UU 2/2017 dan Permen PU 6/2025 — termasuk irisan antar peran perencana, pengawas, MK, dan PMO — sehingga Anda tahu SBU konsultansi mana yang sesuai dengan jasa yang Anda tawarkan.",
+              stats: [{ value: "7", label: "Subklasifikasi KK001–KK007" }, { value: "UU 2/2017", label: "Acuan Regulasi" }],
+              faqs: [
+                { q: "Apa beda subklasifikasi pengawas dan MK?", a: "KKClaw menjelaskan perbedaan peran dan tanggung jawab keduanya beserta kode subklasifikasi yang sesuai." },
+              ],
+            }}
           ><KkClawChat /></PremiumPageGuard>
         )} />
         <Route path="/csms-claw" component={() => (
@@ -849,6 +937,16 @@ function Router() {
             description="4 agen spesialis LKUT bekerja paralel: panduan LKUT kontraktor, LKUT konsultan, penyusunan laporan lengkap, dan analisis keuangan & rasio BUJK."
             highlights={["Panduan LKUT kontraktor & konsultan sesuai PP 14/2021","Generator format LKUT lengkap siap submit OSS","Analisis rasio keuangan BUJK & indikator pelaporan","Timeline & checklist persiapan LKUT tahunan"]}
             icon={<BarChart3 className="h-12 w-12 text-teal-500" />}
+            pas={{
+              problemTitle: "LKUT wajib disubmit tiap tahun, tapi formatnya sering bikin bingung mendadak",
+              problemBody: "Menyusun Laporan Kegiatan Usaha Tahunan sering baru dikerjakan mepet tenggat — format kontraktor dan konsultan berbeda, dan datanya harus konsisten dengan rasio keuangan BUJK yang dilaporkan ke OSS.",
+              agitateBody: "Telat atau salah submit LKUT bisa berdampak ke status keaktifan BUJK Anda — sesuatu yang sebenarnya bisa dihindari dengan persiapan dari jauh hari.",
+              desireBody: "LKUTClaw memandu Anda menyusun LKUT sesuai format kontraktor/konsultan yang berlaku (PP 14/2021), lengkap dengan analisis rasio keuangan dan timeline & checklist persiapan — sehingga submit ke OSS tepat waktu setiap tahun.",
+              stats: [{ value: "4", label: "Agen Spesialis" }, { value: "PP 14/2021", label: "Acuan Regulasi" }],
+              faqs: [
+                { q: "Apa beda LKUT kontraktor dan konsultan?", a: "Format dan indikator yang dilaporkan berbeda sesuai jenis usaha — LKUTClaw punya panduan terpisah untuk masing-masing." },
+              ],
+            }}
           ><LkutClawChat /></PremiumPageGuard>
         )} />
         <Route path="/iso-claw-9001" component={() => (
@@ -1312,6 +1410,18 @@ function Router() {
             description="9 spesialis regulasi bekerja paralel: kerangka hukum Permen PU 6/2025, kualifikasi & 4 kriteria penilaian, kemampuan keuangan & audit KAP, tenaga kerja konstruksi (PJBU/PJTBU/PJKBU), peralatan & SIMPK, alur sertifikasi LSBU 10 tahap, konversi 349K SBU & KBLI 2025, sistem informasi SIJKT, dan kewajiban BUJK & sanksi administratif."
             highlights={["Konversi 349.239 SBU — peta jalan KBLI 2020 ke KBLI 2025","4 Kriteria Penilaian Kumulatif — K1/K2/K3/Menengah/Besar","Alur sertifikasi LSBU 10 tahap — PKS, surveilans, QR Code SBU","Mode: Konsultasi · Audit · Simulasi · Ujian · Debat · Strategis"]}
             icon={<Scale className="h-12 w-12 text-blue-400" />}
+            pas={{
+              problemTitle: "Konversi KBLI 2020 ke 2025 dan 10 tahap sertifikasi LSBU — banyak yang tersesat di tengah jalan",
+              problemBody: "Aturan sertifikasi BUJK berubah signifikan di Permen PU 6/2025 — mulai dari kriteria penilaian kumulatif (K1/K2/K3/Menengah/Besar), konversi ratusan ribu SBU ke KBLI 2025, sampai alur LSBU 10 tahap yang panjang dan berjenjang.",
+              agitateBody: "Salah tahap atau salah interpretasi aturan baru bisa membuat proses sertifikasi Anda mandek di tengah jalan — padahal Anda sudah menghabiskan waktu di tahap-tahap sebelumnya.",
+              desireBody: "SkemaClaw memandu Anda memahami kerangka hukum, kriteria penilaian, kemampuan keuangan, tenaga kerja, sampai alur sertifikasi LSBU 10 tahap secara runtut — termasuk simulasi dan mode ujian untuk menguji pemahaman Anda sebelum benar-benar mengajukan.",
+              stats: [{ value: "9", label: "Agen Spesialis" }, { value: "10 Tahap", label: "Alur Sertifikasi LSBU" }],
+              proofNote: "Mengacu pada Permen PU No. 6 Tahun 2025 dan roadmap konversi KBLI 2020 ke KBLI 2025.",
+              faqs: [
+                { q: "Apakah SkemaClaw menjamin proses konversi SBU saya lancar?", a: "Tidak — SkemaClaw membantu Anda memahami aturan dan tahapan secara tepat; keputusan akhir tetap ada di LSBU/LPJK." },
+                { q: "Apa itu mode Simulasi dan Ujian?", a: "Mode tambahan untuk menguji pemahaman Anda terhadap regulasi lewat skenario kasus dan kuis, sebelum Anda menjalankan proses sertifikasi sesungguhnya." },
+              ],
+            }}
           ><SkemaClawChat /></PremiumPageGuard>
         )} />
         <Route path="/simpk-claw" component={() => (
@@ -1330,6 +1440,17 @@ function Router() {
             description="9 spesialis paralel: registrasi akun (3 jalur: SKK via LSP, TK tanpa SKK, SIKI Client/SBU), input pengalaman BUJK & TKK, import SIKI, dokumen wajib, data teknis KBLI 2020, submit & Aksi #, FAQ troubleshooting, hingga evaluasi pengadaan — Nomor Registrasi SIMPAN di SPSE & penilaian Pokja (Nota Dinas PA0106/B/Dk/2026/48)."
             highlights={["Registrasi 3 jalur — SKK via LSP, TK tanpa SKK, SIKI Client (SKA/SBU)","Input BUJK — KBLI 2020, 9 tahun terakhir, data periods A/B/C","Submit & Aksi # — Nomor Registrasi SIMPAN muncul setelah submit","Evaluasi Pengadaan — cara cantumkan No. Registrasi di SPSE & aturan Pokja"]}
             icon={<BookOpen className="h-12 w-12 text-blue-400" />}
+            pas={{
+              problemTitle: "Tanpa Nomor Registrasi SIMPAN, penawaran Anda bisa dianggap tidak lengkap di Pokja",
+              problemBody: "Registrasi SIMPAN punya 3 jalur berbeda (SKK via LSP, TK tanpa SKK, SIKI Client/SBU) dan input pengalaman BUJK/tenaga kerja yang detail — banyak yang bingung jalur mana yang sesuai profil mereka atau data apa saja yang wajib diisi.",
+              agitateBody: "Kalau Nomor Registrasi SIMPAN tidak muncul atau tidak dicantumkan dengan benar di SPSE, penilaian Pokja terhadap penawaran Anda bisa terganggu — padahal ini murni soal kelengkapan administrasi, bukan kompetensi teknis.",
+              desireBody: "ESIMPANClaw memandu Anda memilih jalur registrasi yang tepat, mengisi data BUJK dan tenaga kerja sesuai KBLI 2020, sampai submit hingga Nomor Registrasi SIMPAN terbit dan siap dicantumkan di SPSE.",
+              stats: [{ value: "9", label: "Agen Spesialis" }, { value: "3 Jalur", label: "Registrasi SIMPAN" }],
+              faqs: [
+                { q: "Jalur registrasi mana yang cocok untuk saya?", a: "Ceritakan status Anda (punya SKK, tanpa SKK, atau sebagai SIKI Client) dan agen registrasi akan mengarahkan jalur yang sesuai." },
+                { q: "Kenapa Nomor Registrasi saya belum muncul setelah submit?", a: "Agen FAQ troubleshooting akan membantu mendiagnosis penyebab umum, seperti data yang belum lengkap atau dokumen yang belum sesuai format." },
+              ],
+            }}
           ><EsimpanClawChat /></PremiumPageGuard>
         )} />
         <Route path="/oss-claw" component={() => (
@@ -1357,6 +1478,16 @@ function Router() {
             description="Chatbot ramah untuk semua kalangan — tanya apa saja tentang SBU, kualifikasi perusahaan konstruksi, syarat dokumen, konversi KBLI 2025, dan aturan Permen PU 6/2025. Dijawab langsung, jelas, dan mudah dipahami."
             highlights={["Jawaban langsung tanpa format akademis","Bahasa sederhana — cocok untuk pemilik BUJK & masyarakat umum","Cakupan: SBU, kualifikasi, dokumen, konversi, sanksi, SIJKT","Berbasis Permen PU 6/2025 & materi workshop resmi LPJK"]}
             icon={<BookOpen className="h-12 w-12 text-emerald-400" />}
+            pas={{
+              problemTitle: "Istilah SBU penuh singkatan dan bahasa regulasi yang tidak familiar",
+              problemBody: "Banyak pemilik usaha konstruksi ingin tahu soal SBU tapi malas membaca dokumen regulasi yang tebal dan penuh istilah teknis — akhirnya bertanya ke sana kemari dan dapat jawaban yang simpang siur.",
+              agitateBody: "Informasi yang salah atau setengah-setengah soal SBU bisa membuat Anda salah langkah — misalnya menyiapkan dokumen yang keliru atau melewatkan kewajiban penting.",
+              desireBody: "PanduanSBU menjawab pertanyaan Anda soal SBU, kualifikasi, dokumen, konversi KBLI, sampai sanksi — langsung, jelas, dengan bahasa sederhana, berdasarkan Permen PU 6/2025 dan materi resmi LPJK.",
+              faqs: [
+                { q: "Saya orang awam, apa bisa tetap paham jawabannya?", a: "Bisa — PanduanSBU sengaja dirancang menjawab dengan bahasa sederhana, bukan format akademis atau birokratis." },
+                { q: "Kalau pertanyaan saya di luar topik SBU?", a: "PanduanSBU fokus pada seputar sertifikasi BUJK — untuk topik konstruksi lain, ada Claw khusus lain di Gustafta." },
+              ],
+            }}
           ><PanduanSBUChat /></PremiumPageGuard>
         )} />
         <Route path="/abu-claw" component={() => (
@@ -1456,6 +1587,16 @@ function Router() {
             description="MultiClaw AI dengan 7 spesialis paralel untuk Jabatan Kerja SKK Manajemen Pelaksanaan: Manajer Proyek, Manajer Lapangan, QC, Estimator/QS, Kontrak, Keuangan Proyek, dan Logistik."
             highlights={["Manajer Proyek: WBS, Earned Value (SPI/CPI/EAC), risk, FIDIC, serah terima PHO/FHO","QC: ITP, NCR & CAPA, uji beton (slump, tekan, core drill), commissioning MEP","Estimator/QS: AHSP PermenPUPR 1/2022, BoQ, RAB, HPS, Variation Order, eskalasi harga","Kontrak: SSUK/SSKK, FIDIC Clause 20, klaim delay, LD, terminasi, arbitrase BANI"]}
             icon={<BarChart3 className="h-12 w-12 text-indigo-400" />}
+            pas={{
+              problemTitle: "Satu jabatan kerja manajemen pelaksanaan, tujuh peran berbeda perlu dikuasai",
+              problemBody: "Manajer Proyek, Manajer Lapangan, QC, Estimator/QS, Kontrak, Keuangan Proyek, dan Logistik masing-masing punya standar teknis dan aturan tersendiri (FIDIC, AHSP, SSUK/SSKK) — sulit dikuasai satu orang secara mendalam.",
+              agitateBody: "Kelemahan di satu peran saja — misalnya salah hitung eskalasi harga atau telat mengajukan klaim delay — bisa berdampak ke margin dan jadwal keseluruhan proyek.",
+              desireBody: "ManprojakClaw menghadirkan 7 spesialis Jabatan Kerja SKK Manajemen Pelaksanaan sekaligus — dari WBS & Earned Value, uji mutu QC, estimasi AHSP, sampai klaim kontrak FIDIC — sehingga Anda punya rekan diskusi teknis untuk setiap peran dalam satu tempat.",
+              stats: [{ value: "7", label: "Spesialis Jabatan Kerja" }, { value: "FIDIC", label: "Klaim & Kontrak" }],
+              faqs: [
+                { q: "Apakah ManprojakClaw membantu persiapan sertifikasi SKK juga?", a: "ManprojakClaw fokus pada substansi teknis jabatan kerja manajemen pelaksanaan; untuk proses sertifikasi SKK, gunakan SKK Coach." },
+              ],
+            }}
           ><ManprojakClawChat /></PremiumPageGuard>
         )} />
         <Route path="/qs-claw" component={() => (
@@ -1718,6 +1859,15 @@ function Router() {
             title="SertifikasiBot — AI SBU & SKK"
             description="Asisten AI untuk sertifikasi badan usaha (SBU), sertifikat kompetensi kerja (SKK), dan persyaratan konstruksi."
             icon={<Award className="h-12 w-12 text-amber-500" />}
+            pas={{
+              problemTitle: "SBU dan SKK saling terkait, tapi sering diurus terpisah tanpa koordinasi",
+              problemBody: "Sertifikasi badan usaha (SBU) dan sertifikat kompetensi kerja (SKK) personel Anda saling bergantung — SBU butuh SKK penanggung jawab teknis yang sesuai, tapi keduanya sering diurus tim berbeda tanpa saling koordinasi.",
+              agitateBody: "Ketidaksinkronan SBU dan SKK bisa terungkap saat verifikasi kualifikasi tender — dan memperbaikinya di saat-saat terakhir jauh lebih sulit.",
+              desireBody: "SertifikasiBot membantu Anda memahami persyaratan SBU dan SKK secara terhubung — sehingga sertifikasi badan usaha dan kompetensi personel Anda selalu selaras.",
+              faqs: [
+                { q: "Apakah SertifikasiBot menerbitkan sertifikat?", a: "Tidak, ini asisten panduan — penerbitan SBU/SKK tetap melalui LPJK/LSP resmi." },
+              ],
+            }}
           ><SertifikasiBotPage /></PremiumPageGuard>
         )} />
         <Route path="/proyekbot" component={() => (
@@ -1726,6 +1876,15 @@ function Router() {
             title="ProyekBot — AI Manajemen Proyek"
             description="Asisten AI multi-agen untuk perencanaan, pengendalian, dan pelaporan proyek konstruksi."
             icon={<HardHat className="h-12 w-12 text-indigo-500" />}
+            pas={{
+              problemTitle: "Rencana proyek rapi di atas kertas, tapi pengendaliannya sering meleset",
+              problemBody: "Menyusun rencana proyek itu satu hal, tapi mengendalikannya agar tetap sesuai jadwal dan anggaran — sambil menyiapkan laporan berkala yang akurat — adalah pekerjaan tersendiri yang sering terbengkalai di tengah kesibukan lapangan.",
+              agitateBody: "Pengendalian yang telat terdeteksi berarti penyimpangan jadwal atau biaya baru ketahuan setelah sudah membesar, bukan saat masih mudah dikoreksi.",
+              desireBody: "ProyekBot mendampingi Anda dari perencanaan, pengendalian, hingga pelaporan proyek konstruksi — jadi penyimpangan bisa terdeteksi dan dikoreksi lebih awal.",
+              faqs: [
+                { q: "Apakah ProyekBot bisa dipakai untuk proyek yang sudah berjalan?", a: "Bisa — ceritakan kondisi proyek Anda saat ini dan ProyekBot akan membantu evaluasi serta rencana pengendalian ke depan." },
+              ],
+            }}
           ><ProyekBotPage /></PremiumPageGuard>
         )} />
         <Route path="/perijinanbot" component={() => (
@@ -1734,6 +1893,15 @@ function Router() {
             title="PerijinanBot — AI OSS-RBA & Perizinan"
             description="8 agen spesialis OSS-RBA, NIB, IUJK, PBG, SLF, AMDAL, dan KBLI untuk perizinan berusaha konstruksi."
             icon={<Landmark className="h-12 w-12 text-emerald-500" />}
+            pas={{
+              problemTitle: "NIB, IUJK, PBG, SLF, AMDAL — delapan izin berbeda, satu proyek",
+              problemBody: "Perizinan konstruksi tidak berhenti di satu dokumen — dari NIB, IUJK, PBG, SLF, sampai AMDAL, masing-masing punya syarat dan tahapan sendiri di OSS-RBA. Banyak pemilik proyek tidak tahu urutan atau kombinasi izin yang mereka perlukan.",
+              agitateBody: "Proyek yang berjalan tanpa izin lengkap berisiko dihentikan di tengah jalan, atau bermasalah saat serah terima ke pemilik akhir.",
+              desireBody: "PerijinanBot memandu Anda memetakan izin yang dibutuhkan sesuai jenis dan risiko proyek — dari NIB, IUJK, PBG, SLF, AMDAL, sampai KBLI — sehingga proses perizinan berjalan runtut tanpa tebak-tebakan.",
+              faqs: [
+                { q: "Izin mana yang harus diurus lebih dulu?", a: "Umumnya NIB & KBLI menjadi dasar, diikuti izin sesuai tingkat risiko dan jenis bangunan — PerijinanBot akan menjelaskan urutan yang sesuai kasus Anda." },
+              ],
+            }}
           ><PerijinanBotPage /></PremiumPageGuard>
         )} />
         <Route path="/kontraktorbot" component={() => (
@@ -1760,6 +1928,15 @@ function Router() {
             title="KonsultanBot — AI Konsultan"
             description="Asisten AI multi-agen untuk konsultan perencana dan pengawas konstruksi."
             icon={<Users className="h-12 w-12 text-blue-500" />}
+            pas={{
+              problemTitle: "Peran perencana dan pengawas menuntut ketelitian teknis yang berbeda",
+              problemBody: "Sebagai konsultan perencana atau pengawas, Anda harus bisa menerjemahkan kebutuhan klien jadi gambar teknis yang benar, sekaligus memastikan pelaksanaan di lapangan sesuai spesifikasi — dua peran dengan tuntutan berbeda yang sering harus dijalankan bersamaan.",
+              agitateBody: "Kesalahan kecil di tahap perencanaan atau pengawasan yang longgar bisa berujung sengketa dengan klien atau kontraktor pelaksana.",
+              desireBody: "KonsultanBot mendampingi Anda dalam diskusi teknis perencanaan maupun pengawasan — dari kajian desain sampai verifikasi kesesuaian pelaksanaan dengan spesifikasi.",
+              faqs: [
+                { q: "Apakah KonsultanBot menggantikan tanggung jawab hukum konsultan?", a: "Tidak. KonsultanBot adalah alat bantu diskusi teknis — tanggung jawab profesional tetap ada pada konsultan yang bersangkutan." },
+              ],
+            }}
           ><KonsultanBotPage /></PremiumPageGuard>
         )} />
         <Route path="/ownerbot" component={() => (
@@ -1768,6 +1945,15 @@ function Router() {
             title="OwnerBot — AI Pemilik Proyek"
             description="Asisten AI multi-agen untuk pemilik proyek: kontrol biaya, mutu, waktu, dan kepatuhan konstruksi."
             icon={<Building2 className="h-12 w-12 text-indigo-500" />}
+            pas={{
+              problemTitle: "Sebagai pemilik proyek, Anda perlu mengawasi tanpa harus jadi ahli teknis",
+              problemBody: "Pemilik proyek sering kesulitan menilai apakah laporan biaya, mutu, dan waktu dari kontraktor/konsultan sudah wajar — karena tidak semua pemilik proyek punya latar belakang teknis konstruksi.",
+              agitateBody: "Tanpa kontrol yang memadai, pembengkakan biaya atau penurunan mutu bisa saja luput dari perhatian Anda sampai proyek selesai — saat sudah terlambat untuk dikoreksi.",
+              desireBody: "OwnerBot membantu Anda memahami dan mengontrol biaya, mutu, waktu, dan kepatuhan proyek dari sudut pandang pemilik — dengan bahasa yang mudah dipahami meski Anda bukan orang teknik.",
+              faqs: [
+                { q: "Saya bukan orang teknik, apakah tetap bisa memakai OwnerBot?", a: "Bisa — OwnerBot dirancang menjelaskan hal teknis dengan bahasa yang mudah dipahami pemilik proyek non-teknis." },
+              ],
+            }}
           ><OwnerBotPage /></PremiumPageGuard>
         )} />
         <Route path="/boheerbot" component={() => (
@@ -1776,6 +1962,15 @@ function Router() {
             title="BoheerBot — AI Bouwheer"
             description="Asisten AI multi-agen untuk bouwheer/pemberi tugas: pengendalian proyek dan pengambilan keputusan konstruksi."
             icon={<Building2 className="h-12 w-12 text-emerald-500" />}
+            pas={{
+              problemTitle: "Sebagai bouwheer, keputusan Anda menentukan arah proyek — tapi informasinya sering tidak lengkap",
+              problemBody: "Bouwheer/pemberi tugas harus mengambil keputusan penting soal proyek berdasarkan laporan dari berbagai pihak — kontraktor, konsultan, pengawas — yang kadang tidak selaras satu sama lain.",
+              agitateBody: "Keputusan yang diambil dari informasi yang tidak lengkap berisiko merugikan proyek dalam jangka panjang, baik dari sisi biaya maupun mutu.",
+              desireBody: "BoheerBot membantu Anda menyaring dan memahami informasi proyek dari berbagai pihak, sehingga keputusan pengendalian proyek yang Anda ambil lebih berdasar dan tepat waktu.",
+              faqs: [
+                { q: "Apakah BoheerBot bisa membantu evaluasi laporan dari kontraktor?", a: "Ya, ceritakan isi laporan yang Anda terima dan BoheerBot akan membantu menganalisis kewajarannya." },
+              ],
+            }}
           ><BoheerBotPage /></PremiumPageGuard>
         )} />
         <Route path="/supplierbot" component={() => (
@@ -1784,6 +1979,15 @@ function Router() {
             title="SupplierBot — AI Supplier Konstruksi"
             description="Asisten AI multi-agen untuk supplier & pengadaan material konstruksi: penawaran, spesifikasi, dan logistik."
             icon={<Wrench className="h-12 w-12 text-blue-500" />}
+            pas={{
+              problemTitle: "Menyusun penawaran material yang sesuai spek proyek itu tidak sesederhana kelihatannya",
+              problemBody: "Sebagai supplier konstruksi, Anda harus memastikan penawaran sesuai spesifikasi teknis proyek, memperhitungkan logistik pengiriman, dan tetap kompetitif dari sisi harga — tiga hal yang harus sinkron sekaligus.",
+              agitateBody: "Penawaran yang tidak sesuai spesifikasi bisa ditolak di tahap evaluasi, sementara perhitungan logistik yang meleset bisa menggerus margin Anda sendiri.",
+              desireBody: "SupplierBot membantu Anda menyusun penawaran yang sesuai spesifikasi teknis, memperhitungkan logistik pengiriman material, sehingga penawaran Anda lebih kompetitif dan lebih mungkin diterima.",
+              faqs: [
+                { q: "Apakah SupplierBot bisa membantu cek kesesuaian spek material?", a: "Ya, ceritakan spesifikasi yang diminta dan produk yang Anda tawarkan — SupplierBot akan membantu mengecek kesesuaiannya." },
+              ],
+            }}
           ><SupplierBotPage /></PremiumPageGuard>
         )} />
         <Route path="/generator-sop-pekerjaan" component={GeneratorSOPPekerjaan} />
