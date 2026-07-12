@@ -66,6 +66,22 @@ export const TRILOGI = {
   },
 } as const;
 
+// ─── Ebook Buku I — DIALOG (produk satuan, entry-level, TERPISAH dari TRILOGI.bukuSatu) ──
+// Dipakai di /ebook-dialog. Harga sengaja lebih murah dari TRILOGI.bukuSatu (Rp245rb) sebagai
+// produk pintu-masuk berdiri sendiri — JANGAN timpa/gabung dengan entry TRILOGI di atas.
+export const EBOOK_DIALOG = {
+  price: "Rp 79.000",
+  normal: "Rp 149.000",
+  amount: 79000,
+  bonuses: [
+    "Ebook Buku I — DIALOG (PDF, 160+ halaman)",
+    "Prompt Khusus Buku I (paket prompt siap pakai)",
+    "Modul pendamping Buku I",
+    "Video pembelajaran (NotebookLM)",
+    "Trial 7 Hari coba merakit chatbot AI pertamamu",
+  ],
+} as const;
+
 /** Kalimat info skema lisensi (dipakai berulang di kartu paket bisnis) */
 export const LICENSE_INFO = `Dengan Starter Kit ${PRICING.starterKit.price} (sekali) → lisensi Rp 0 · Tanpa Starter Kit → lisensi ${PRICING.license.price} (sekali)`;
 

@@ -65,6 +65,82 @@ export async function sendEmail(opts: SendEmailOptions): Promise<SendEmailResult
   }
 }
 
+interface EbookFulfillmentOptions {
+  to: string;
+  customerName?: string | null;
+  downloadUrl: string;
+  bonuses: string[];
+  trialGranted: boolean;
+  appUrl?: string;
+}
+
+// Delivers Ebook Buku I — DIALOG purchase (download link + bonuses). Never throws.
+export async function sendEbookFulfillmentEmail(opts: EbookFulfillmentOptions): Promise<SendEmailResult> {
+  const greetName = opts.customerName?.trim() || "Sahabat Gustafta";
+  const bonusListHtml = opts.bonuses.map(b => `<li style="margin:0 0 6px">${b}</li>`).join("");
+  const bonusListText = opts.bonuses.map(b => `- ${b}`).join("\n");
+  const trialNote = opts.trialGranted
+    ? `<p style="font-size:14px;color:#065f46;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:8px;padding:12px 16px;margin:0 0 20px">✅ Trial 7 Hari sudah diaktifkan di akun Gustafta kamu (email ini). Login untuk mulai coba merakit chatbot AI pertamamu.</p>`
+    : `<p style="font-size:14px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px 16px;margin:0 0 20px">ℹ️ Untuk mengaktifkan Trial 7 Hari, daftar akun Gustafta dulu pakai email ini (${opts.to}), lalu kabari kami via WhatsApp agar trial diaktifkan.</p>`;
+
+  const html = `<!DOCTYPE html>
+<html lang="id">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f3f4f6">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:32px 0">
+    <tr><td align="center">
+      <table width="480" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;padding:40px;font-family:Arial,sans-serif;color:#111">
+        <tr><td>
+          <p style="margin:0 0 4px;font-size:22px;font-weight:700;color:#1e3a8a">Gustafta</p>
+          <hr style="border:none;border-top:1px solid #e5e7eb;margin:16px 0">
+          <p style="font-size:16px;margin:0 0 8px">Halo <b>${greetName}</b>,</p>
+          <p style="font-size:15px;color:#374151;margin:0 0 16px">
+            Terima kasih sudah membeli <b>Ebook Buku I — DIALOG</b>! Berikut link download & bonus kamu:
+          </p>
+          <div style="text-align:center;margin:0 0 24px">
+            <a href="${opts.downloadUrl}" style="display:inline-block;background:#ea580c;color:#fff;text-decoration:none;font-size:15px;font-weight:700;padding:14px 28px;border-radius:8px">📥 Download Ebook Buku I — DIALOG</a>
+          </div>
+          <div style="padding:20px;background:#f9fafb;border-radius:8px;border:1px solid #e5e7eb;margin:0 0 20px">
+            <p style="font-size:13px;color:#6b7280;margin:0 0 10px;font-weight:600">Yang kamu dapatkan:</p>
+            <ul style="font-size:14px;color:#111;margin:0;padding-left:18px">${bonusListHtml}</ul>
+          </div>
+          ${trialNote}
+          <hr style="border:none;border-top:1px solid #e5e7eb;margin:0 0 16px">
+          <p style="font-size:12px;color:#9ca3af;margin:0">Simpan email ini sebagai bukti pembelian. Ada kendala? Balas email ini atau hubungi WhatsApp kami.</p>
+          <p style="font-size:12px;color:#9ca3af;margin:8px 0 0">© 2026 Gustafta. Seluruh hak dilindungi.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  const textContent = `Halo ${greetName},
+
+Terima kasih sudah membeli Ebook Buku I — DIALOG!
+
+Download di sini: ${opts.downloadUrl}
+
+Yang kamu dapatkan:
+${bonusListText}
+
+${opts.trialGranted
+    ? "Trial 7 Hari sudah diaktifkan di akun Gustafta kamu. Login untuk mulai coba merakit chatbot AI pertamamu."
+    : `Untuk mengaktifkan Trial 7 Hari, daftar akun Gustafta dulu pakai email ini (${opts.to}), lalu kabari kami via WhatsApp agar trial diaktifkan.`}
+
+Simpan email ini sebagai bukti pembelian.
+© 2026 Gustafta.`;
+
+  return sendEmail({
+    to: opts.to,
+    toName: opts.customerName || undefined,
+    subject: "📥 Ebook Buku I — DIALOG kamu siap diunduh!",
+    htmlContent: html,
+    textContent,
+    tags: ["ebook-fulfillment"],
+  });
+}
+
 const ROLE_LABELS: Record<string, string> = {
   editor: "Editor (dapat mengubah agen)",
   viewer: "Viewer (hanya dapat melihat & menggunakan)",

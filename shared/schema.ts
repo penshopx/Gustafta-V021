@@ -2213,7 +2213,7 @@ export type ResearchReport = typeof researchReports.$inferSelect;
 export const scalevMappings = pgTable("scalev_mappings", {
   id: serial("id").primaryKey(),
   scalevProductName: text("scalev_product_name").notNull(),
-  type: text("type").notNull().default("chatbot"), // "chatbot" | "modul" | "bundle"
+  type: text("type").notNull().default("chatbot"), // "chatbot" | "modul" | "bundle" | "ebook"
   agentId: integer("agent_id"),
   bigIdeaId: integer("big_idea_id"),
   agentIds: jsonb("agent_ids").$type<number[]>(), // for "bundle" type

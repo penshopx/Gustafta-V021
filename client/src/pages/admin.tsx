@@ -1902,9 +1902,18 @@ export default function AdminPage() {
                             <option value="chatbot">Chatbot (1 chatbot)</option>
                             <option value="modul">Modul (Email Access)</option>
                             <option value="bundle">Bundle (beberapa chatbot sekaligus)</option>
+                            <option value="ebook">Ebook (kirim email fulfillment + trial)</option>
                           </select>
                         </div>
-                        {scalevForm.type === "chatbot" ? (
+                        {scalevForm.type === "ebook" ? (
+                          <div className="sm:col-span-2">
+                            <p className="text-xs text-muted-foreground">
+                              Tidak perlu Agent ID / Big Idea ID. Saat order masuk, sistem akan mengirim email
+                              berisi link download ebook + bonus, dan memberi trial 7 hari jika email pembeli
+                              sudah terdaftar sebagai akun Gustafta.
+                            </p>
+                          </div>
+                        ) : scalevForm.type === "chatbot" ? (
                           <div>
                             <label className="text-xs font-medium mb-1 block text-muted-foreground">Agent ID Chatbot</label>
                             <Input
@@ -1994,13 +2003,15 @@ export default function AdminPage() {
                                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                                   m.type === "chatbot" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
                                   : m.type === "bundle" ? "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300"
+                                  : m.type === "ebook" ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
                                   : "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300"}`}>
-                                  {m.type === "chatbot" ? "Chatbot" : m.type === "bundle" ? `Bundle (${m.agentIds?.length ?? 0} chatbot)` : "Modul"}
+                                  {m.type === "chatbot" ? "Chatbot" : m.type === "bundle" ? `Bundle (${m.agentIds?.length ?? 0} chatbot)` : m.type === "ebook" ? "Ebook" : "Modul"}
                                 </span>
                               </td>
                               <td className="py-2 px-2 text-xs text-muted-foreground">
                                 {m.type === "chatbot" ? `Agent #${m.agentId ?? "—"}`
                                   : m.type === "bundle" ? `[${(m.agentIds ?? []).join(", ")}]`
+                                  : m.type === "ebook" ? "—"
                                   : `Modul #${m.bigIdeaId ?? "—"}`}
                               </td>
                               <td className="py-2 px-2 text-right">
