@@ -74,11 +74,11 @@ export const EBOOK_DIALOG = {
   normal: "Rp 149.000",
   amount: 79000,
   bonuses: [
-    "Ebook Buku I — DIALOG (PDF, 160+ halaman)",
-    "Prompt Khusus Buku I (paket prompt siap pakai)",
-    "Modul pendamping Buku I",
-    "Video pembelajaran (NotebookLM)",
-    "Trial 7 Hari coba merakit chatbot AI pertamamu",
+    "Ebook Buku I — DIALOG (PDF, 160+ halaman) — download langsung",
+    "Prompt Khusus Buku I (menyusul via email)",
+    "Modul pendamping Buku I (menyusul via email)",
+    "Video pembelajaran NotebookLM (menyusul via email)",
+    "Trial 7 Hari coba merakit chatbot AI pertamamu — aktif otomatis bila kamu sudah punya akun Gustafta",
   ],
 } as const;
 
