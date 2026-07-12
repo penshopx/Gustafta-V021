@@ -584,6 +584,20 @@ function Router() {
             description="Sistem 131 hub AI yang menganalisis dokumen tender, menghitung win probability, dan menyiapkan dokumen penawaran secara paralel."
             highlights={["131 hub orchestrator dengan sub-agen paralel","Scorecard 4-dimensi + Win Probability otomatis","Analisis RKS, BOQ, dan persyaratan teknis","Dokumen penawaran siap submit"]}
             icon={<HardHat className="h-12 w-12 text-amber-500" />}
+            pas={{
+              problemTitle: "RKS setebal ratusan halaman, waktu penawaran sempit",
+              problemBody: "Membaca RKS, BOQ, dan persyaratan teknis satu per satu memakan waktu berhari-hari — belum lagi menghitung sendiri apakah tender ini layak dikejar atau cuma buang tenaga tim.",
+              agitateBody: "Tim yang kehabisan waktu menganalisis biasanya berakhir menyusun dokumen penawaran terburu-buru — hasilnya nilai teknis lemah, atau lebih parah, telat submit dan otomatis gugur.",
+              desireBody: "Dengan Tendera AI, 131 hub AI membaca dan menganalisis dokumen tender secara paralel — Anda langsung dapat scorecard 4-dimensi, win probability, dan draft dokumen penawaran yang siap disempurnakan, jauh sebelum deadline.",
+              stats: [
+                { value: "131", label: "Hub AI Paralel" },
+                { value: "4-Dimensi", label: "Win Probability Scorecard" },
+              ],
+              faqs: [
+                { q: "Apakah Tendera AI menggantikan tim penyusun penawaran?", a: "Tidak. Tendera AI mempercepat analisis dan draft awal — tim Anda tetap yang memutuskan strategi dan finalisasi dokumen sebelum submit." },
+                { q: "Bagaimana win probability dihitung?", a: "Berdasarkan scorecard 4 dimensi yang menilai kecocokan teknis, harga, kualifikasi, dan kompetisi pada tender yang Anda analisis." },
+              ],
+            }}
           ><TenderAiChat /></PremiumPageGuard>
         )} />
         <Route path="/bujk-profile" component={BujkProfile} />
@@ -714,6 +728,22 @@ function Router() {
             description="10 agen spesialis tender bekerja paralel: pencari tender LPSE/SIRUP, cek kelaikan SBU/SKK, risk scanner SDP, generator 12 dokumen administrasi LKPP, technical proposal, HPS optimizer, FIDIC analyzer, win probability 7-dimensi, anti-suap SMAP, dan sanggah/banding."
             highlights={["Tender Hunter LPSE/SIRUP/INAPROC real-time","Kelaikan SBU·SKK·KBLI — GO/CONDITIONAL/NO-GO","Risk Scanner SDP/RKS/SSKK — Heat-Map prioritas","Win Probability 7-dimensi + Action Levers"]}
             icon={<TrendingUp className="h-12 w-12 text-blue-500" />}
+            pas={{
+              problemTitle: "Tender tersebar di puluhan LPSE, gugur administrasi jadi momok",
+              problemBody: "Memantau tender manual di puluhan portal LPSE/SIRUP itu melelahkan — dan yang lebih sering terjadi, BUJK sudah lolos teknis tapi gugur di administrasi hanya karena satu dokumen tidak lengkap atau SBU/SKK tidak cocok dengan klasifikasi paket.",
+              agitateBody: "Sekali gugur administrasi, seluruh usaha menyiapkan penawaran sia-sia — dan jendela waktu sanggah/banding sangat sempit untuk memperbaiki keadaan.",
+              desireBody: "TenderaClaw memindai LPSE/SIRUP/INAPROC secara real-time, langsung mengecek kelaikan SBU·SKK·KBLI Anda (GO/CONDITIONAL/NO-GO), memindai risiko di SDP/RKS, sampai menghasilkan 12 dokumen administrasi LKPP dan win probability 7-dimensi — sehingga tim Anda fokus ke strategi menang, bukan takut gugur administrasi.",
+              stats: [
+                { value: "10", label: "Agen Spesialis" },
+                { value: "12", label: "Dokumen LKPP Otomatis" },
+                { value: "7-Dimensi", label: "Win Probability" },
+              ],
+              faqs: [
+                { q: "Apakah TenderaClaw menjamin menang tender?", a: "Tidak ada yang bisa menjamin menang — TenderaClaw membantu memastikan kelengkapan administrasi, mengukur risiko, dan menghitung win probability supaya keputusan ikut-tidaknya lebih terukur." },
+                { q: "Bagaimana cek kelaikan SBU/SKK dilakukan?", a: "Agen kelaikan mencocokkan klasifikasi SBU, KBLI, dan SKK penanggung jawab teknis Anda dengan syarat paket tender, lalu memberi status GO/CONDITIONAL/NO-GO." },
+                { q: "Apakah termasuk bantuan sanggah/banding?", a: "Ya, ada agen khusus yang membantu menyusun dasar sanggah/banding bila hasil evaluasi tender dirasa tidak sesuai." },
+              ],
+            }}
           ><TenderaClawChat /></PremiumPageGuard>
         )} />
         <Route path="/konstra-tender-claw" component={() => (
@@ -723,6 +753,21 @@ function Router() {
             description="4 agen spesialis SIRUP/LKPP bekerja paralel: pencari & ranking tender real-time, cek kecukupan dokumen Perpres 46/2025, kalkulasi probabilitas menang 4-dimensi, dan action plan 7 hari."
             highlights={["Cari & ranking tender SIRUP LKPP real-time","Cek dokumen sesuai Perpres 46/2025","Probabilitas menang scorecard 4-dimensi","Action plan optimal 7 hari siap submit"]}
             icon={<Search className="h-12 w-12 text-green-500" />}
+            pas={{
+              problemTitle: "Tender baru muncul di SIRUP, tapi Anda baru tahu belakangan",
+              problemBody: "SIRUP LKPP menampilkan ribuan paket dari berbagai instansi setiap hari — tanpa pemantauan aktif, tender yang cocok untuk BUJK Anda gampang terlewat, atau baru disadari saat waktu persiapan sudah mepet.",
+              agitateBody: "Tender yang terlewat berarti kehilangan satu pipeline proyek bulan itu — dan kompetitor yang lebih cepat memantau akan lebih dulu menyiapkan penawaran.",
+              desireBody: "KonstraTenderClaw memantau dan me-ranking tender SIRUP/LKPP secara real-time, mengecek kecukupan dokumen sesuai Perpres 46/2025, menghitung probabilitas menang 4-dimensi, lalu menyusun action plan 7 hari — Anda tinggal eksekusi.",
+              stats: [
+                { value: "4", label: "Agen Spesialis" },
+                { value: "Perpres 46/2025", label: "Acuan Dokumen" },
+                { value: "7 Hari", label: "Action Plan" },
+              ],
+              faqs: [
+                { q: "Sumber data tender dari mana?", a: "Dari SIRUP/LKPP — agen pencari melakukan ranking berdasarkan kecocokan dengan profil BUJK Anda." },
+                { q: "Apa isi action plan 7 hari itu?", a: "Langkah harian yang perlu dikerjakan tim Anda dari hari ditemukannya tender sampai dokumen siap submit, disusun berdasarkan probabilitas menang dan tenggat paket." },
+              ],
+            }}
           ><KonstraTenderClawChat /></PremiumPageGuard>
         )} />
         <Route path="/bg-claw" component={() => (
@@ -849,6 +894,21 @@ function Router() {
             description="9 agen spesialis manajemen konstruksi bekerja paralel: PM & penjadwalan, teknik & shop drawing, kontrak FIDIC & klaim, K3 & SMK3, mutu & ISO 9001, lingkungan & ISO 14001, peralatan & OEE, supply chain & subkon, dan keuangan proyek PSAK34."
             highlights={["WBS, CPM & schedule recovery proyek konstruksi","Variasi & klaim FIDIC — EOT, VO, loss & expense","OEE alat berat + pengadaan material & subkontraktor","EVM: SPI, CPI, EAC, TCPI + laporan keuangan PSAK34"]}
             icon={<Building2 className="h-12 w-12 text-slate-400" />}
+            pas={{
+              problemTitle: "Sembilan bidang proyek, sembilan sumber informasi terpisah",
+              problemBody: "Mengelola proyek konstruksi berarti memantau jadwal, gambar teknik, klaim kontrak FIDIC, K3, mutu, lingkungan, alat berat, supply chain, sampai keuangan — biasanya tersebar di tim dan dokumen yang berbeda-beda, sulit dilihat sebagai satu gambaran utuh.",
+              agitateBody: "Keterlambatan progress atau klaim FIDIC yang tidak terdeteksi sejak dini sering baru ketahuan setelah menggerus margin proyek — saat itu sudah terlambat untuk mitigasi murah.",
+              desireBody: "KonstraClaw menghadirkan 9 agen spesialis dalam satu sesi tanya-jawab — dari CPM & schedule recovery, klaim EOT/VO berbasis FIDIC, OEE alat berat, sampai laporan keuangan PSAK34 — supaya Anda bisa ambil keputusan cepat berbasis data terkini dari semua bidang sekaligus.",
+              stats: [
+                { value: "9", label: "Agen Spesialis" },
+                { value: "FIDIC", label: "Red/Yellow Book" },
+                { value: "PSAK 34", label: "Laporan Keuangan Proyek" },
+              ],
+              faqs: [
+                { q: "Apakah KonstraClaw terhubung ke software manajemen proyek yang sudah saya pakai?", a: "Belum — KonstraClaw bekerja sebagai asisten analisis dan konsultasi lewat chat, data proyek Anda tetap perlu diinput atau diceritakan dalam percakapan." },
+                { q: "Apakah bisa membantu menyusun dasar klaim EOT/VO?", a: "Ya, agen kontrak FIDIC membantu menyusun argumentasi dan dasar perhitungan klaim Extension of Time (EOT) dan Variation Order (VO)." },
+              ],
+            }}
           ><KonstraClawChat /></PremiumPageGuard>
         )} />
         <Route path="/brain-claw" component={() => (
@@ -1640,6 +1700,16 @@ function Router() {
             title="TenderBot — AI Pengadaan"
             description="Asisten AI multi-agen untuk analisis tender, kesiapan dokumen, dan strategi penawaran konstruksi."
             icon={<HardHat className="h-12 w-12 text-amber-500" />}
+            pas={{
+              problemTitle: "Bingung tender ini layak dikejar atau tidak?",
+              problemBody: "Menilai kelayakan sebuah tender — dari kecocokan kualifikasi sampai peluang menang — biasanya butuh diskusi panjang dan menebak-nebak, apalagi kalau tim sedang mengejar banyak paket sekaligus.",
+              agitateBody: "Salah menilai kelayakan berarti tenaga dan biaya persiapan penawaran terbuang untuk tender yang sebenarnya tidak realistis untuk dimenangkan.",
+              desireBody: "TenderBot membantu Anda menganalisis tender, mengecek kesiapan dokumen, dan menyusun strategi penawaran lewat chat — sehingga keputusan ikut atau tidak jadi lebih cepat dan berdasar.",
+              faqs: [
+                { q: "Apakah TenderBot menyiapkan dokumen penawaran lengkap?", a: "TenderBot membantu menyusun strategi dan mengecek kesiapan dokumen; finalisasi dan tanda tangan dokumen tetap dilakukan tim Anda." },
+                { q: "Bisakah dipakai untuk tender di luar konstruksi?", a: "TenderBot dioptimalkan untuk konteks tender konstruksi, meski prinsip analisisnya bisa membantu diskusi tender bidang lain." },
+              ],
+            }}
           ><TenderBotPage /></PremiumPageGuard>
         )} />
         <Route path="/sertifikasibot" component={() => (
@@ -1672,6 +1742,16 @@ function Router() {
             title="KontraktorBot — AI Kontraktor"
             description="Asisten AI multi-agen untuk kebutuhan kontraktor konstruksi: teknis, administrasi, dan operasional lapangan."
             icon={<Wrench className="h-12 w-12 text-amber-500" />}
+            pas={{
+              problemTitle: "Teknis, administrasi, dan lapangan — semua minta perhatian sekaligus",
+              problemBody: "Sebagai kontraktor, Anda dituntut paham gambar teknis, tertib administrasi proyek, dan tetap mengawasi operasional lapangan — tiga dunia berbeda yang sering harus dipegang tim kecil, atau bahkan satu orang.",
+              agitateBody: "Kalau salah satu sisi kurang perhatian — misalnya administrasi terlambat atau koordinasi lapangan berantakan — dampaknya proyek molor dan biaya membengkak.",
+              desireBody: "KontraktorBot jadi satu tempat tanya-jawab untuk kebutuhan teknis, administrasi, dan operasional lapangan sekaligus — Anda tidak perlu berpindah-pindah tool untuk tiap masalah yang muncul.",
+              faqs: [
+                { q: "Apakah KontraktorBot bisa menggantikan pengawas lapangan?", a: "Tidak. KontraktorBot adalah asisten pendukung keputusan — pengawasan fisik di lapangan tetap perlu dilakukan tim Anda." },
+                { q: "Topik apa saja yang bisa ditanyakan?", a: "Mulai dari pembacaan gambar teknis, penyusunan dokumen administrasi proyek, sampai koordinasi dan pemecahan masalah operasional harian di lapangan." },
+              ],
+            }}
           ><KontraktorBotPage /></PremiumPageGuard>
         )} />
         <Route path="/konsultanbot" component={() => (

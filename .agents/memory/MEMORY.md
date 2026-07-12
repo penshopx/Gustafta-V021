@@ -57,3 +57,4 @@
 - [Bot demo stream contract](bot-demo-stream-contract.md) — the 9 vertical "bot" chat pages hand-roll SSE and drift from `/api/messages/stream` (right URL/body/`chunk` event/`MessageContent text=` prop); login-gated, agents stay private.
 - [Voice "Mode Telpon" mic/TTS feedback guard](voice-mode-phone-loop.md) — phone-call voice loops (STT+TTS) need explicit stop-mic-before-speak + ignore-while-speaking guards or they can self-trigger reply loops.
 - [Gustafta 3-layer terminology](gustafta-3layer-terminology.md) — Produk uses "Ruang X" (domain), Engine's generic execution stage is "Workroom" (not "Ruang Kerja" — collides with domain names).
+- [PremiumPageGuard PAS/AIDA template](claw-guard-pas-template.md) — shared gate component IS the landing page for ~85 claw/premium routes; add `pas` prop for tailored copy, generic fallback covers the rest.
